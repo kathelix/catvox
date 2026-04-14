@@ -85,7 +85,13 @@ final class CameraService {
                 return
             }
             AVCaptureDevice.requestAccess(for: .audio) { _ in
-                self.sessionQueue.async { self.configureSession() }
+                self.sessionQueue.async {
+                    self.configureSession()
+                    // configureSession() has returned, so defer has fired and
+                    // commitConfiguration() is complete. Safe to start now.
+                    self.session.startRunning()
+                    DispatchQueue.main.async { self.isSessionReady = true }
+                }
             }
         }
     }
@@ -116,9 +122,9 @@ final class CameraService {
         // File output
         guard session.canAddOutput(fileOutput) else { return }
         session.addOutput(fileOutput)
-
-        session.startRunning()
-        DispatchQueue.main.async { self.isSessionReady = true }
+        // startRunning() is intentionally NOT called here.
+        // The defer above commits the configuration when this function returns;
+        // startRunning() must only be called after commitConfiguration() completes.
     }
 
     func stopSession() {
