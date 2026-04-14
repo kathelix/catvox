@@ -34,6 +34,21 @@ enum CatPersona: String, CaseIterable, Hashable {
         }
     }
 
+    // MARK: - Display
+
+    /// Short spaced-hyphen label used in UI chips and badges.
+    /// Keeps `rawValue` intact for API round-tripping.
+    var displayName: String {
+        switch self {
+        case .grumpyBoss:             return "Grumpy - Boss"
+        case .existentialPhilosopher: return "Existential - Philosopher"
+        case .chaoticHunter:          return "Chaotic - Hunter"
+        case .dramaticDiva:           return "Dramatic - Diva"
+        case .affectionateSweetheart: return "Affectionate - Sweetheart"
+        case .secretAgent:            return "Secret - Agent"
+        }
+    }
+
     // MARK: - Helpers
 
     /// Fallback to `.grumpyBoss` if the AI returns an unrecognised string.

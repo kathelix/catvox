@@ -16,7 +16,7 @@ struct ThoughtBubbleView: View {
                 Text(persona.emoji)
                     .font(.callout)
 
-                Text(persona.rawValue.uppercased())
+                Text(persona.displayName.uppercased())
                     .font(.system(size: 10, weight: .heavy))
                     .foregroundStyle(persona.accentColor)
                     .tracking(2.0)
@@ -35,24 +35,13 @@ struct ThoughtBubbleView: View {
         // Frosted glass backing
         .background(.ultraThinMaterial,
                     in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        // Gradient border — accent bleeds from top-left, fades to subtle white
+        // Subtle 1px white border (spec: TRD §5.1 / PROMPT.md §3)
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            persona.accentColor.opacity(0.75),
-                            .white.opacity(0.08),
-                            persona.accentColor.opacity(0.18),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+                .strokeBorder(.white.opacity(0.22), lineWidth: 1)
         }
-        // Soft glow behind the card
-        .shadow(color: persona.accentColor.opacity(0.25), radius: 20, x: 0, y: 8)
+        // Soft glow — provides depth without a visible drop shadow on the card face
+        .shadow(color: persona.accentColor.opacity(0.30), radius: 22, x: 0, y: 10)
     }
 }
 
