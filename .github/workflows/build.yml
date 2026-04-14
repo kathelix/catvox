@@ -17,6 +17,11 @@ jobs:
     name: Build — iOS Simulator
     runs-on: macos-15          # Ships with Xcode 16.x; iOS 17+ SDK included
 
+    # Opt into Node.js 24 for all GitHub-maintained actions (checkout, cache).
+    # Silences the Node.js 20 deprecation warning; becomes the default in June 2026.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
