@@ -30,7 +30,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 * **Social Sharing:** Integrated "Share to Story" feature with a branded overlay.
 
 ### 3.2 Monetization & Sustainability
-* **Credit System:** 2 free scans/day to manage GCP costs.
+* **Credit System:** 5 free scans/day to manage GCP costs.
 * **Pro Tier (IAP):** One-time purchase for unlimited scans and watermark removal.
 * **Brand Promotion:** Subtle "Powered by Kathelix.com" watermark on all free-tier exports.
 

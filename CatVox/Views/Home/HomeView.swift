@@ -67,7 +67,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 24)
 
-                Text("2 free scans remaining today")
+                Text("5 free scans remaining today")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.35))
                     .padding(.top, 12)
