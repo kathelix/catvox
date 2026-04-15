@@ -58,9 +58,12 @@ final class CameraService {
     private var startTime:   CFTimeInterval = 0
 
     /// Prepared ahead of recording so the haptic fires without latency at 10 s.
-    /// @ObservationIgnored — this UIKit object must not be tracked by the macro.
+    /// UINotificationFeedbackGenerator (.success) produces the two-pulse "buzz"
+    /// pattern required by TRD §3.1, unlike UIImpactFeedbackGenerator which gives
+    /// a single sharp thump.
+    /// @ObservationIgnored — UIKit objects must not be tracked by the macro.
     @ObservationIgnored
-    private var feedbackGenerator: UIImpactFeedbackGenerator?
+    private var feedbackGenerator: UINotificationFeedbackGenerator?
 
     /// NSObject delegate shim stored as `let` (not lazy) to avoid
     /// the @Observable init-accessor conflict with lazy stored properties.
@@ -147,7 +150,7 @@ final class CameraService {
         startTime    = CACurrentMediaTime()
 
         // Prepare haptic engine now so it fires instantly at the 10 s mark.
-        feedbackGenerator = UIImpactFeedbackGenerator(style: .heavy)
+        feedbackGenerator = UINotificationFeedbackGenerator()
         feedbackGenerator?.prepare()
 
         #if targetEnvironment(simulator)
@@ -179,18 +182,25 @@ final class CameraService {
         displayLink?.invalidate()
         displayLink = nil
 
-        // TRD §3.1 — high-intensity haptic buzz + subtle ping at exactly 10 s.
-        // CADisplayLink fires on the main thread, so UIKit calls are safe here.
-        feedbackGenerator?.impactOccurred()
-        feedbackGenerator = nil
-        AudioServicesPlaySystemSound(1057)  // soft notification ping
+        // TRD §3.1 — high-intensity haptic buzz + ping at exactly 10 s.
+        // Three rules applied here (see Gemini analysis):
+        //   1. Use .notificationOccurred(.success) — two-pulse "buzz" pattern.
+        //   2. Do NOT nil feedbackGenerator yet; Taptic Engine fires async and
+        //      releasing the reference in the same run-loop cycle can cancel it.
+        //      reset() will nil it once the transition is complete.
+        //   3. On device: call stopRecording() BEFORE the system sound so iOS
+        //      releases the AVCaptureSession audio lock first — otherwise the
+        //      active audio-input session suppresses AudioServicesPlaySystemSound.
+        feedbackGenerator?.notificationOccurred(.success)
 
         #if targetEnvironment(simulator)
+        AudioServicesPlaySystemSound(1117)
         let stubURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("catvox_mock.mov")
         captureState = .finished(stubURL)
         #else
-        fileOutput.stopRecording()      // → delegate fires handleRecordingFinished
+        fileOutput.stopRecording()          // releases audio session lock
+        AudioServicesPlaySystemSound(1117)  // audible ping (ID 1117 — Alert tone)
         #endif
     }
 
