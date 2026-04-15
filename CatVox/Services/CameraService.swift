@@ -57,6 +57,11 @@ final class CameraService {
     private var displayLink: CADisplayLink?
     private var startTime:   CFTimeInterval = 0
 
+    /// Kept alive across the async haptic dispatch so ARC cannot reclaim it
+    /// before the Taptic Engine acts on the request (see handleTick comments).
+    @ObservationIgnored
+    private var completionFeedback: UINotificationFeedbackGenerator?
+
 
     /// NSObject delegate shim stored as `let` (not lazy) to avoid
     /// the @Observable init-accessor conflict with lazy stored properties.
@@ -179,21 +184,36 @@ final class CameraService {
         // the audio.  Fix: stopRecording() first (releases the lock), then fire
         // the haptic and sound together, exactly as we already do for the sound.
         #if targetEnvironment(simulator)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
         AudioServicesPlaySystemSound(1117)
         let stubURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("catvox_mock.mov")
         captureState = .finished(stubURL)
         #else
-        fileOutput.stopRecording()                                    // release lock
-        UINotificationFeedbackGenerator().notificationOccurred(.success)  // buzz
-        AudioServicesPlaySystemSound(1117)                            // ping
+        // 1. Release the AVCaptureSession audio-input lock so iOS does not
+        //    suppress the sound or the haptic.
+        fileOutput.stopRecording()
+
+        // 2. Play the ping immediately after the lock is released.
+        AudioServicesPlaySystemSound(1117)
+
+        // 3. Store the generator before dispatching so ARC cannot deallocate
+        //    it before the Taptic Engine acts on the request.  Apple docs:
+        //    "The system can cancel a request from a deallocated generator."
+        //    Dispatching to the next run-loop turn also ensures the haptic fires
+        //    from a normal main-thread context, not inside a CADisplayLink cb.
+        completionFeedback = UINotificationFeedbackGenerator()
+        DispatchQueue.main.async { [weak self] in
+            self?.completionFeedback?.notificationOccurred(.success)
+        }
         #endif
     }
 
     fileprivate func handleRecordingFinished(url: URL, error: Error?) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            // Safe to release now — recording is done and the Taptic Engine
+            // has had at least one full run-loop cycle to fire the haptic.
+            completionFeedback = nil
             if let error {
                 captureState = .failed(error.localizedDescription)
             } else {
@@ -207,8 +227,9 @@ final class CameraService {
     /// Returns to `.idle` so the user can record again without
     /// dismissing RecordingView.
     func reset() {
-        captureState = .idle
-        progress     = 0
+        captureState     = .idle
+        progress         = 0
+        completionFeedback = nil
     }
 }
 
