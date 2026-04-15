@@ -1,5 +1,7 @@
+import AudioToolbox
 import AVFoundation
 import Observation
+import UIKit
 
 /// Manages the full AVCaptureSession lifecycle for a fixed 10-second recording.
 ///
@@ -54,6 +56,11 @@ final class CameraService {
 
     private var displayLink: CADisplayLink?
     private var startTime:   CFTimeInterval = 0
+
+    /// Prepared ahead of recording so the haptic fires without latency at 10 s.
+    /// @ObservationIgnored — this UIKit object must not be tracked by the macro.
+    @ObservationIgnored
+    private var feedbackGenerator: UIImpactFeedbackGenerator?
 
     /// NSObject delegate shim stored as `let` (not lazy) to avoid
     /// the @Observable init-accessor conflict with lazy stored properties.
@@ -139,6 +146,10 @@ final class CameraService {
         progress     = 0
         startTime    = CACurrentMediaTime()
 
+        // Prepare haptic engine now so it fires instantly at the 10 s mark.
+        feedbackGenerator = UIImpactFeedbackGenerator(style: .heavy)
+        feedbackGenerator?.prepare()
+
         #if targetEnvironment(simulator)
         attachDisplayLink()           // Simulated countdown, no real file
         #else
@@ -168,6 +179,12 @@ final class CameraService {
         displayLink?.invalidate()
         displayLink = nil
 
+        // TRD §3.1 — high-intensity haptic buzz + subtle ping at exactly 10 s.
+        // CADisplayLink fires on the main thread, so UIKit calls are safe here.
+        feedbackGenerator?.impactOccurred()
+        feedbackGenerator = nil
+        AudioServicesPlaySystemSound(1057)  // soft notification ping
+
         #if targetEnvironment(simulator)
         let stubURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("catvox_mock.mov")
@@ -193,8 +210,9 @@ final class CameraService {
     /// Returns to `.idle` so the user can record again without
     /// dismissing RecordingView.
     func reset() {
-        captureState = .idle
-        progress     = 0
+        captureState      = .idle
+        progress          = 0
+        feedbackGenerator = nil
     }
 }
 

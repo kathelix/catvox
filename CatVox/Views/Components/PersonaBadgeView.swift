@@ -2,6 +2,11 @@ import SwiftUI
 
 /// Compact pill showing the detected emotion label and an animated
 /// confidence-score arc.  Lives at the top of the bottom panel in ResultView.
+///
+/// Arc colour follows TRD §5 colour-coding:
+///   > 80 %  → green  (high confidence)
+///   50–80 % → amber  (moderate)
+///   < 50 %  → red    (low / ambiguous)
 struct PersonaBadgeView: View {
 
     let emotion:    String
@@ -9,6 +14,16 @@ struct PersonaBadgeView: View {
     let confidence: Double          // 0.0 – 1.0
 
     @State private var arcProgress: Double = 0
+
+    // MARK: - Confidence colour
+
+    private var confidenceColor: Color {
+        switch confidence {
+        case 0.80...:  return Color(red: 0.22, green: 0.85, blue: 0.50)  // green
+        case 0.50...:  return Color(red: 1.00, green: 0.65, blue: 0.15)  // amber
+        default:       return Color(red: 0.90, green: 0.22, blue: 0.22)  // red
+        }
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -34,11 +49,11 @@ struct PersonaBadgeView: View {
                 Circle()
                     .stroke(.white.opacity(0.14), lineWidth: 3.5)
 
-                // Fill
+                // Fill — colour-coded by confidence tier (TRD §5)
                 Circle()
                     .trim(from: 0, to: arcProgress)
                     .stroke(
-                        persona.accentColor,
+                        confidenceColor,
                         style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -69,10 +84,18 @@ struct PersonaBadgeView: View {
 #Preview {
     ZStack {
         Color(red: 0.04, green: 0.04, blue: 0.07).ignoresSafeArea()
-        PersonaBadgeView(emotion: "Territorial Alertness",
-                         persona: .grumpyBoss,
-                         confidence: 0.87)
-            .padding()
+        VStack(spacing: 12) {
+            PersonaBadgeView(emotion: "Territorial Alertness",
+                             persona: .grumpyBoss,
+                             confidence: 0.87)   // → green
+            PersonaBadgeView(emotion: "Existential Ennui",
+                             persona: .existentialPhilosopher,
+                             confidence: 0.65)   // → amber
+            PersonaBadgeView(emotion: "Maximum Zoomies",
+                             persona: .chaoticHunter,
+                             confidence: 0.38)   // → red
+        }
+        .padding()
     }
     .preferredColorScheme(.dark)
 }
