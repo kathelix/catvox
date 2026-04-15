@@ -2,22 +2,59 @@ import SwiftUI
 
 /// The centrepiece of the CatVox experience.
 ///
+/// Two initialisation paths:
+///   `init(analysis:)`  — Dev-preview / Phase 1.  Analysis is supplied directly;
+///                        no upload occurs and the result UI springs in immediately.
+///   `init(videoURL:)`  — Normal recording path.  GCPService drives the upload
+///                        pipeline; the result UI replaces the loading card once
+///                        analysis is returned from the backend (or mock).
+///
 /// Layout (bottom-to-top):
-///   1. Full-screen looping video (Phase 1: animated gradient placeholder)
-///   2. Soft vignette gradient over the video
-///   3. ThoughtBubbleView — springs in after a short delay
+///   1. Full-screen animated gradient background (persona-tinted)
+///   2. Soft vignette
+///   3. ThoughtBubbleView / UploadProgressView — springs in after upload
 ///   4. Bottom panel (PersonaBadge + ExpertInsightsDrawer + Share CTA)
-///   5. Minimal top bar with a dismiss control
+///   5. Top bar with dismiss control
 ///
 /// See TRD §5.1 and PROMPT.md §2 for the full specification.
 struct ResultView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var viewModel: ResultViewModel
+    /// Becomes non-nil once analysis is available — immediately for the dev
+    /// path, or after `gcpService` completes for the recording path.
+    @State private var viewModel: ResultViewModel?
 
+    /// Active only when `videoURL` is non-nil.
+    @State private var gcpService = GCPService()
+
+    /// Error state for the retry alert.
+    @State private var showRetryAlert = false
+    @State private var failureMessage  = ""
+
+    /// Set at init; nil in dev-preview mode (analysis provided directly).
+    private let videoURL: URL?
+
+    // MARK: - Init
+
+    /// Dev-preview / Phase 1: analysis is provided directly, no upload.
     init(analysis: CatAnalysis) {
+        videoURL = nil
         _viewModel = State(initialValue: ResultViewModel(analysis: analysis))
+    }
+
+    /// Normal recording path: upload is triggered on appear.
+    init(videoURL: URL) {
+        self.videoURL = videoURL
+        _viewModel = State(initialValue: nil)
+    }
+
+    // MARK: - Derived
+
+    /// Falls back to `.grumpyBoss` while the upload is pending so the
+    /// background gradient always has a valid persona to render.
+    private var activePersona: CatPersona {
+        viewModel?.persona ?? .grumpyBoss
     }
 
     // MARK: - Body
@@ -26,65 +63,91 @@ struct ResultView: View {
         ZStack(alignment: .bottom) {
 
             // ── 1. Background ──────────────────────────────────────────────
-            AnimatedVideoBackground(persona: viewModel.persona)
+            AnimatedVideoBackground(persona: activePersona)
                 .ignoresSafeArea()
 
             // ── 2. Vignette ────────────────────────────────────────────────
             LinearGradient(
                 stops: [
-                    .init(color: .black.opacity(0.0),  location: 0.0),
+                    .init(color: .black.opacity(0.00), location: 0.00),
                     .init(color: .black.opacity(0.15), location: 0.35),
                     .init(color: .black.opacity(0.82), location: 0.75),
-                    .init(color: .black.opacity(0.95), location: 1.0),
+                    .init(color: .black.opacity(0.95), location: 1.00),
                 ],
                 startPoint: .top,
-                endPoint: .bottom
+                endPoint:   .bottom
             )
             .ignoresSafeArea()
 
-            // ── 3 + 4 + 5. Content stack ───────────────────────────────────
+            // ── 3 + 4 + 5. Content ─────────────────────────────────────────
             VStack(spacing: 0) {
                 topBar
                     .padding(.top, 8)
 
                 Spacer()
 
-                // Thought bubble springs in over the video
-                if viewModel.thoughtBubbleVisible {
-                    ThoughtBubbleView(
-                        analysis: viewModel.analysis,
-                        persona: viewModel.persona
-                    )
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 24)
-                    .transition(
-                        .asymmetric(
-                            insertion: .scale(scale: 0.82, anchor: .bottom)
-                                       .combined(with: .opacity),
-                            removal:   .opacity
-                        )
-                    )
-                }
-
-                // Bottom panel slides up
-                if viewModel.panelVisible {
-                    bottomPanel
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                if let viewModel {
+                    resultContent(viewModel)
+                } else {
+                    loadingContent
                 }
             }
         }
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
-        .onAppear { viewModel.onAppear() }
+        .onAppear(perform: handleAppear)
+        .onChange(of: gcpService.uploadState) { _, state in handleUploadState(state) }
+        .alert("Upload Failed", isPresented: $showRetryAlert) {
+            Button("Retry") {
+                if let url = videoURL { gcpService.retry(videoAt: url) }
+            }
+            Button("Cancel", role: .cancel) { dismiss() }
+        } message: {
+            Text(failureMessage)
+        }
     }
 
-    // MARK: - Subviews
+    // MARK: - Content branches
+
+    /// Shown while GCPService is working. Sits in the same vertical zone
+    /// as the thought bubble so the transition feels continuous.
+    private var loadingContent: some View {
+        UploadProgressView(state: gcpService.uploadState)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 60)
+            .transition(.opacity)
+    }
+
+    /// Full result UI — mirrors the original single-path layout.
+    @ViewBuilder
+    private func resultContent(_ vm: ResultViewModel) -> some View {
+        if vm.thoughtBubbleVisible {
+            ThoughtBubbleView(
+                analysis: vm.analysis,
+                persona:  vm.persona
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+            .transition(
+                .asymmetric(
+                    insertion: .scale(scale: 0.82, anchor: .bottom)
+                               .combined(with: .opacity),
+                    removal:   .opacity
+                )
+            )
+        }
+
+        if vm.panelVisible {
+            bottomPanel(vm)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    // MARK: - Top bar
 
     private var topBar: some View {
         HStack {
-            Button {
-                dismiss()
-            } label: {
+            Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title3)
                     .symbolRenderingMode(.hierarchical)
@@ -101,36 +164,41 @@ struct ResultView: View {
 
             Spacer()
 
-            // Mirror the close button width for visual balance
+            // Balances the close button for optical centering.
             Color.clear.frame(width: 32, height: 32)
         }
         .padding(.horizontal, 20)
     }
 
-    private var bottomPanel: some View {
+    // MARK: - Bottom panel
+
+    private func bottomPanel(_ vm: ResultViewModel) -> some View {
         VStack(spacing: 12) {
             PersonaBadgeView(
-                emotion:    viewModel.analysis.primaryEmotion,
-                persona:    viewModel.persona,
-                confidence: viewModel.analysis.confidenceScore
+                emotion:    vm.analysis.primaryEmotion,
+                persona:    vm.persona,
+                confidence: vm.analysis.confidenceScore
             )
 
             ExpertInsightsDrawer(
-                analysis:   viewModel.analysis,
-                isExpanded: $viewModel.isInsightsExpanded
+                analysis:   vm.analysis,
+                isExpanded: Binding(
+                    get: { vm.isInsightsExpanded },
+                    set: { vm.isInsightsExpanded = $0 }
+                )
             )
 
-            shareButton
+            shareButton(vm)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 40)
     }
 
-    private var shareButton: some View {
+    private func shareButton(_ vm: ResultViewModel) -> some View {
         ShareLink(
-            item: viewModel.shareText,
+            item: vm.shareText,
             subject: Text("My cat's inner monologue"),
-            message: Text(viewModel.shareText)
+            message: Text(vm.shareText)
         ) {
             HStack(spacing: 8) {
                 Image(systemName: "square.and.arrow.up")
@@ -145,14 +213,46 @@ struct ResultView: View {
             .background(
                 LinearGradient(
                     colors: [
-                        viewModel.persona.accentColor,
-                        viewModel.persona.accentColor.opacity(0.78),
+                        vm.persona.accentColor,
+                        vm.persona.accentColor.opacity(0.78),
                     ],
                     startPoint: .leading,
                     endPoint:   .trailing
                 ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
+        }
+    }
+
+    // MARK: - Event handlers
+
+    private func handleAppear() {
+        if let url = videoURL {
+            // Recording path — kick off the upload pipeline.
+            gcpService.uploadAndAnalyse(videoAt: url)
+        } else {
+            // Dev-preview path — trigger entrance animations immediately.
+            viewModel?.onAppear()
+        }
+    }
+
+    private func handleUploadState(_ state: GCPService.UploadState) {
+        switch state {
+        case .complete(let analysis):
+            let vm = ResultViewModel(analysis: analysis)
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                viewModel = vm
+            }
+            // Schedule onAppear() after SwiftUI has bound the new viewModel,
+            // so the spring-in animations play against the rendered result UI.
+            Task { @MainActor in vm.onAppear() }
+
+        case .failed(let message):
+            failureMessage = message
+            showRetryAlert = true
+
+        default:
+            break
         }
     }
 }
@@ -169,4 +269,8 @@ struct ResultView: View {
 
 #Preview("Chaotic Hunter") {
     ResultView(analysis: MockAnalysisService.allSamples[2])
+}
+
+#Preview("Upload in Progress") {
+    ResultView(videoURL: URL(fileURLWithPath: "/dev/null"))
 }

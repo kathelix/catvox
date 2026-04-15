@@ -18,6 +18,7 @@ struct RecordingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var service       = CameraService()
     @State private var showResult    = false
+    @State private var recordedURL:  URL?
     @State private var errorMessage  = ""
     @State private var showError     = false
 
@@ -67,8 +68,9 @@ struct RecordingView: View {
         .onDisappear { service.stopSession() }
         .onChange(of: service.captureState) { _, state in
             switch state {
-            case .finished(_):
-                showResult = true
+            case .finished(let url):
+                recordedURL = url
+                showResult  = true
             case .failed(let msg):
                 errorMessage = msg
                 showError    = true
@@ -78,11 +80,18 @@ struct RecordingView: View {
         }
         // When ResultView is dismissed, reset so the user can record again.
         .onChange(of: showResult) { _, showing in
-            if !showing { service.reset() }
+            if !showing {
+                service.reset()
+                recordedURL = nil
+            }
         }
         .fullScreenCover(isPresented: $showResult) {
-            // Phase 1: always mock. Phase 2: pass recorded URL to the backend.
-            ResultView(analysis: MockAnalysisService.sampleAnalysis)
+            if let url = recordedURL {
+                ResultView(videoURL: url)
+            } else {
+                // Fallback: should not normally be reached.
+                ResultView(analysis: MockAnalysisService.sampleAnalysis)
+            }
         }
         .alert("Recording Failed", isPresented: $showError) {
             Button("Retry",  role: .none)   { service.reset() }
