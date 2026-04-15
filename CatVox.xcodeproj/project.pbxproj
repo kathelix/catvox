@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02E96012C9F9B33780525AE7 /* UploadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */; };
 		1287A8DCFE6D80256B9611B0 /* MockAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */; };
 		1861803EF64D9F7FE6C77560 /* CatAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */; };
 		2B1DF66382C3129D895D785C /* CatVoxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBC2D72ADC3729A73D65E8D /* CatVoxApp.swift */; };
@@ -23,15 +24,18 @@
 		B4D5970C08C51D76A7FA3AB4 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */; };
 		B84CBF26D24790B4B6F348CD /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C7BA98BD11A2006135A1026D /* Preview Assets.xcassets */; };
 		C3ADEFA683DE26DFF3392AD6 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19667502574A1D26D0A51E54 /* RecordingView.swift */; };
+		F313F83CB35D9EBB47FB6D86 /* GCPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8AF485DF075ADE029435E4 /* GCPService.swift */; };
 		F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D6D24374084C2723FD8F66 /* ResultView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0F8AF485DF075ADE029435E4 /* GCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GCPService.swift; sourceTree = "<group>"; };
 		19667502574A1D26D0A51E54 /* RecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingView.swift; sourceTree = "<group>"; };
 		215145685222056D654FFBD5 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
 		337DB0A3CC6E2C83B8244190 /* ExpertInsightsDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertInsightsDrawer.swift; sourceTree = "<group>"; };
 		4F5C098EA923D7B7D2B7746F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		689AC1D0436D57C04DBE7694 /* CatPersona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersona.swift; sourceTree = "<group>"; };
+		6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
 		7BC4DFCD54831F1AA990A7C3 /* CatVox.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CatVox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAnalysisService.swift; sourceTree = "<group>"; };
@@ -113,6 +117,7 @@
 				337DB0A3CC6E2C83B8244190 /* ExpertInsightsDrawer.swift */,
 				B7D6D24374084C2723FD8F66 /* ResultView.swift */,
 				B7C3FCEEFAA51F645F5BECDC /* ThoughtBubbleView.swift */,
+				6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */,
 			);
 			path = Result;
 			sourceTree = "<group>";
@@ -130,6 +135,7 @@
 			isa = PBXGroup;
 			children = (
 				215145685222056D654FFBD5 /* CameraService.swift */,
+				0F8AF485DF075ADE029435E4 /* GCPService.swift */,
 				A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */,
 			);
 			path = Services;
@@ -257,6 +263,7 @@
 				2B1DF66382C3129D895D785C /* CatVoxApp.swift in Sources */,
 				61C87E117CBDFD72736557E7 /* ContentView.swift in Sources */,
 				A5C4EECE806C37E8D53F28E0 /* ExpertInsightsDrawer.swift in Sources */,
+				F313F83CB35D9EBB47FB6D86 /* GCPService.swift in Sources */,
 				37039B5FADDEA9E57A423699 /* HomeView.swift in Sources */,
 				1287A8DCFE6D80256B9611B0 /* MockAnalysisService.swift in Sources */,
 				8C2CEB06889AD660A126DB42 /* PersonaBadgeView.swift in Sources */,
@@ -264,6 +271,7 @@
 				F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */,
 				93C8E173BFE2C46040F5EA46 /* ResultViewModel.swift in Sources */,
 				96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */,
+				02E96012C9F9B33780525AE7 /* UploadProgressView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
