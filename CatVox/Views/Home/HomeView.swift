@@ -37,11 +37,11 @@ struct HomeView: View {
                 } label: {
                     Label("Start Scan", systemImage: "video.fill")
                         .font(.headline)
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 17)
                         .background(
-                            Color(red: 0.90, green: 0.22, blue: 0.22),
+                            CatVoxTheme.brandGradient,
                             in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                         )
                 }

@@ -146,11 +146,11 @@ struct RecordingView: View {
                 Circle()
                     .stroke(.white.opacity(0.18), lineWidth: 4)
 
-                // ── Progress fill ───────────────────────────────────────
+                // ── Progress fill (brand indigo → cyan) ────────────────
                 Circle()
                     .trim(from: 0, to: service.progress)
                     .stroke(
-                        Color.red,
+                        CatVoxTheme.brandAngularGradient,
                         style: StrokeStyle(lineWidth: 4, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -178,9 +178,9 @@ struct RecordingView: View {
         case .idle:
             Button { service.startRecording() } label: {
                 Circle()
-                    .fill(Color.red)
+                    .fill(CatVoxTheme.brandGradient)
                     .frame(width: 80, height: 80)
-                    .shadow(color: .red.opacity(0.45), radius: 16, x: 0, y: 0)
+                    .shadow(color: CatVoxTheme.indigo.opacity(0.45), radius: 16, x: 0, y: 0)
             }
             .disabled(!service.isSessionReady)
 
