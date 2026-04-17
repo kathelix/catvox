@@ -6,7 +6,7 @@ import Observation
 /// Pipeline:
 ///   1. Fetch a short-lived signed PUT URL from the Firebase Cloud Function.
 ///   2. Stream the recorded .mov file to Google Cloud Storage via HTTP PUT
-///      with Content-Type: video/mp4.
+///      with Content-Type: video/quicktime (matches the QuickTime container).
 ///   3. Trigger the Vertex AI analysis Cloud Function and return a CatAnalysis.
 ///
 /// Mock mode (default on):
@@ -152,7 +152,7 @@ final class GCPService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let payload: [String: String] = [
             "filename":    videoURL.lastPathComponent,
-            "contentType": "video/mp4",
+            "contentType": "video/quicktime",
         ]
         request.httpBody = try JSONEncoder().encode(payload)
 
@@ -185,7 +185,7 @@ final class GCPService {
 
         var request = URLRequest(url: signedURL)
         request.httpMethod = "PUT"
-        request.setValue("video/mp4", forHTTPHeaderField: "Content-Type")
+        request.setValue("video/quicktime", forHTTPHeaderField: "Content-Type")
 
         let (_, response) = try await session.upload(for: request, fromFile: fileURL)
         guard let http = response as? HTTPURLResponse,
