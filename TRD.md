@@ -27,7 +27,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 ### 3.1 Core Features (MVP)
 * **Video Capture:** Fixed 10-second recording window with a visual countdown UI and an audio ping at the moment recording ends.
 * **Multimodal Analysis:** Simultaneous processing of video (body language) and audio (vocalization) via Vertex AI.
-* **Persona Engine:** Logic to assign one of 6 "Cat Personas" (e.g., Grumpy Boss, Existential Philosopher) to the output.
+* **Persona Engine:** Logic to assign one of 6 "Cat Personas" to the interpretation to drive engagement and humor.
 * **Mood Diary:** A local history of scans saved using on-device persistent storage.
 * **Social Sharing:** Integrated "Share to Story" feature with a branded overlay.
 
@@ -38,28 +38,31 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 
 ---
 
-## 4. Technical Architecture
+## 4. AI System Instructions (The "Prompt Gate")
 
-### 4.1 System Overview
-* **Frontend:** Native mobile app (iOS).
-* **Backend Proxy:** Firebase Cloud Functions to protect Vertex AI API keys.
-* **AI Engine:** Google Vertex AI - Gemini 3.1 Flash.
-* **Storage:** Google Cloud Storage (temporary video hosting).
+### 4.1 Role & Context
+You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze 10-second video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
 
-### 4.2 Video Format
-* Clips are recorded and uploaded in QuickTime format (`.mov`, `Content-Type: video/quicktime`). No re-encoding is performed on-device.
+### 4.2 The 6 Cat Personas
+Select the archetype that best fits the observed behavior:
+1. **The CEO (Grumpy Boss):** Authoritative, judgmental, and demanding; treats the owner like an underperforming intern.
+2. **The Existentialist:** Poetic, melancholic, and deeply confused by the nature of the "red dot" or the void.
+3. **The Drama Queen/King:** High-octane energy; over-reacting to minor inconveniences with grand theatrical flair.
+4. **The Special Ops (Secret Agent):** Stealthy, tactical, and suspicious; treating the living room as a mission zone.
+5. **The Chaotic Toddler (Hunter):** Pure prey-drive energy or unbridled joy; high physical output with "zero thoughts" behind the eyes.
+6. **The Zen Monk:** Detached, calm, and observing the household with a sense of silent, judgmental peace.
 
 ### 4.3 API Data Schema
-The backend must return a strictly formatted JSON object:
+The backend must return ONLY a valid JSON object following this structure:
 
-> {
->   "primary_emotion": "string",
->   "confidence_score": 0.0,
->   "analysis": "string",
->   "persona_type": "string",
->   "cat_thought": "string",
->   "owner_tip": "string"
-> }
+{
+  "primary_emotion": "string",
+  "confidence_score": float (0.0 - 1.0),
+  "analysis": "2-3 sentences of expert feline behavior analysis",
+  "persona_type": "string",
+  "cat_thought": "First-person monologue matching the assigned persona",
+  "owner_tip": "A practical, actionable suggestion for the owner"
+}
 
 ---
 
