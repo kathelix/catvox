@@ -1,10 +1,10 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.3  
+**Version:** 1.4
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
-**Status:** Specification Refinement (Post-Prototype)
+**Status:** Infrastructure & Backend Definition
 
 ---
 
@@ -80,24 +80,53 @@ The backend must return a strictly formatted JSON object:
 
 ---
 
-## 6. Project Roadmap
+## 6. Cloud Infrastructure & Security (IaC)
 
-### Phase 1: Prototype Refinement (Current)
-* **UI Update:** Apply dynamic color logic to the Confidence Score ring.
-* Finalize System Instructions for Gemini.
-* Setup Firebase/GCP project structure.
+### 6.1 Infrastructure as Code (Terraform)
+* **Provider:** Google Cloud Platform (GCP).
+* **Resource Scope:**
+    * **Project Services:** Enablement of aiplatform, cloudfunctions, run, firestore, storage, and secretmanager.
+    * **Service Accounts:** catvox-backend-sa with least-privilege IAM roles.
+    * **Secrets:** Secret Manager for GCP_PROJECT_ID and APP_CHECK_DEBUG_TOKEN.
 
-### Phase 2: MVP Development (3-4 Weeks)
-* Implement Video Capture logic.
-* Connect Backend Cloud Function to Vertex AI.
-* Integrate in-app purchase for "Pro" tier.
+### 6.2 Compute & API Orchestration
+* **Environment:** Firebase Cloud Functions (2nd Generation).
+* **Runtime:** Node.js (TypeScript).
+* **Vertex AI Integration:** Call Gemini 3.1 Flash using fileData (GCS URI) for multimodal analysis.
 
-### Phase 3: Launch & Iteration
-* Beta testing with limited users.
-* LinkedIn/Social Media marketing campaign.
+### 6.3 Security & Identity
+* **App Verification:** Firebase App Check mandatory for all backend entry points (Debug Provider for local dev).
+* **IAM Policy:** SA requires roles/aiplatform.user, roles/storage.objectViewer, and roles/datastore.user.
+* **Secrets:** Zero hardcoded identifiers; all retrieved via Secret Manager at runtime.
+
+### 6.4 Data Lifecycle & Persistence
+* **Google Cloud Storage (GCS):**
+    * Bucket: catvox-raw-videos.
+    * **Lifecycle Rule:** action: Delete, condition: Age > 1 day (Privacy & Cost management).
+* **Firestore (Usage Guard):**
+    * Collection: usage/{userId}.
+    * Schema: { count: integer, lastResetDate: string (YYYY-MM-DD) }.
+    * **Logic:** Backend increments count; rejects request (429) if limit reached.
 
 ---
 
-## 7. Future Enhancements (Post-MVP)
-* **Haptic Completion Signal:** A high-intensity haptic buzz at the moment recording ends, paired with the audio ping.
+## 7. Implementation Backlog (MVP)
+
+* [x] **Asset Integration:** App Icon & Accent Colors implemented.
+* [x] **UI Logic:** Confidence Score color-coding implemented.
+* [ ] **GCP Foundation:** Deploy Terraform plan to provision GCS, IAM, and Secrets.
+* [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
+* [ ] **Video Pipeline:** Implement Swift-based background upload to GCS.
+* [ ] **AI Connection:** Connect Cloud Function to Vertex AI Gemini 3.1 Flash.
+* [ ] **Persistence:** Set up SwiftData for local scan history storage.
+* [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
+* [ ] **Social:** Build branded video overlay and sharing features.
+
+---
+
+## 8. Future Enhancements (Post-MVP)
+* **Haptic Completion:** Tactile feedback on successful AI interpretation.
+* **Multi-Cat Profiles:** Specific tracking for different pets.
+* **Health Monitoring:** Advanced analysis for subtle pain or distress markers.
+* **Social Feed:** A community "Wall of Meows" to see global cat interpretations.
 * **Advanced Mood Analytics:** Week-over-week trends for cat behavior.
