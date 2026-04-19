@@ -1,17 +1,17 @@
 ###############################################################################
-# CatVox AI — Service Account & IAM
-# TRD §6.3 — least-privilege policy; exact roles specified in spec.
+# CatVox AI — Service Accounts & IAM
+# TRD §6.3 — two SAs with distinct purposes and least-privilege roles.
 ###############################################################################
 
-# ── Service Account ───────────────────────────────────────────────────────────
+# ── Runtime SA — Cloud Functions ─────────────────────────────────────────────
+# catvox-backend-sa: identity for running Cloud Functions.
+# Holds only the minimal roles needed at runtime — never has CI-level access.
 
 resource "google_service_account" "backend_sa" {
   account_id   = "catvox-backend-sa"
   display_name = "CatVox Backend"
-  description  = "Least-privilege runtime SA for CatVox Cloud Functions (TRD §6.3)."
+  description  = "Least-privilege runtime identity for CatVox Cloud Functions (TRD §6.3)."
 }
-
-# ── IAM Bindings — exact roles from TRD §6.3 ─────────────────────────────────
 
 # Vertex AI — call Gemini 3.1 Flash for multimodal video analysis.
 resource "google_project_iam_member" "aiplatform_user" {
@@ -34,8 +34,6 @@ resource "google_project_iam_member" "datastore_user" {
   member  = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
-# ── IAM Bindings — implied by TRD §6.3 (zero hardcoded secrets) ──────────────
-
 # Secret Manager — resolve GCP_PROJECT_ID and APP_CHECK_DEBUG_TOKEN at runtime.
 resource "google_project_iam_member" "secretmanager_accessor" {
   project = var.project_id
@@ -43,40 +41,45 @@ resource "google_project_iam_member" "secretmanager_accessor" {
   member  = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
-# Signed URL generation — the SA must be able to self-sign tokens in order to
-# produce short-lived GCS upload URLs for the iOS client (TRD §6.2 pipeline).
-# This grants the SA the Token Creator role on itself only — not project-wide.
+# Signed URL generation — the SA self-signs tokens to produce short-lived GCS
+# upload URLs for the iOS client (TRD §6.2). Scoped to self only.
 resource "google_service_account_iam_member" "sa_token_creator" {
   service_account_id = google_service_account.backend_sa.name
   role               = "roles/iam.serviceAccountTokenCreator"
   member             = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
-# ── IAM Bindings — Terraform CI (GitHub Actions) ──────────────────────────────
-# catvox-backend-sa also acts as the Terraform CI identity via Workload Identity
-# Federation. It needs broader project-level rights to plan and apply the
-# infrastructure defined in this repo. These roles are intentionally separate
-# from the runtime roles above for clarity.
+# ── CI SA — Terraform / GitHub Actions ───────────────────────────────────────
+# catvox-ci-sa: identity for GitHub Actions Terraform plan/apply runs.
+# Holds broader project-level rights needed for IaC, isolated from runtime.
 #
-# roles/editor                          — manage GCP resources (APIs, GCS,
-#                                         Artifact Registry, Secret Manager,
-#                                         Firestore, service accounts)
-# roles/resourcemanager.projectIamAdmin — read and write project-level IAM
-#                                         bindings (required for all
-#                                         google_project_iam_member resources)
-#
-# Both roles were first granted manually via gcloud (bootstrap) so that the
-# initial terraform plan could succeed; they are tracked here to keep state
-# consistent.
+# After the first terraform apply that creates this SA, three manual steps
+# are required before the next GitHub Actions run will succeed:
+#   1. Re-run terraform/bootstrap_wif.sh — binds the WIF pool to catvox-ci-sa
+#      and grants it objectAdmin on the Terraform state bucket.
+#   2. Update GitHub secret GCP_SERVICE_ACCOUNT to:
+#      catvox-ci-sa@<project-id>.iam.gserviceaccount.com
+#   3. (Optional) Remove the old workloadIdentityUser binding from
+#      catvox-backend-sa via: gcloud iam service-accounts remove-iam-policy-binding
 
+resource "google_service_account" "ci_sa" {
+  account_id   = "catvox-ci-sa"
+  display_name = "CatVox Terraform CI"
+  description  = "GitHub Actions identity for Terraform plan/apply via WIF (TRD §6.3)."
+}
+
+# roles/editor — manage GCP resources (APIs, GCS, Artifact Registry, Secret
+# Manager, Firestore, service accounts).
 resource "google_project_iam_member" "tf_ci_editor" {
   project = var.project_id
   role    = "roles/editor"
-  member  = "serviceAccount:${google_service_account.backend_sa.email}"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
 }
 
+# roles/resourcemanager.projectIamAdmin — read and write project-level IAM
+# bindings (required for all google_project_iam_member resources).
 resource "google_project_iam_member" "tf_ci_iam_admin" {
   project = var.project_id
   role    = "roles/resourcemanager.projectIamAdmin"
-  member  = "serviceAccount:${google_service_account.backend_sa.email}"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
 }

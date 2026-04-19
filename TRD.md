@@ -107,15 +107,16 @@ The backend must return ONLY a valid JSON object following this structure:
 ### 6.3 Security & Identity
 * **App Verification:** Firebase App Check mandatory for all backend entry points (Debug Provider for local dev).
 * **Secrets:** Zero hardcoded identifiers; all retrieved via Secret Manager at runtime.
-* **IAM Roles — Runtime (Cloud Functions):**
+* **Service Account: `catvox-backend-sa`** — Runtime identity for Cloud Functions. Holds only the minimal roles required at runtime; never has CI-level access.
     * `roles/aiplatform.user` — invoke Gemini 3.1 Flash via Vertex AI.
     * `roles/storage.objectViewer` — read video objects from GCS for Vertex AI.
     * `roles/datastore.user` — read/write Firestore usage documents.
     * `roles/secretmanager.secretAccessor` — resolve secrets at function startup.
     * `roles/iam.serviceAccountTokenCreator` (self) — generate signed GCS upload URLs for the iOS client.
-* **IAM Roles — Terraform CI (GitHub Actions):**
+* **Service Account: `catvox-ci-sa`** — Terraform CI identity for GitHub Actions. Holds broader project-level rights needed for IaC; isolated from the runtime SA to limit blast radius if either is compromised.
     * `roles/editor` — manage GCP resources (APIs, GCS, Artifact Registry, Secret Manager, Firestore, service accounts).
     * `roles/resourcemanager.projectIamAdmin` — read and write project-level IAM bindings.
+    * `roles/storage.objectAdmin` (state bucket only) — read/write Terraform state; granted via `bootstrap_wif.sh`, not Terraform (state bucket is outside IaC scope).
 
 ### 6.4 Data Lifecycle & Persistence
 * **Google Cloud Storage (GCS):**
@@ -162,7 +163,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 |---|---|
 | `GCP_PROJECT_ID` | GCP project ID (`var.project_id`) |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full WIF provider resource name (output of `bootstrap_wif.sh`) |
-| `GCP_SERVICE_ACCOUNT` | `catvox-backend-sa@<project-id>.iam.gserviceaccount.com` |
+| `GCP_SERVICE_ACCOUNT` | `catvox-ci-sa@<project-id>.iam.gserviceaccount.com` |
 | `TF_VAR_app_check_debug_token` | Firebase App Check debug token |
 
 ---
