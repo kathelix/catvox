@@ -2,8 +2,8 @@
 
 
 This file must contain only high-level design decisions.
-It is used to generate, and stay in sync with, Technical Requirements Document `TRD.md` for full technical specifications.
-Later `TRD.md` is used with Claude Code to generate all the code, both for apps and infrastructure.
+It is used to generate, and stay in sync with, Technical Requirements Document `docs/TRD.md` for full technical specifications.
+Later `docs/TRD.md` is used with Claude Code to generate all the code, both for apps and infrastructure.
 
 ## 1. Project Context & Vision
 CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It uses multimodal AI (Gemini 3.1 Flash) to interpret 10-second cat video clips, providing behavioral analysis and a humorous "inner monologue" translation based on specific feline personas.

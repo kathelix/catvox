@@ -45,7 +45,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 Short version:
 You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze 10-second video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
 
-Full version see in the file `Instructions.md`
+Full version see in the file `docs/Instructions.md`
 
 ### 4.2 The 6 Cat Personas
 Select the archetype that best fits the observed behavior:
