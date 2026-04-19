@@ -1,7 +1,7 @@
-# Top-level Design: CatVox AI
+# High-level Design: CatVox AI
 
 
-This file must contain only top level design decisions.
+This file must contain only high-level design decisions.
 It is used to generate, and stay in sync with, Technical Requirements Document `TRD.md` for full technical specifications.
 Later `TRD.md` is used with Claude Code to generate all the code, both for apps and infrastructure.
 
@@ -17,11 +17,9 @@ CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It
 * **Multimodal Engine:** Selected Gemini 3.1 Flash for its ability to process video and audio simultaneously via GCS URIs, reducing mobile device memory overhead.
 * **Video Pipeline:** Chose to stick with native **HEVC (.mov)** at 1080p for the MVP to minimize bandwidth usage and avoid complex client-side transcoding.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
-* **Security:** Implemented Firebase App Check (with Debug Provider for local dev) to prevent unauthorized API calls and manage GCP costs.
+* **Security:** Designed to use Firebase App Check (with Debug Provider for local dev) to prevent unauthorized API calls and manage GCP costs.
 
 ## 4. Current Implementation State
-The iOS app is half implemented.
-The foundational infrastructure has been successfully deployed via Terraform.
 
 ### Infrastructure & Secrets:
 * **GCP Project ID:** `kathelix-catvox-prod`.
@@ -29,6 +27,8 @@ The foundational infrastructure has been successfully deployed via Terraform.
 * **Firestore:** `nam5` (Multi-region US).
 * **Secrets:** `APP_CHECK_DEBUG_TOKEN` and `GCP_PROJECT_ID` are stored in Secret Manager.
 * **Storage:** Bucket `catvox-raw-videos-kathelix-catvox-prod` is live with a 24-hour auto-deletion lifecycle rule.
+
+The foundational infrastructure has been successfully deployed via Terraform.
 
 ### iOS Development:
 * **UI/UX:** Primary brand palette (Indigo to Cyan gradient) and initial result screen logic (Confidence Score color-coding) are established.

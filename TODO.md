@@ -1,6 +1,7 @@
 
-# FEATURE: allow not only recording of a new video, but also using the exising video from Photos gallery
+# Create CLAUDE.md
 
+# FEATURE: allow not only recording of a new video, but also using the exising video from Photos gallery
 
 # Gemini 3.1 Flash System Instructions
 
