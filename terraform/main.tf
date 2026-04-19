@@ -17,11 +17,10 @@ terraform {
     }
   }
 
-  # Recommended for team use: migrate local state to GCS after first apply.
-  # backend "gcs" {
-  #   bucket = "<your-tf-state-bucket>"
-  #   prefix = "catvox/state"
-  # }
+  backend "gcs" {
+    bucket = "catvox-tf-state-kathelix-491213"
+    prefix = "catvox/state"
+  }
 }
 
 provider "google" {
@@ -110,7 +109,7 @@ resource "google_artifact_registry_repository" "functions" {
 
 resource "google_firestore_database" "default" {
   name        = "(default)"
-  location_id = var.firestore_location  # See variables.tf — "eur3" default
+  location_id = var.firestore_location  # See variables.tf
   type        = "FIRESTORE_NATIVE"
 
   depends_on = [google_project_service.apis]

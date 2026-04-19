@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.6
+**Version:** 1.7
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -87,10 +87,10 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 6.1 Infrastructure as Code (Terraform)
 * **Provider:** Google Cloud Platform (GCP).
+* **Terraform State:** Remote state stored in GCS bucket `catvox-tf-state-<project-id>` (`us-central1`, object versioning enabled). State is never stored locally or committed to source control. The GCS backend enables consistent state access from both local development and CI/CD pipelines. The state bucket is bootstrapped manually (outside of Terraform) to avoid a circular dependency.
 * **Resource Scope:**
     * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, and `artifactregistry`.
     * **Databases:** Explicit provisioning of a **Firestore instance** in `(default)` mode.
-    * **Container Registry:**
     * **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
     * **Service Accounts:** `catvox-backend-sa` with least-privilege IAM roles.
     * **Secrets:** Secret Manager for `GCP_PROJECT_ID` and `APP_CHECK_DEBUG_TOKEN`.
@@ -122,6 +122,8 @@ The backend must return ONLY a valid JSON object following this structure:
 * [x] **Asset Integration:** App Icon & Accent Colors implemented.
 * [x] **UI Logic:** Confidence Score color-coding implemented.
 * [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
+* [x] **Remote Terraform State:** GCS backend configured and local state migrated; state bucket bootstrapped with versioning enabled.
+* [ ] **CI/CD Terraform Pipeline:** Wire GitHub Actions to run `terraform plan` on PRs and `terraform apply` on merge, authenticated via Workload Identity Federation.
 * [ ] **App Check Setup:** Configure App Check in Apple and Firebase consoles.
 * [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
