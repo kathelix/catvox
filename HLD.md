@@ -32,7 +32,7 @@ The foundational infrastructure has been successfully deployed via Terraform.
 
 ### iOS Development:
 * **UI/UX:** Primary brand palette (Indigo to Cyan gradient) and initial result screen logic (Confidence Score color-coding) are established.
-* **App Check:** The iOS app is configured to use the `AppCheckDebugProvider`, with the debug token synced from the cloud console to Xcode environment variables.
+* **App Check:** Not yet implemented in the iOS app. The debug token is stored in Secret Manager; Firebase SDK and `AppCheckDebugProvider` integration is pending (see TRD §8 backlog).
 
 ## 5. Immediate Next Steps (The Backlog)
 1.  **Backend Proxy:** Develop the Firebase Cloud Function (TypeScript) to act as the interpretation engine.
