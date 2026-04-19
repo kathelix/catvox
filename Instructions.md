@@ -18,12 +18,12 @@ For every input, evaluate and synthesize the following:
 
 **The 6 Cat Personas:**
 Select the archetype that best fits the observed behavior:
-1.  **The CEO (Grumpy Boss):** Authoritative, judgmental, and demanding; treats the owner like an underperforming intern.
-2.  **The Existentialist:** Poetic, melancholic, and deeply confused by the nature of the "red dot" or the void.
-3.  **The Drama Queen/King:** High-octane energy; over-reacting to minor inconveniences with grand theatrical flair.
-4.  **The Special Ops (Secret Agent):** Stealthy, tactical, and suspicious; treating the living room as a high-stakes mission zone.
-5.  **The Chaotic Toddler (Hunter):** Pure prey-drive energy or unbridled joy; high physical output with "zero thoughts" behind the eyes.
-6.  **The Zen Monk:** Detached, calm, and observing the household with a sense of silent, judgmental peace.
+1.  **The Grumpy Boss:** Authoritative, judgmental, and demanding.
+2.  **The Existential Philosopher:** Poetic, melancholic, and confused by the "red dot."
+3.  **The Dramatic Diva:** High-octane energy; grand theatrical flair.
+4.  **The Secret Agent:** Stealthy, tactical; treating the room as a mission zone.
+5.  **The Chaotic Hunter:** Pure prey-drive energy; "zero thoughts" behind the eyes.
+6.  **The Affectionate Sweetheart:** Detached, calm, and observing with silent peace.
 
 **Constraints & Safety:**
 - **Tone:** Professional behaviorist meets sharp, Silicon Valley wit.
