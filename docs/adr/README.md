@@ -26,8 +26,7 @@ Use ADRs to record decisions such as:
 Files use a numeric prefix followed by a short kebab-case title:
 
 - `0001-use-adr.md`
-- `0002-use-app-attest-for-firebase-app-check.md`
-- `0003-...`
+- `0002-...`
 
 The numbering is sequential and permanent.
 
@@ -49,6 +48,9 @@ Each ADR should usually contain:
 |---|---|---|
 | 0001 | Use Architecture Decision Records | Accepted |
 | 0002 | Use App Attest for Firebase App Check | Accepted |
+| 0003 | Use Firebase Cloud Functions 2nd Gen as Backend Proxy | Accepted |
+| 0004 | Store Terraform Remote State in GCS | Accepted |
+| 0005 | Use Workload Identity Federation for Terraform CI | Accepted |
 
 ## Workflow
 
@@ -56,4 +58,3 @@ Each ADR should usually contain:
 2. Review it in the same PR as the related design or implementation change where possible.
 3. Mark the ADR status clearly.
 4. If a later decision replaces it, create a new ADR and cross-reference both records.
-
