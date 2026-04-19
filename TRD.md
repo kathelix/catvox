@@ -140,7 +140,7 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 7.2 Terraform Infrastructure Pipeline
 * **Trigger:** Push or pull request targeting `main` when files under `terraform/` or the workflow file itself change.
-* **Authentication:** Keyless via **Workload Identity Federation (WIF)**. GitHub Actions presents its OIDC token; GCP exchanges it for a short-lived credential scoped to `catvox-backend-sa`. No long-lived service account keys are stored anywhere.
+* **Authentication:** Keyless via **Workload Identity Federation (WIF)**. GitHub Actions presents its OIDC token; GCP exchanges it for a short-lived credential scoped to `catvox-ci-sa` (the dedicated Terraform CI identity). No long-lived service account keys are stored anywhere.
 * **Plan job (on PR):**
     1. Authenticate to GCP via WIF.
     2. `terraform init` → `terraform fmt -check` → `terraform validate` → `terraform plan`.
@@ -155,7 +155,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 | Script | Purpose |
 |---|---|
 | `bootstrap_remote_state.sh` | Creates the GCS state bucket with versioning |
-| `bootstrap_wif.sh` | Creates the WIF pool + OIDC provider, binds the GitHub repo to `catvox-backend-sa`, grants state bucket access |
+| `bootstrap_wif.sh` | Creates the WIF pool + OIDC provider, binds the GitHub repo to `catvox-ci-sa`, grants state bucket access |
 
 **Required GitHub Actions secrets:**
 

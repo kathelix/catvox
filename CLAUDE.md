@@ -151,7 +151,7 @@ Do not add CI roles to `catvox-backend-sa` — the split is intentional. If a Cl
 
 ### WIF / GitHub Actions Authentication
 
-Keyless auth via Workload Identity Federation — no long-lived service account keys anywhere. GitHub Actions presents an OIDC token; GCP exchanges it for a short-lived credential scoped to `catvox-backend-sa`.
+Keyless auth via Workload Identity Federation — no long-lived service account keys anywhere. GitHub Actions presents an OIDC token; GCP exchanges it for a short-lived credential scoped to `catvox-ci-sa` (the dedicated Terraform CI identity).
 
 The WIF pool is locked to `IvanBoyko/catvox` via `attribute-condition` — no other repo can impersonate the SA.
 
