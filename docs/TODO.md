@@ -1,4 +1,6 @@
 
+# DOC: Review the ADR aproach described in the `docs/adr/README.md` file. Suggest new ADR files created in that directory reflecting the architectural decisions made recently that are already implemented but not yet documented in this dir.
+
 # FEATURE: allow not only recording of a new video, but also using the exising video from Photos gallery
 
 # Gemini 3.1 Flash System Instructions
