@@ -19,8 +19,11 @@
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-# Override PROJECT_ID by setting the env var before running:
-#   PROJECT_ID=my-project ./bootstrap_remote_state.sh
+# PROJECT_ID must match var.project_id in terraform.tfvars — this is the GCP
+# project where all Terraform-managed resources live. It may differ from the
+# project currently active in gcloud config, so always verify the printed value
+# before confirming. Override via env var if needed:
+#   PROJECT_ID=kathelix-catvox-prod ./bootstrap_remote_state.sh
 
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 REGION="us-central1"

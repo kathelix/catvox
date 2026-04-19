@@ -18,7 +18,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "catvox-tf-state-kathelix-491213"
+    bucket = "catvox-tf-state-kathelix-catvox-prod"
     prefix = "catvox/state"
   }
 }
