@@ -90,6 +90,7 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 6.1 Infrastructure as Code (Terraform)
 * **Provider:** Google Cloud Platform (GCP).
+* **Deployed Project:** GCP Project ID `kathelix-catvox-prod`, region `us-central1`, Firestore location `nam5` (US multi-region).
 * **Terraform State:** Remote state stored in GCS bucket `catvox-tf-state-<project-id>` (`us-central1`, object versioning enabled). State is never stored locally or committed to source control. The GCS backend enables consistent state access from both local development and CI/CD pipelines. The state bucket is bootstrapped manually (outside of Terraform) to avoid a circular dependency.
 * **Resource Scope:**
     * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, `artifactregistry`, `firebase`, `firebaseappcheck`, and `iam`.

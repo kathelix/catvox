@@ -19,25 +19,4 @@ CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Designed to use Firebase App Check (with Debug Provider for local dev) to prevent unauthorized API calls and manage GCP costs.
 
-## 4. Current Implementation State
-
-### Infrastructure & Secrets:
-* **GCP Project ID:** `kathelix-catvox-prod`.
-* **Region:** `us-central1`.
-* **Firestore:** `nam5` (Multi-region US).
-* **Secrets:** `APP_CHECK_DEBUG_TOKEN` and `GCP_PROJECT_ID` are stored in Secret Manager.
-* **Storage:** Bucket `catvox-raw-videos-kathelix-catvox-prod` is live with a 24-hour auto-deletion lifecycle rule.
-
-The foundational infrastructure has been successfully deployed via Terraform.
-
-### iOS Development:
-* **UI/UX:** Primary brand palette (Indigo to Cyan gradient) and initial result screen logic (Confidence Score color-coding) are established.
-* **App Check:** Not yet implemented in the iOS app. The debug token is stored in Secret Manager; Firebase SDK and `AppCheckDebugProvider` integration is pending (see TRD §8 backlog).
-
-## 5. Immediate Next Steps (The Backlog)
-1.  **Backend Proxy:** Develop the Firebase Cloud Function (TypeScript) to act as the interpretation engine.
-2.  **Usage Guard:** Implement the Firestore-based daily limit logic (5 scans/day).
-3.  **Video Pipeline:** Build the Swift logic to upload the native 10s HEVC clips to GCS.
-4.  **AI Connection:** Link the Cloud Function to the Vertex AI Gemini 3.1 Flash endpoint.
-
 ---
