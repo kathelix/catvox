@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.5
+**Version:** 1.6
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -26,7 +26,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 
 ### 3.1 Core Features (MVP)
 * **Video Capture:** Fixed 10-second recording window with a visual countdown UI and an audio ping at the moment recording ends.
-* **Video Pipeline:** App records in native **HEVC (.mov)** at 1080p to maximize quality while minimizing bandwidth. No mandatory re-encoding is required for MVP.
+* **Video Pipeline:** App records in native **HEVC (.mov)** with resolution hard-capped at **1920 × 1080 (1080p)**. The cap keeps free-tier clip sizes to approximately 15–25 MB per 10-second recording. No re-encoding is required for MVP. Devices that do not support HEVC fall back silently to H.264. 4K capture is reserved as a potential future Pro-tier feature.
 * **Multimodal Analysis:** Simultaneous processing of video (body language) and audio (vocalization) via Vertex AI.
 * **Persona Engine:** Logic to assign one of 6 "Cat Personas" to the interpretation to drive engagement and humor.
 * **Mood Diary:** A local history of scans saved using on-device persistent storage.
@@ -124,7 +124,8 @@ The backend must return ONLY a valid JSON object following this structure:
 * [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
 * [ ] **App Check Setup:** Configure App Check in Apple and Firebase consoles.
 * [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
-* [ ] **Video Pipeline:** Implement Swift-based background upload of native HEVC to GCS.
+* [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
+* [ ] **Video Upload:** Implement Swift-based background upload of the recorded HEVC file to GCS via signed URL.
 * [ ] **AI Connection:** Connect Cloud Function to Vertex AI Gemini 3.1 Flash.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
@@ -138,3 +139,4 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Health Monitoring:** Advanced analysis for subtle pain or distress markers.
 * **Social Feed:** A community "Wall of Meows" to see global cat interpretations.
 * **Advanced Mood Analytics:** Week-over-week trends for cat behavior.
+* **4K Video (Pro Tier):** Unlock 4K capture for Pro subscribers; free tier remains capped at 1080p.

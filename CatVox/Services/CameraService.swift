@@ -101,7 +101,10 @@ final class CameraService {
         session.beginConfiguration()
         defer { session.commitConfiguration() }
 
-        session.sessionPreset = .high
+        // TRD §3.1 — cap at 1080p to keep file sizes manageable (~15-25 MB
+        // for a 10-second HEVC clip). 4K may be offered as a Pro-tier option
+        // in a future release.
+        session.sessionPreset = .hd1920x1080
 
         // Video
         guard
@@ -123,6 +126,16 @@ final class CameraService {
         // File output
         guard session.canAddOutput(fileOutput) else { return }
         session.addOutput(fileOutput)
+
+        // TRD §3.1 — request HEVC encoding. Connection only becomes available
+        // after addOutput(), so this must follow it. Falls back to H.264
+        // silently on devices that don't support HEVC (pre-A10 / iPhone 6s).
+        if let videoConnection = fileOutput.connection(with: .video),
+           fileOutput.availableVideoCodecTypes.contains(.hevc) {
+            fileOutput.setOutputSettings([AVVideoCodecKey: AVVideoCodecType.hevc],
+                                         for: videoConnection)
+        }
+
         // startRunning() is intentionally NOT called here.
         // The defer above commits the configuration when this function returns;
         // startRunning() must only be called after commitConfiguration() completes.
