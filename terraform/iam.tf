@@ -49,6 +49,57 @@ resource "google_service_account_iam_member" "sa_token_creator" {
   member             = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
+# ── Compute Engine Default SA — Functions 2nd Gen Build ──────────────────────
+# Cloud Functions 2nd gen (Gen 2) runs builds via Cloud Build, but the build
+# job executes as the Compute Engine default service account
+# (PROJECT_NUMBER-compute@developer.gserviceaccount.com), NOT the Cloud Build
+# default SA. Four grants are required:
+#   1. storage.objectAdmin on gcf-v2-sources bucket — gcs-fetcher reads the
+#      uploaded function source zip from this bucket during the build step.
+#   2. artifactregistry.writer — push the built container image.
+#   3. iam.serviceAccountUser on catvox-backend-sa — deploy the Cloud Run
+#      service with the correct runtime identity.
+#   4. logging.logWriter — write Cloud Build step logs.
+#
+# The gcf-v2-sources bucket is auto-created by Cloud Functions on first deploy
+# and is outside Terraform scope, but its IAM is tracked here.
+# Bucket name pattern: gcf-v2-sources-{PROJECT_NUMBER}-{REGION}
+#
+# All four grants were first applied manually via gcloud (bootstrap) so that
+# the initial firebase deploy could succeed; tracked here for state consistency.
+
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+locals {
+  compute_default_sa = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_storage_bucket_iam_member" "compute_sa_sources_object_admin" {
+  bucket = "gcf-v2-sources-${data.google_project.project.number}-${var.region}"
+  role   = "roles/storage.objectAdmin"
+  member = local.compute_default_sa
+}
+
+resource "google_project_iam_member" "compute_sa_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = local.compute_default_sa
+}
+
+resource "google_service_account_iam_member" "compute_sa_backend_sa_user" {
+  service_account_id = google_service_account.backend_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = local.compute_default_sa
+}
+
+resource "google_project_iam_member" "compute_sa_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = local.compute_default_sa
+}
+
 # ── CI SA — Terraform / GitHub Actions ───────────────────────────────────────
 # catvox-ci-sa: identity for GitHub Actions Terraform plan/apply runs.
 # Holds broader project-level rights needed for IaC, isolated from runtime.
@@ -81,5 +132,14 @@ resource "google_project_iam_member" "tf_ci_editor" {
 resource "google_project_iam_member" "tf_ci_iam_admin" {
   project = var.project_id
   role    = "roles/resourcemanager.projectIamAdmin"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
+}
+
+# roles/secretmanager.secretAccessor — required to read secret versions during
+# terraform plan/apply. secretmanager.versions.access is intentionally excluded
+# from roles/editor for security; must be granted explicitly.
+resource "google_project_iam_member" "tf_ci_secretmanager_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.ci_sa.email}"
 }

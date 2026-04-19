@@ -63,11 +63,22 @@ final class GCPService {
     // MARK: - Backend endpoints (Phase 2)
 
     private enum Endpoint {
-        // Replace with your deployed Cloud Function URLs before going live.
         static let signedURL = URL(
-            string: "https://REGION-PROJECT_ID.cloudfunctions.net/getSignedUploadURL")!
+            string: "https://getsigneduploadurl-pdkw5uifga-uc.a.run.app")!
         static let analyse   = URL(
-            string: "https://REGION-PROJECT_ID.cloudfunctions.net/analyseVideo")!
+            string: "https://analysevideo-pdkw5uifga-uc.a.run.app")!
+    }
+
+    // MARK: - User identity
+
+    /// Persistent anonymous device identifier used for per-user usage quota enforcement.
+    /// Stored in UserDefaults on first launch. Replace with Firebase Auth UID once Auth is added.
+    private var userId: String {
+        let key = "catvox.userId"
+        if let existing = UserDefaults.standard.string(forKey: key) { return existing }
+        let fresh = UUID().uuidString
+        UserDefaults.standard.set(fresh, forKey: key)
+        return fresh
     }
 
     // MARK: - Public API
@@ -134,7 +145,7 @@ final class GCPService {
 
     private func realPipeline(localURL: URL) async throws {
         uploadState = .fetchingSignedURL
-        let signedURL = try await fetchSignedURL(for: localURL)
+        let (signedURL, gcsUri) = try await fetchSignedURL(for: localURL)
         try Task.checkCancellation()
 
         uploadState = .uploading(0)
@@ -142,11 +153,13 @@ final class GCPService {
         try Task.checkCancellation()
 
         uploadState = .analysing
-        let analysis = try await triggerAnalysis(videoURL: signedURL)
+        let analysis = try await triggerAnalysis(gcsUri: gcsUri)
         uploadState = .complete(analysis)
     }
 
-    private func fetchSignedURL(for videoURL: URL) async throws -> URL {
+    /// Returns `(signedURL, gcsUri)` — the signed PUT URL for the upload and
+    /// the GCS URI (`gs://…`) passed to the analysis function.
+    private func fetchSignedURL(for videoURL: URL) async throws -> (URL, String) {
         var request = URLRequest(url: Endpoint.signedURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -161,10 +174,12 @@ final class GCPService {
             throw URLError(.badServerResponse)
         }
         let decoded = try JSONDecoder().decode([String: String].self, from: data)
-        guard let raw = decoded["signedUrl"], let url = URL(string: raw) else {
+        guard let rawURL = decoded["signedUrl"],
+              let signedURL = URL(string: rawURL),
+              let gcsUri = decoded["gcsUri"] else {
             throw URLError(.cannotParseResponse)
         }
-        return url
+        return (signedURL, gcsUri)
     }
 
     /// Streams the video file to GCS with a PUT request.
@@ -194,11 +209,14 @@ final class GCPService {
         }
     }
 
-    private func triggerAnalysis(videoURL: URL) async throws -> CatAnalysis {
+    private func triggerAnalysis(gcsUri: String) async throws -> CatAnalysis {
         var request = URLRequest(url: Endpoint.analyse)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let payload = ["videoUrl": videoURL.absoluteString]
+        let payload: [String: String] = [
+            "gcsUri": gcsUri,
+            "userId": userId,
+        ]
         request.httpBody = try JSONEncoder().encode(payload)
 
         let (data, response) = try await URLSession.shared.data(for: request)
