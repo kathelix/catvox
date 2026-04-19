@@ -90,7 +90,8 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Resource Scope:**
     * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, and `artifactregistry`.
     * **Databases:** Explicit provisioning of a **Firestore instance** in `(default)` mode.
-    * **Container Registry:** **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
+    * **Container Registry:**
+    * **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
     * **Service Accounts:** `catvox-backend-sa` with least-privilege IAM roles.
     * **Secrets:** Secret Manager for `GCP_PROJECT_ID` and `APP_CHECK_DEBUG_TOKEN`.
 
