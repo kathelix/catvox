@@ -40,9 +40,12 @@ resource "google_project_service" "apis" {
   for_each = toset([
     "aiplatform.googleapis.com",         # Vertex AI / Gemini
     "cloudfunctions.googleapis.com",     # Cloud Functions
+    "cloudbuild.googleapis.com",         # Cloud Build — containerises Functions 2nd gen
     "run.googleapis.com",                # Functions 2nd gen runs on Cloud Run
+    "eventarc.googleapis.com",           # Event routing for Functions 2nd gen
+    "pubsub.googleapis.com",             # Required by Eventarc
     "firestore.googleapis.com",          # Usage guard storage
-    "storage.googleapis.com",            # Video uploads
+    "storage.googleapis.com",            # Video uploads + Cloud Build staging bucket
     "secretmanager.googleapis.com",      # Credential management
     "firebase.googleapis.com",           # Firebase platform
     "firebaseappcheck.googleapis.com",   # App Check enforcement

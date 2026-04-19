@@ -93,7 +93,7 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Deployed Project:** GCP Project ID `kathelix-catvox-prod`, region `us-central1`, Firestore location `nam5` (US multi-region).
 * **Terraform State:** Remote state stored in GCS bucket `catvox-tf-state-<project-id>` (`us-central1`, object versioning enabled). State is never stored locally or committed to source control. The GCS backend enables consistent state access from both local development and CI/CD pipelines. The state bucket is bootstrapped manually (outside of Terraform) to avoid a circular dependency.
 * **Resource Scope:**
-    * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, `artifactregistry`, `firebase`, `firebaseappcheck`, and `iam`.
+    * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `cloudbuild`, `run`, `eventarc`, `pubsub`, `firestore`, `storage`, `secretmanager`, `artifactregistry`, `firebase`, `firebaseappcheck`, and `iam`.
     * **Databases:** Explicit provisioning of a **Firestore instance** in `(default)` mode.
     * **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
     * **Service Accounts:** `catvox-backend-sa` (Cloud Functions runtime) and `catvox-ci-sa` (Terraform CI / GitHub Actions) — see §6.3 for roles.
@@ -101,7 +101,7 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 6.2 Compute & API Orchestration
 * **Environment:** Firebase Cloud Functions (2nd Generation).
-* **Runtime:** Node.js (TypeScript).
+* **Runtime:** Node.js 22 (TypeScript).
 * **Vertex AI Integration:** Call Gemini 3.1 Flash using `fileData` (GCS URI) for multimodal analysis.
 
 ### 6.3 Security & Identity
@@ -149,7 +149,13 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Apply job (on merge to `main`):** `terraform init` → `terraform apply -auto-approve`.
 * **Variables:** `TF_VAR_project_id` and `TF_VAR_app_check_debug_token` supplied from GitHub Actions secrets; `region` and `firestore_location` use the defaults defined in `variables.tf`.
 
-### 7.3 WIF Bootstrap & GitHub Secrets
+### 7.3 Firebase Cloud Functions Pipeline
+* **Trigger:** Push or pull request targeting `main` when files under `functions/`, `firebase.json`, or the workflow file itself change.
+* **Authentication:** Same WIF setup as the Terraform pipeline — `catvox-ci-sa` via `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT` secrets.
+* **Build job (on PR and push):** `npm ci` → `npm run build` (TypeScript compile check).
+* **Deploy job (on merge to `main`):** Runs after build passes → `firebase deploy --only functions`.
+
+### 7.4 WIF Bootstrap & GitHub Secrets
 The following one-time manual setup is required before the Terraform pipeline can run. Bootstrap scripts are in `terraform/`:
 
 | Script | Purpose |
@@ -176,7 +182,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 * [x] **Remote Terraform State:** GCS backend configured and local state migrated; state bucket bootstrapped with versioning enabled.
 * [x] **CI/CD Terraform Pipeline:** GitHub Actions workflow live — plan on PR (with PR comment), apply on merge; authenticated via Workload Identity Federation.
 * [ ] **App Check Setup:** Configure App Attest in Apple Developer and Firebase App Check consoles, plus Debug Provider for local development. (See ADR-0002.)
-* [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
+* [x] **Backend Proxy:** Firebase Cloud Functions (TypeScript) deployed — `getSignedUploadURL` and `analyseVideo` live in `us-central1`; Firestore usage guard, Vertex AI call, CI deploy pipeline via GitHub Actions.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
 * [ ] **Video Upload:** Implement Swift-based background upload of the recorded HEVC file to GCS via signed URL.
 * [ ] **AI Connection:** Connect Cloud Function to Vertex AI Gemini 3.1 Flash.
