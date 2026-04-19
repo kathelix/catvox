@@ -1,0 +1,59 @@
+# Architecture Decision Records
+
+This directory stores the Architecture Decision Records (ADRs) for the CatVox project.
+
+ADRs capture important technical and architectural decisions in a lightweight, versioned, reviewable form. They help explain not just *what* was decided, but *why*.
+
+## Purpose
+
+Use ADRs to record decisions such as:
+- architecture and infrastructure choices
+- security and identity approaches
+- data storage and lifecycle decisions
+- platform and framework selections
+- major trade-offs affecting future development
+
+## Rules
+
+- One ADR per decision.
+- ADRs are immutable records of decisions made at a point in time.
+- If a decision changes later, create a new ADR that supersedes the earlier one rather than rewriting history.
+- Keep ADRs short, concrete, and focused on the decision and its consequences.
+- ADRs live in Git and should be reviewed through normal pull requests.
+
+## Naming Convention
+
+Files use a numeric prefix followed by a short kebab-case title:
+
+- `0001-use-adr.md`
+- `0002-use-app-attest-for-firebase-app-check.md`
+- `0003-...`
+
+The numbering is sequential and permanent.
+
+## Suggested Template
+
+Each ADR should usually contain:
+
+- Title
+- Status
+- Date
+- Context
+- Decision
+- Consequences
+- Supersedes / Superseded by (when relevant)
+
+## Index
+
+| ADR | Title | Status |
+|---|---|---|
+| 0001 | Use Architecture Decision Records | Accepted |
+| 0002 | Use App Attest for Firebase App Check | Accepted |
+
+## Workflow
+
+1. Create a new numbered ADR when a meaningful technical or architectural decision is made.
+2. Review it in the same PR as the related design or implementation change where possible.
+3. Mark the ADR status clearly.
+4. If a later decision replaces it, create a new ADR and cross-reference both records.
+
