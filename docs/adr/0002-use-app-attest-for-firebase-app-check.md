@@ -1,4 +1,4 @@
-# ADR-001: Use Firebase App Check with App Attest for Production iOS Attestation
+# ADR-002: Use Firebase App Check with App Attest for Production iOS Attestation
 
 - Status: Accepted
 - Date: 2026-04-19
