@@ -26,6 +26,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 
 ### 3.1 Core Features (MVP)
 * **Video Capture:** Fixed 10-second recording window with a visual countdown UI and an audio ping at the moment recording ends.
+* **Video Pipeline:** App records in native **HEVC (.mov)** at 1080p to maximize quality while minimizing bandwidth. No mandatory re-encoding is required for MVP.
 * **Multimodal Analysis:** Simultaneous processing of video (body language) and audio (vocalization) via Vertex AI.
 * **Persona Engine:** Logic to assign one of 6 "Cat Personas" to the interpretation to drive engagement and humor.
 * **Mood Diary:** A local history of scans saved using on-device persistent storage.
@@ -45,16 +46,15 @@ You are CatVox AI, a multimodal expert in feline ethology and a sophisticated cr
 
 ### 4.2 The 6 Cat Personas
 Select the archetype that best fits the observed behavior:
-1. **The CEO (Grumpy Boss):** Authoritative, judgmental, and demanding; treats the owner like an underperforming intern.
-2. **The Existentialist:** Poetic, melancholic, and deeply confused by the nature of the "red dot" or the void.
-3. **The Drama Queen/King:** High-octane energy; over-reacting to minor inconveniences with grand theatrical flair.
-4. **The Special Ops (Secret Agent):** Stealthy, tactical, and suspicious; treating the living room as a mission zone.
-5. **The Chaotic Toddler (Hunter):** Pure prey-drive energy or unbridled joy; high physical output with "zero thoughts" behind the eyes.
-6. **The Zen Monk:** Detached, calm, and observing the household with a sense of silent, judgmental peace.
+1. **The CEO (Grumpy Boss):** Authoritative, judgmental, and demanding.
+2. **The Existentialist:** Poetic, melancholic, and confused by the "red dot."
+3. **The Drama Queen/King:** High-octane energy; grand theatrical flair.
+4. **The Special Ops:** Stealthy, tactical; treating the room as a mission zone.
+5. **The Chaotic Toddler:** Pure prey-drive energy; "zero thoughts" behind the eyes.
+6. **The Zen Monk:** Detached, calm, and observing with silent peace.
 
 ### 4.3 API Data Schema
 The backend must return ONLY a valid JSON object following this structure:
-
 {
   "primary_emotion": "string",
   "confidence_score": float (0.0 - 1.0),
@@ -88,14 +88,16 @@ The backend must return ONLY a valid JSON object following this structure:
 ### 6.1 Infrastructure as Code (Terraform)
 * **Provider:** Google Cloud Platform (GCP).
 * **Resource Scope:**
-    * **Project Services:** Enablement of aiplatform, cloudfunctions, run, firestore, storage, and secretmanager.
-    * **Service Accounts:** catvox-backend-sa with least-privilege IAM roles.
-    * **Secrets:** Secret Manager for GCP_PROJECT_ID and APP_CHECK_DEBUG_TOKEN.
+    * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, and `artifactregistry`.
+    * **Databases:** Explicit provisioning of a **Firestore instance** in `(default)` mode.
+    * **Container Registry:** **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
+    * **Service Accounts:** `catvox-backend-sa` with least-privilege IAM roles.
+    * **Secrets:** Secret Manager for `GCP_PROJECT_ID` and `APP_CHECK_DEBUG_TOKEN`.
 
 ### 6.2 Compute & API Orchestration
 * **Environment:** Firebase Cloud Functions (2nd Generation).
 * **Runtime:** Node.js (TypeScript).
-* **Vertex AI Integration:** Call Gemini 3.1 Flash using fileData (GCS URI) for multimodal analysis.
+* **Vertex AI Integration:** Call Gemini 3.1 Flash using `fileData` (GCS URI) for multimodal analysis.
 
 ### 6.3 Security & Identity
 * **App Verification:** Firebase App Check mandatory for all backend entry points (Debug Provider for local dev).
@@ -104,8 +106,9 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 6.4 Data Lifecycle & Persistence
 * **Google Cloud Storage (GCS):**
-    * Bucket: catvox-raw-videos.
-    * **Lifecycle Rule:** action: Delete, condition: Age > 1 day (Privacy & Cost management).
+    * Bucket: `catvox-raw-videos`.
+    * **CORS Policy:** Configuration to allow direct uploads from the iOS app.
+    * **Lifecycle Rule:** `action: Delete`, `condition: Age > 1 day`.
 * **Firestore (Usage Guard):**
     * Collection: usage/{userId}.
     * Schema: { count: integer, lastResetDate: string (YYYY-MM-DD) }.
@@ -117,9 +120,10 @@ The backend must return ONLY a valid JSON object following this structure:
 
 * [x] **Asset Integration:** App Icon & Accent Colors implemented.
 * [x] **UI Logic:** Confidence Score color-coding implemented.
-* [ ] **GCP Foundation:** Deploy Terraform plan to provision GCS, IAM, and Secrets.
+* [ ] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
+* [ ] **App Check Setup:** Configure App Check in Apple and Firebase consoles.
 * [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
-* [ ] **Video Pipeline:** Implement Swift-based background upload to GCS.
+* [ ] **Video Pipeline:** Implement Swift-based background upload of native HEVC to GCS.
 * [ ] **AI Connection:** Connect Cloud Function to Vertex AI Gemini 3.1 Flash.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
