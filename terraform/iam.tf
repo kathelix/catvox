@@ -134,3 +134,12 @@ resource "google_project_iam_member" "tf_ci_iam_admin" {
   role    = "roles/resourcemanager.projectIamAdmin"
   member  = "serviceAccount:${google_service_account.ci_sa.email}"
 }
+
+# roles/secretmanager.secretAccessor — required to read secret versions during
+# terraform plan/apply. secretmanager.versions.access is intentionally excluded
+# from roles/editor for security; must be granted explicitly.
+resource "google_project_iam_member" "tf_ci_secretmanager_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
+}

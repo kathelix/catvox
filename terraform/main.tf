@@ -38,23 +38,23 @@ provider "google-beta" {
 
 resource "google_project_service" "apis" {
   for_each = toset([
-    "aiplatform.googleapis.com",         # Vertex AI / Gemini
-    "cloudfunctions.googleapis.com",     # Cloud Functions
-    "cloudbuild.googleapis.com",         # Cloud Build — containerises Functions 2nd gen
-    "run.googleapis.com",                # Functions 2nd gen runs on Cloud Run
-    "eventarc.googleapis.com",           # Event routing for Functions 2nd gen
-    "pubsub.googleapis.com",             # Required by Eventarc
-    "firestore.googleapis.com",          # Usage guard storage
-    "storage.googleapis.com",            # Video uploads + Cloud Build staging bucket
-    "secretmanager.googleapis.com",      # Credential management
-    "firebase.googleapis.com",           # Firebase platform
-    "firebaseappcheck.googleapis.com",   # App Check enforcement
-    "iam.googleapis.com",                # SA + role management
-    "artifactregistry.googleapis.com",   # Container images for Functions 2nd gen
+    "aiplatform.googleapis.com",       # Vertex AI / Gemini
+    "cloudfunctions.googleapis.com",   # Cloud Functions
+    "cloudbuild.googleapis.com",       # Cloud Build — containerises Functions 2nd gen
+    "run.googleapis.com",              # Functions 2nd gen runs on Cloud Run
+    "eventarc.googleapis.com",         # Event routing for Functions 2nd gen
+    "pubsub.googleapis.com",           # Required by Eventarc
+    "firestore.googleapis.com",        # Usage guard storage
+    "storage.googleapis.com",          # Video uploads + Cloud Build staging bucket
+    "secretmanager.googleapis.com",    # Credential management
+    "firebase.googleapis.com",         # Firebase platform
+    "firebaseappcheck.googleapis.com", # App Check enforcement
+    "iam.googleapis.com",              # SA + role management
+    "artifactregistry.googleapis.com", # Container images for Functions 2nd gen
   ])
 
   service            = each.value
-  disable_on_destroy = false  # Keep APIs enabled on terraform destroy
+  disable_on_destroy = false # Keep APIs enabled on terraform destroy
 }
 
 # ── Cloud Storage — Raw Video Bucket ─────────────────────────────────────────
@@ -67,7 +67,7 @@ resource "google_storage_bucket" "raw_videos" {
   name                        = "catvox-raw-videos-${var.project_id}"
   location                    = var.region
   uniform_bucket_level_access = true
-  force_destroy               = false  # Prevent accidental data loss
+  force_destroy               = false # Prevent accidental data loss
 
   # TRD §6.4 — delete uploaded clips after 24 h (privacy + cost).
   lifecycle_rule {
@@ -75,7 +75,7 @@ resource "google_storage_bucket" "raw_videos" {
       type = "Delete"
     }
     condition {
-      age = 1  # days
+      age = 1 # days
     }
   }
 
@@ -112,7 +112,7 @@ resource "google_artifact_registry_repository" "functions" {
 
 resource "google_firestore_database" "default" {
   name        = "(default)"
-  location_id = var.firestore_location  # See variables.tf
+  location_id = var.firestore_location # See variables.tf
   type        = "FIRESTORE_NATIVE"
 
   depends_on = [google_project_service.apis]
@@ -145,5 +145,5 @@ resource "google_secret_manager_secret" "app_check_debug_token" {
 
 resource "google_secret_manager_secret_version" "app_check_debug_token" {
   secret      = google_secret_manager_secret.app_check_debug_token.id
-  secret_data = var.app_check_debug_token  # sensitive — supplied via tfvars
+  secret_data = var.app_check_debug_token # sensitive — supplied via tfvars
 }

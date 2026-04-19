@@ -23,8 +23,8 @@ variable "firestore_location" {
     Or a single-region ID (e.g. us-central1) for lower latency at the cost
     of redundancy.
   EOT
-  type    = string
-  default = "nam5"
+  type        = string
+  default     = "nam5"
 }
 
 variable "app_check_debug_token" {
@@ -33,6 +33,6 @@ variable "app_check_debug_token" {
     Mark as sensitive — never commit the value to source control.
     Generate one in the Firebase Console under App Check → Apps → (overflow menu).
   EOT
-  type      = string
-  sensitive = true
+  type        = string
+  sensitive   = true
 }
