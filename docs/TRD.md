@@ -193,6 +193,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 ---
 
 ## 9. Future Enhancements (Post-MVP)
+* **IAM Security Review:** `catvox-ci-sa` currently holds `roles/editor`, `roles/resourcemanager.projectIamAdmin`, `roles/iam.serviceAccountAdmin`, and `roles/secretmanager.secretAccessor` — broad rights required for Terraform to manage IAM bindings via CI. Consider splitting Terraform into an admin layer (IAM, SAs — applied manually or via a privileged gated workflow) and an infra layer (GCS, Firestore, Artifact Registry — applied by CI with `roles/editor` only), removing the need for `projectIamAdmin` and `serviceAccountAdmin` on the routine CI identity.
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.
 * **Health Monitoring:** Advanced analysis for subtle pain or distress markers.

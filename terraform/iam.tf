@@ -143,3 +143,12 @@ resource "google_project_iam_member" "tf_ci_secretmanager_accessor" {
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.ci_sa.email}"
 }
+
+# roles/iam.serviceAccountAdmin — set IAM policies on individual service
+# accounts (google_service_account_iam_member resources). This permission is
+# intentionally excluded from roles/editor; must be granted explicitly.
+resource "google_project_iam_member" "tf_ci_sa_admin" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountAdmin"
+  member  = "serviceAccount:${google_service_account.ci_sa.email}"
+}

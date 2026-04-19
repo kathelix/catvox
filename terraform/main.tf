@@ -51,6 +51,7 @@ resource "google_project_service" "apis" {
     "firebaseappcheck.googleapis.com", # App Check enforcement
     "iam.googleapis.com",              # SA + role management
     "artifactregistry.googleapis.com", # Container images for Functions 2nd gen
+    "cloudbilling.googleapis.com",     # Required by Firebase CLI for Functions deploy
   ])
 
   service            = each.value
