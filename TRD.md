@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.7
+**Version:** 1.8
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -89,10 +89,10 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Provider:** Google Cloud Platform (GCP).
 * **Terraform State:** Remote state stored in GCS bucket `catvox-tf-state-<project-id>` (`us-central1`, object versioning enabled). State is never stored locally or committed to source control. The GCS backend enables consistent state access from both local development and CI/CD pipelines. The state bucket is bootstrapped manually (outside of Terraform) to avoid a circular dependency.
 * **Resource Scope:**
-    * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, and `artifactregistry`.
+    * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, `artifactregistry`, `firebase`, `firebaseappcheck`, and `iam`.
     * **Databases:** Explicit provisioning of a **Firestore instance** in `(default)` mode.
     * **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
-    * **Service Accounts:** `catvox-backend-sa` with least-privilege IAM roles.
+    * **Service Accounts:** `catvox-backend-sa` serving dual purpose — runtime identity for Cloud Functions and Terraform CI identity for GitHub Actions (see §6.3 and §7.2).
     * **Secrets:** Secret Manager for `GCP_PROJECT_ID` and `APP_CHECK_DEBUG_TOKEN`.
 
 ### 6.2 Compute & API Orchestration
@@ -102,12 +102,20 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 6.3 Security & Identity
 * **App Verification:** Firebase App Check mandatory for all backend entry points (Debug Provider for local dev).
-* **IAM Policy:** SA requires roles/aiplatform.user, roles/storage.objectViewer, and roles/datastore.user.
 * **Secrets:** Zero hardcoded identifiers; all retrieved via Secret Manager at runtime.
+* **IAM Roles — Runtime (Cloud Functions):**
+    * `roles/aiplatform.user` — invoke Gemini 3.1 Flash via Vertex AI.
+    * `roles/storage.objectViewer` — read video objects from GCS for Vertex AI.
+    * `roles/datastore.user` — read/write Firestore usage documents.
+    * `roles/secretmanager.secretAccessor` — resolve secrets at function startup.
+    * `roles/iam.serviceAccountTokenCreator` (self) — generate signed GCS upload URLs for the iOS client.
+* **IAM Roles — Terraform CI (GitHub Actions):**
+    * `roles/editor` — manage GCP resources (APIs, GCS, Artifact Registry, Secret Manager, Firestore, service accounts).
+    * `roles/resourcemanager.projectIamAdmin` — read and write project-level IAM bindings.
 
 ### 6.4 Data Lifecycle & Persistence
 * **Google Cloud Storage (GCS):**
-    * Bucket: `catvox-raw-videos`.
+    * Bucket: `catvox-raw-videos-<project-id>` (project ID suffix ensures global uniqueness).
     * **CORS Policy:** Configuration to allow direct uploads from the iOS app.
     * **Lifecycle Rule:** `action: Delete`, `condition: Age > 1 day`.
 * **Firestore (Usage Guard):**
@@ -117,13 +125,51 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ---
 
-## 7. Implementation Backlog (MVP)
+## 7. CI/CD Pipelines
+
+### 7.1 iOS Build Pipeline
+* **Trigger:** Every push and pull request targeting `main`.
+* **Runner:** macOS 15 (Xcode 16, iOS 17+ SDK).
+* **Steps:** Checkout → XcodeGen (regenerate `.xcodeproj` from `project.yml`) → build for generic iOS Simulator slice (`CODE_SIGNING_ALLOWED=NO`).
+* **Purpose:** Catches build breaks and XcodeGen drift on every change. No device signing or provisioning profiles required.
+
+### 7.2 Terraform Infrastructure Pipeline
+* **Trigger:** Push or pull request targeting `main` when files under `terraform/` or the workflow file itself change.
+* **Authentication:** Keyless via **Workload Identity Federation (WIF)**. GitHub Actions presents its OIDC token; GCP exchanges it for a short-lived credential scoped to `catvox-backend-sa`. No long-lived service account keys are stored anywhere.
+* **Plan job (on PR):**
+    1. Authenticate to GCP via WIF.
+    2. `terraform init` → `terraform fmt -check` → `terraform validate` → `terraform plan`.
+    3. Post a structured comment to the PR with fmt/init outcomes and the full plan output (collapsible, truncated at 60k characters if needed).
+    4. Fail the job if the plan step fails, surfacing the error in the PR comment.
+* **Apply job (on merge to `main`):** `terraform init` → `terraform apply -auto-approve`.
+* **Variables:** `TF_VAR_project_id` and `TF_VAR_app_check_debug_token` supplied from GitHub Actions secrets; `region` and `firestore_location` use the defaults defined in `variables.tf`.
+
+### 7.3 WIF Bootstrap & GitHub Secrets
+The following one-time manual setup is required before the Terraform pipeline can run. Bootstrap scripts are in `terraform/`:
+
+| Script | Purpose |
+|---|---|
+| `bootstrap_remote_state.sh` | Creates the GCS state bucket with versioning |
+| `bootstrap_wif.sh` | Creates the WIF pool + OIDC provider, binds the GitHub repo to `catvox-backend-sa`, grants state bucket access |
+
+**Required GitHub Actions secrets:**
+
+| Secret | Value |
+|---|---|
+| `GCP_PROJECT_ID` | GCP project ID (`var.project_id`) |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full WIF provider resource name (output of `bootstrap_wif.sh`) |
+| `GCP_SERVICE_ACCOUNT` | `catvox-backend-sa@<project-id>.iam.gserviceaccount.com` |
+| `TF_VAR_app_check_debug_token` | Firebase App Check debug token |
+
+---
+
+## 8. Implementation Backlog (MVP)
 
 * [x] **Asset Integration:** App Icon & Accent Colors implemented.
 * [x] **UI Logic:** Confidence Score color-coding implemented.
 * [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
 * [x] **Remote Terraform State:** GCS backend configured and local state migrated; state bucket bootstrapped with versioning enabled.
-* [ ] **CI/CD Terraform Pipeline:** Wire GitHub Actions to run `terraform plan` on PRs and `terraform apply` on merge, authenticated via Workload Identity Federation.
+* [x] **CI/CD Terraform Pipeline:** GitHub Actions workflow live — plan on PR (with PR comment), apply on merge; authenticated via Workload Identity Federation.
 * [ ] **App Check Setup:** Configure App Check in Apple and Firebase consoles.
 * [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
@@ -135,7 +181,7 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ---
 
-## 8. Future Enhancements (Post-MVP)
+## 9. Future Enhancements (Post-MVP)
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.
 * **Health Monitoring:** Advanced analysis for subtle pain or distress markers.
