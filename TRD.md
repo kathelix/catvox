@@ -121,7 +121,7 @@ The backend must return ONLY a valid JSON object following this structure:
 
 * [x] **Asset Integration:** App Icon & Accent Colors implemented.
 * [x] **UI Logic:** Confidence Score color-coding implemented.
-* [ ] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
+* [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
 * [ ] **App Check Setup:** Configure App Check in Apple and Firebase consoles.
 * [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
 * [ ] **Video Pipeline:** Implement Swift-based background upload of native HEVC to GCS.
