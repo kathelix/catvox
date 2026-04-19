@@ -96,7 +96,7 @@ The backend must return ONLY a valid JSON object following this structure:
     * **Project Services:** Enablement of `aiplatform`, `cloudfunctions`, `run`, `firestore`, `storage`, `secretmanager`, `artifactregistry`, `firebase`, `firebaseappcheck`, and `iam`.
     * **Databases:** Explicit provisioning of a **Firestore instance** in `(default)` mode.
     * **Artifact Registry repository** for Cloud Functions (2nd Gen) build images.
-    * **Service Accounts:** `catvox-backend-sa` serving dual purpose — runtime identity for Cloud Functions and Terraform CI identity for GitHub Actions (see §6.3 and §7.2).
+    * **Service Accounts:** `catvox-backend-sa` (Cloud Functions runtime) and `catvox-ci-sa` (Terraform CI / GitHub Actions) — see §6.3 for roles.
     * **Secrets:** Secret Manager for `GCP_PROJECT_ID` and `APP_CHECK_DEBUG_TOKEN`.
 
 ### 6.2 Compute & API Orchestration
