@@ -51,3 +51,32 @@ resource "google_service_account_iam_member" "sa_token_creator" {
   role               = "roles/iam.serviceAccountTokenCreator"
   member             = "serviceAccount:${google_service_account.backend_sa.email}"
 }
+
+# ── IAM Bindings — Terraform CI (GitHub Actions) ──────────────────────────────
+# catvox-backend-sa also acts as the Terraform CI identity via Workload Identity
+# Federation. It needs broader project-level rights to plan and apply the
+# infrastructure defined in this repo. These roles are intentionally separate
+# from the runtime roles above for clarity.
+#
+# roles/editor                          — manage GCP resources (APIs, GCS,
+#                                         Artifact Registry, Secret Manager,
+#                                         Firestore, service accounts)
+# roles/resourcemanager.projectIamAdmin — read and write project-level IAM
+#                                         bindings (required for all
+#                                         google_project_iam_member resources)
+#
+# Both roles were first granted manually via gcloud (bootstrap) so that the
+# initial terraform plan could succeed; they are tracked here to keep state
+# consistent.
+
+resource "google_project_iam_member" "tf_ci_editor" {
+  project = var.project_id
+  role    = "roles/editor"
+  member  = "serviceAccount:${google_service_account.backend_sa.email}"
+}
+
+resource "google_project_iam_member" "tf_ci_iam_admin" {
+  project = var.project_id
+  role    = "roles/resourcemanager.projectIamAdmin"
+  member  = "serviceAccount:${google_service_account.backend_sa.email}"
+}
