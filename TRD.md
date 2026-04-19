@@ -105,7 +105,7 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Vertex AI Integration:** Call Gemini 3.1 Flash using `fileData` (GCS URI) for multimodal analysis.
 
 ### 6.3 Security & Identity
-* **App Verification:** Firebase App Check mandatory for all backend entry points (Debug Provider for local dev).
+* **App Verification:** Firebase App Check mandatory for all backend entry points. App Attest is the production provider for Apple platforms; Debug Provider is used for local development. (See ADR-0002.)
 * **Secrets:** Zero hardcoded identifiers; all retrieved via Secret Manager at runtime.
 * **Service Account: `catvox-backend-sa`** — Runtime identity for Cloud Functions. Holds only the minimal roles required at runtime; never has CI-level access.
     * `roles/aiplatform.user` — invoke Gemini 3.1 Flash via Vertex AI.
@@ -175,7 +175,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 * [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
 * [x] **Remote Terraform State:** GCS backend configured and local state migrated; state bucket bootstrapped with versioning enabled.
 * [x] **CI/CD Terraform Pipeline:** GitHub Actions workflow live — plan on PR (with PR comment), apply on merge; authenticated via Workload Identity Federation.
-* [ ] **App Check Setup:** Configure App Check in Apple and Firebase consoles.
+* [ ] **App Check Setup:** Configure App Attest in Apple Developer and Firebase App Check consoles, plus Debug Provider for local development. (See ADR-0002.)
 * [ ] **Backend Proxy:** Develop Firebase Cloud Function (TypeScript) with usage-limit logic.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
 * [ ] **Video Upload:** Implement Swift-based background upload of the recorded HEVC file to GCS via signed URL.

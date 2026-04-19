@@ -12,11 +12,21 @@ Read these documents in order before touching any code or infrastructure:
 |---|---|
 | `HLD.md` | High-level design decisions only — the stable "why". Feed to Gemini/ChatGPT for design ideation. |
 | `TRD.md` | Full technical spec — the authoritative "what". Feed to Claude Code for implementation. |
+| `docs/adr/` | Architecture Decision Records — the "why a decision was made". Append-only log. |
 | `Instructions.md` | The Gemini AI system prompt (the "Prompt Gate"). Do not modify without updating TRD §4. |
 | `PROMPT.md` | Original project vision and developer mindset. Read it once. |
 | `TODO.md` | Scratchpad for feature ideas and engineering parameters not yet in TRD. |
 
 **The pipeline is:** HLD → TRD → Code. Never let code get ahead of TRD. When you implement something, update TRD §8 backlog to mark it done.
+
+### ADR Workflow
+
+Create a new ADR in `docs/adr/` for any decision that is architectural, security-relevant, infrastructure-relevant, costly to reverse, or likely to need explanation later. See `docs/adr/README.md` for the full convention.
+
+When an ADR is accepted:
+- check whether HLD needs updating (high-level direction)
+- check whether TRD needs updating (implementation requirements)
+- reference the ADR from TRD where relevant (`See ADR-NNNN.`)
 
 ---
 

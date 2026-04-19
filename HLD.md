@@ -17,6 +17,6 @@ CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It
 * **Multimodal Engine:** Selected Gemini 3.1 Flash for its ability to process video and audio simultaneously via GCS URIs, reducing mobile device memory overhead.
 * **Video Pipeline:** Chose to stick with native **HEVC (.mov)** at 1080p for the MVP to minimize bandwidth usage and avoid complex client-side transcoding.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
-* **Security:** Designed to use Firebase App Check (with Debug Provider for local dev) to prevent unauthorized API calls and manage GCP costs.
+* **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.
 
 ---
