@@ -25,7 +25,7 @@ final class ResultViewModel {
 
         Mood: \(analysis.primaryEmotion)
 
-        Decoded by CatVox AI – Powered by Kathelix.com
+        Decoded by CatVox AI – Powered by Kathelix
         """
     }
 

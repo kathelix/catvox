@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.4
+**Version:** 1.5
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -35,7 +35,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 ### 3.2 Monetization & Sustainability
 * **Credit System:** 5 free scans/day to manage GCP costs.
 * **Pro Tier (IAP):** One-time in-app purchase for unlimited scans and watermark removal.
-* **Brand Promotion:** Subtle "Powered by Kathelix.com" watermark on all free-tier exports.
+* **Brand Promotion:** Subtle "Powered by Kathelix" watermark on all free-tier exports.
 
 ---
 
@@ -46,12 +46,12 @@ You are CatVox AI, a multimodal expert in feline ethology and a sophisticated cr
 
 ### 4.2 The 6 Cat Personas
 Select the archetype that best fits the observed behavior:
-1. **The CEO (Grumpy Boss):** Authoritative, judgmental, and demanding.
-2. **The Existentialist:** Poetic, melancholic, and confused by the "red dot."
-3. **The Drama Queen/King:** High-octane energy; grand theatrical flair.
-4. **The Special Ops:** Stealthy, tactical; treating the room as a mission zone.
-5. **The Chaotic Toddler:** Pure prey-drive energy; "zero thoughts" behind the eyes.
-6. **The Zen Monk:** Detached, calm, and observing with silent peace.
+1. **The Grumpy Boss:** Authoritative, judgmental, and demanding.
+2. **The Existential Philosopher:** Poetic, melancholic, and confused by the "red dot."
+3. **The Dramatic Diva:** High-octane energy; grand theatrical flair.
+4. **The Secret Agent:** Stealthy, tactical; treating the room as a mission zone.
+5. **The Chaotic Hunter:** Pure prey-drive energy; "zero thoughts" behind the eyes.
+6. **The Affectionate Sweetheart:** Detached, calm, and observing with silent peace.
 
 ### 4.3 API Data Schema
 The backend must return ONLY a valid JSON object following this structure:
