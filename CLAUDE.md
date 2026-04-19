@@ -128,14 +128,16 @@ terraform plan   # review before any apply
 
 `terraform.tfvars` is gitignored. Copy from `terraform.tfvars.example` and fill in values.
 
-### Service Account: `catvox-backend-sa`
+### Service Accounts
 
-This SA has a **dual purpose** — both roles are intentional and documented in TRD §6.3:
+Two SAs with strictly separated concerns (TRD §6.3):
 
-1. **Runtime identity** for Cloud Functions (5 minimal roles: aiplatform.user, storage.objectViewer, datastore.user, secretmanager.secretAccessor, iam.serviceAccountTokenCreator on self)
-2. **Terraform CI identity** for GitHub Actions (+ roles/editor + roles/resourcemanager.projectIamAdmin)
+| SA | Purpose | Key roles |
+|---|---|---|
+| `catvox-backend-sa` | Cloud Functions runtime | aiplatform.user, storage.objectViewer, datastore.user, secretmanager.secretAccessor, iam.serviceAccountTokenCreator (self) |
+| `catvox-ci-sa` | GitHub Actions Terraform CI | roles/editor, roles/resourcemanager.projectIamAdmin, storage.objectAdmin on state bucket |
 
-Do not strip the CI roles — they are required for `terraform apply` in GitHub Actions.
+Do not add CI roles to `catvox-backend-sa` — the split is intentional. If a Cloud Function were compromised, `catvox-backend-sa` having CI roles would give an attacker near-full project control.
 
 ### WIF / GitHub Actions Authentication
 
@@ -166,7 +168,7 @@ PROJECT_ID=kathelix-catvox-prod ./terraform/bootstrap_wif.sh
 |---|---|
 | `GCP_PROJECT_ID` | `kathelix-catvox-prod` |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full WIF provider resource name |
-| `GCP_SERVICE_ACCOUNT` | `catvox-backend-sa@kathelix-catvox-prod.iam.gserviceaccount.com` |
+| `GCP_SERVICE_ACCOUNT` | `catvox-ci-sa@kathelix-catvox-prod.iam.gserviceaccount.com` |
 | `TF_VAR_app_check_debug_token` | Firebase App Check debug token |
 
 ---

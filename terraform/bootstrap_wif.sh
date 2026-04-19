@@ -3,21 +3,24 @@
 # CatVox AI — Bootstrap Workload Identity Federation for GitHub Actions (Step 2 of 2)
 # Kathelix Ltd
 #
+# Target SA: catvox-ci-sa — the dedicated Terraform CI identity (separate from
+# the runtime SA catvox-backend-sa, which holds only Cloud Functions roles).
+#
 # Run this script ONCE, manually, after bootstrap_remote_state.sh has completed.
 # It configures keyless authentication so GitHub Actions can run terraform
 # plan/apply against GCP without storing any long-lived credentials.
 #
 # What this script does:
-#   1. Validates catvox-backend-sa exists (created by terraform apply)
+#   1. Validates catvox-ci-sa exists (created by terraform apply)
 #   2. Creates a Workload Identity Pool (skips if already exists)
 #   3. Creates an OIDC provider inside it, trusting GitHub's token issuer (skips if exists)
-#   4. Binds catvox-backend-sa to tokens from this specific GitHub repo
-#   5. Grants catvox-backend-sa object-level access to the Terraform state bucket
+#   4. Binds catvox-ci-sa to tokens from this specific GitHub repo
+#   5. Grants catvox-ci-sa object-level access to the Terraform state bucket
 #   6. Prints the values to add as GitHub Actions secrets
 #
 # Prerequisites:
 #   - gcloud CLI installed and authenticated (`gcloud auth login`)
-#   - terraform apply has been run (catvox-backend-sa must exist)
+#   - terraform apply has been run (catvox-ci-sa must exist)
 #   - bootstrap_remote_state.sh has been run (state bucket must exist)
 #   - Sufficient IAM permissions: IAM Admin + Storage Admin on the project
 #
@@ -46,7 +49,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 GITHUB_ORG="IvanBoyko"
 GITHUB_REPO="catvox"
-SA_NAME="catvox-backend-sa"
+SA_NAME="catvox-ci-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 POOL_ID="github-actions-pool"
 PROVIDER_ID="github-actions-provider"
@@ -93,7 +96,7 @@ if ! gcloud iam service-accounts describe "${SA_EMAIL}" \
      --project="${PROJECT_ID}" &>/dev/null; then
   echo ""
   echo "ERROR: Service account not found: ${SA_EMAIL}"
-  echo "       catvox-backend-sa is provisioned by Terraform (iam.tf)."
+  echo "       catvox-ci-sa is provisioned by Terraform (iam.tf)."
   echo "       Ensure PROJECT_ID matches the var.project_id used in terraform.tfvars"
   echo "       (currently: ${PROJECT_ID}), then run 'terraform apply' and retry."
   exit 1
