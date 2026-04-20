@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 /// Transport layer for CatVox video uploads.
 ///
@@ -26,6 +27,7 @@ final class GCPService {
         case uploading(Double)        // 0.0 – 1.0 byte progress
         case analysing
         case complete(CatAnalysis)
+        case quotaExceeded
         case failed(String)
 
         static func == (lhs: UploadState, rhs: UploadState) -> Bool {
@@ -38,6 +40,8 @@ final class GCPService {
                 return a == b
             case let (.complete(a),   .complete(b)):
                 return a.id == b.id
+            case (.quotaExceeded,    .quotaExceeded):
+                return true
             case let (.failed(a),     .failed(b)):
                 return a == b
             default:
@@ -49,8 +53,8 @@ final class GCPService {
     // MARK: - Configuration
 
     /// `true`  — simulated delays, mock CatAnalysis (no server required).
-    /// `false` — real GCS upload + backend analysis (Phase 2).
-    var mockMode: Bool = true
+    /// `false` — real GCS upload + backend analysis.
+    var mockMode: Bool = false
 
     // MARK: - Observable properties
 
@@ -60,7 +64,11 @@ final class GCPService {
 
     private var currentTask: Task<Void, Never>?
 
-    // MARK: - Backend endpoints (Phase 2)
+    // MARK: - Logging
+
+    private let logger = Logger(subsystem: "com.kathelix.catvox", category: "GCPService")
+
+    // MARK: - Backend endpoints
 
     private enum Endpoint {
         static let signedURL = URL(
@@ -110,9 +118,12 @@ final class GCPService {
             } else {
                 try await realPipeline(localURL: localURL)
             }
+        } catch GCPError.quotaExceeded {
+            uploadState = .quotaExceeded
         } catch is CancellationError {
             uploadState = .idle
         } catch {
+            logger.error("pipeline failed: \(error)")
             uploadState = .failed(error.localizedDescription)
         }
     }
@@ -170,7 +181,12 @@ final class GCPService {
         request.httpBody = try JSONEncoder().encode(payload)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard http.statusCode == 200 else {
+            let body = String(data: data, encoding: .utf8) ?? "(no body)"
+            logger.error("getSignedUploadURL: HTTP \(http.statusCode) — \(body)")
             throw URLError(.badServerResponse)
         }
         let decoded = try JSONDecoder().decode([String: String].self, from: data)
@@ -191,8 +207,12 @@ final class GCPService {
                 self?.uploadState = .uploading(progress)
             }
         }
+        // Use an ephemeral session so it has no inherited HTTP/3 alternative-service
+        // cache from previous URLSession.shared requests. QUIC (HTTP/3) mid-stream
+        // frame loss was dropping the GCS PUT at ~30% on some cellular networks.
+        let config = URLSessionConfiguration.ephemeral
         let session = URLSession(
-            configuration: .default,
+            configuration: config,
             delegate: progressDelegate,
             delegateQueue: nil
         )
@@ -202,11 +222,17 @@ final class GCPService {
         request.httpMethod = "PUT"
         request.setValue("video/quicktime", forHTTPHeaderField: "Content-Type")
 
-        let (_, response) = try await session.upload(for: request, fromFile: fileURL)
-        guard let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode) else {
+        let (data, response) = try await session.upload(for: request, fromFile: fileURL)
+        guard let http = response as? HTTPURLResponse else {
+            logger.error("GCS PUT: response was not HTTPURLResponse")
             throw URLError(.badServerResponse)
         }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "(no body)"
+            logger.error("GCS PUT: HTTP \(http.statusCode) — \(body)")
+            throw URLError(.badServerResponse)
+        }
+        logger.debug("GCS PUT: HTTP \(http.statusCode) — upload complete")
     }
 
     private func triggerAnalysis(gcsUri: String) async throws -> CatAnalysis {
@@ -220,10 +246,26 @@ final class GCPService {
         request.httpBody = try JSONEncoder().encode(payload)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        if http.statusCode == 429 { throw GCPError.quotaExceeded }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "(no body)"
+            logger.error("analyseVideo: HTTP \(http.statusCode) — \(body)")
             throw URLError(.badServerResponse)
         }
         return try JSONDecoder().decode(CatAnalysis.self, from: data)
+    }
+}
+
+// MARK: - Error types
+
+enum GCPError: LocalizedError {
+    case quotaExceeded
+
+    var errorDescription: String? {
+        "Daily scan limit reached. Come back tomorrow."
     }
 }
 

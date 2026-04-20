@@ -19,7 +19,8 @@ import SwiftUI
 /// See TRD §5.1 and PROMPT.md §2 for the full specification.
 struct ResultView: View {
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)        private var dismiss
+    @Environment(ScanQuotaStore.self) private var quotaStore
 
     /// Becomes non-nil once analysis is available — immediately for the dev
     /// path, or after `gcpService` completes for the recording path.
@@ -88,6 +89,8 @@ struct ResultView: View {
 
                 if let viewModel {
                     resultContent(viewModel)
+                } else if gcpService.uploadState == .quotaExceeded {
+                    quotaExceededContent
                 } else {
                     loadingContent
                 }
@@ -108,6 +111,14 @@ struct ResultView: View {
     }
 
     // MARK: - Content branches
+
+    /// Shown when the daily free scan quota is exhausted (HTTP 429).
+    private var quotaExceededContent: some View {
+        QuotaExceededView { dismiss() }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 60)
+            .transition(.opacity)
+    }
 
     /// Shown while GCPService is working. Sits in the same vertical zone
     /// as the thought bubble so the transition feels continuous.
@@ -239,6 +250,7 @@ struct ResultView: View {
     private func handleUploadState(_ state: GCPService.UploadState) {
         switch state {
         case .complete(let analysis):
+            quotaStore.recordScan()
             let vm = ResultViewModel(analysis: analysis)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
                 viewModel = vm
@@ -246,6 +258,9 @@ struct ResultView: View {
             // Schedule onAppear() after SwiftUI has bound the new viewModel,
             // so the spring-in animations play against the rendered result UI.
             Task { @MainActor in vm.onAppear() }
+
+        case .quotaExceeded:
+            quotaStore.markExhausted()
 
         case .failed(let message):
             failureMessage = message
@@ -261,16 +276,20 @@ struct ResultView: View {
 
 #Preview("Grumpy Boss") {
     ResultView(analysis: MockAnalysisService.sampleAnalysis)
+        .environment(ScanQuotaStore())
 }
 
 #Preview("Existential Philosopher") {
     ResultView(analysis: MockAnalysisService.allSamples[1])
+        .environment(ScanQuotaStore())
 }
 
 #Preview("Chaotic Hunter") {
     ResultView(analysis: MockAnalysisService.allSamples[2])
+        .environment(ScanQuotaStore())
 }
 
 #Preview("Upload in Progress") {
     ResultView(videoURL: URL(fileURLWithPath: "/dev/null"))
+        .environment(ScanQuotaStore())
 }
