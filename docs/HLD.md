@@ -19,13 +19,16 @@ The MVP supports two local input sources:
 The product also includes a local on-device scan history as part of the MVP user experience, allowing users to revisit previous cat mood interpretations without relying on cloud-side user accounts.
 
 ## 2. System Flow
-1. The user starts a scan from a unified primary CTA in the iOS app.
-2. The user provides a local video by either recording a new clip or selecting an existing clip from Photos.
-3. The app validates the selected local video against MVP client-side rules before upload.
-4. The app requests a signed upload URL from the backend.
-5. The app uploads the validated video to Google Cloud Storage.
-6. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
-7. The backend validates App Check, enforces usage limits, invokes Vertex AI, and returns a normalized result payload.
+1. The user taps the primary CTA `Read My Cat` in the iOS app.
+2. The app presents a lightweight source choice sheet with:
+   * `Record New Video`
+   * `Choose from Photos`
+3. The user provides a local video by either recording a new clip or selecting an existing clip from Photos.
+4. The app validates the selected local video against MVP client-side rules before upload.
+5. The app requests a signed upload URL from the backend.
+6. The app uploads the validated video to Google Cloud Storage.
+7. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
+8. The backend validates App Check, enforces usage limits, validates protected input constraints, invokes Vertex AI, and returns a normalized result payload.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.

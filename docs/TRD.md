@@ -27,7 +27,9 @@ For MVP, the user can either record a new video in-app or select an existing vid
 ## 3. Functional Requirements
 
 ### 3.1 Core Features (MVP)
-* **Unified Scan Entry:** The home screen exposes one primary CTA that starts the scan flow. After tapping it, the user chooses whether to record a new video or select one from Photos.
+* **Unified Scan Entry:** The home screen exposes one primary CTA labeled **Read My Cat**. After tapping it, the app presents a source choice sheet with:
+    * **Record New Video**
+    * **Choose from Photos**
 * **Video Capture:** Fixed 10-second recording window with a visual countdown UI and an audio ping at the moment recording ends.
 * **Photos Import:** The app supports selecting an existing video from the user's Photos library using the system video picker flow. The picker is restricted to videos, but detailed eligibility checks are performed by the app after selection rather than by a custom filtered gallery browser.
 * **Video Validation Rules:** Before upload, the app must validate the candidate video locally. MVP acceptance rules are:
@@ -84,10 +86,10 @@ The backend must return ONLY a valid JSON object following this structure:
 ## 5. UI/UX Specifications
 
 ### 5.1 Key Screens
-1. **Home Screen:** Minimalist dashboard showing the latest "Mood" and one primary CTA that launches the scan flow.
-2. **Source Choice Sheet:** A lightweight chooser, similar in spirit to common social-app creation flows, offering:
-    * record a new video
-    * choose a video from Photos
+1. **Home Screen:** Minimalist dashboard showing the latest "Mood" and one primary CTA labeled **Read My Cat**.
+2. **Source Choice Sheet:** A lightweight chooser offering:
+    * **Record New Video**
+    * **Choose from Photos**
 3. **Recording Screen:** Viewfinder with a 10-second progress ring.
 4. **Result Screen:**
     * Full-screen looping video background.
@@ -101,11 +103,11 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 5.2 Validation UX
 * If a Photos-selected video fails validation, the app must reject it before upload and clearly explain the reason.
-* Rejection messaging must be specific and user-readable, for example:
-    * video is longer than 10 seconds
-    * video exceeds 100 MB
-    * ProRes is not supported
-    * unsupported video format
+* Rejection messaging must be specific and user-readable, using these canonical messages:
+    * "This video is longer than 10 seconds. Please choose a shorter clip."
+    * "This video is larger than 100 MB. Please choose a smaller clip."
+    * "ProRes videos aren't supported."
+    * "This video format isn't supported."
 * The MVP UX favors clear post-selection validation messaging over a custom gallery browser with disabled or hidden ineligible assets.
 
 ---
@@ -159,7 +161,8 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 6.5 Validation & Upload Guardrails
 * **Client Validation:** The iOS client must validate duration, size, and basic format eligibility before requesting a signed upload URL whenever that metadata is available locally.
-* **Backend Validation:** The backend should validate at least these two protected limits before analysis:
+* **Backend Validation Point:** The backend must validate uploaded object constraints in the analysis path before invoking Vertex AI.
+* **Backend Validation Rules:** For MVP, backend validation should enforce at least these two protected limits:
     * duration <= 10 seconds
     * file size <= 100 MB
 * **Upload Economics:** Signed upload URLs should not be issued for videos that the client already knows are invalid. This is primarily a cost-control and UX measure, not a trust substitute.
@@ -265,7 +268,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via `fileData` GCS URI.
 * [x] **Quota Exceeded UI:** Dedicated glassmorphic card shown when the daily scan limit is reached (HTTP 429); includes stub "Upgrade to Pro" CTA (shows "Coming soon" alert) and "Maybe Later" dismiss. StoreKit 2 wiring deferred to the Monetization backlog item.
 * [ ] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
-* [ ] **Backend Upload Validation:** Add backend validation for at least duration <= 10 seconds and file size <= 100 MB before analysis proceeds.
+* [ ] **Backend Upload Validation:** Add backend validation for at least duration <= 10 seconds and file size <= 100 MB in the analysis path before Vertex AI is invoked.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [ ] **Social:** Build branded video overlay and sharing features.
