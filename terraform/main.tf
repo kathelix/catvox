@@ -95,13 +95,25 @@ resource "google_storage_bucket" "raw_videos" {
 
 # Vertex AI service agent — must be able to read video objects from GCS when
 # processing fileData references (gs:// URIs passed to Gemini multimodal calls).
-# The service agent is provisioned automatically when aiplatform.googleapis.com
-# is enabled, but its IAM binding on this bucket must be explicit.
-# Agent identity: service-{PROJECT_NUMBER}@gcp-sa-aiplatform.iam.gserviceaccount.com
+#
+# google_project_service_identity explicitly provisions the Vertex AI service
+# agent and exposes its email as a Terraform reference. Without this, the IAM
+# binding would race against the asynchronous agent provisioning that happens
+# after the API is enabled — causing failures on a fresh project.
+resource "google_project_service_identity" "aiplatform" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "aiplatform.googleapis.com"
+
+  depends_on = [google_project_service.apis]
+}
+
 resource "google_storage_bucket_iam_member" "vertexai_sa_raw_videos_viewer" {
   bucket = google_storage_bucket.raw_videos.name
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
+  member = "serviceAccount:${google_project_service_identity.aiplatform.email}"
+
+  depends_on = [google_project_service_identity.aiplatform]
 }
 
 # ── Artifact Registry — Cloud Functions Container Images ─────────────────────
