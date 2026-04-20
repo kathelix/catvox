@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 2.2
+**Version:** 2.3
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -9,7 +9,9 @@
 ---
 
 ## 1. Executive Summary
-CatVox AI is a premium, minimalist iOS application designed to interpret cat behavior from 10-second video clips using multimodal Generative AI (Gemini 2.5 Flash). The app serves as a high-tech brand ambassador for Kathelix Ltd, showcasing expertise in AI integration, Cloud architecture, and superior UX design.
+CatVox AI is a premium, minimalist iOS application designed to interpret cat behavior from short video clips using multimodal Generative AI (Gemini 2.5 Flash). The app serves as a high-tech brand ambassador for Kathelix Ltd, showcasing expertise in AI integration, Cloud architecture, and superior UX design.
+
+For MVP, the user can either record a new video in-app or select an existing video from Photos, provided the submitted clip satisfies the product limits and validation rules defined in this document.
 
 ---
 
@@ -25,8 +27,17 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 ## 3. Functional Requirements
 
 ### 3.1 Core Features (MVP)
+* **Unified Scan Entry:** The home screen exposes one primary CTA that starts the scan flow. After tapping it, the user chooses whether to record a new video or select one from Photos.
 * **Video Capture:** Fixed 10-second recording window with a visual countdown UI and an audio ping at the moment recording ends.
-* **Video Pipeline:** App records in native **HEVC (.mov)** with resolution hard-capped at **1920 × 1080 (1080p)**. The cap keeps free-tier clip sizes to approximately 15–25 MB per 10-second recording. No re-encoding is required for MVP. Devices that do not support HEVC fall back silently to H.264. 4K capture is reserved as a potential future Pro-tier feature.
+* **Photos Import:** The app supports selecting an existing video from the user's Photos library using the system video picker flow. The picker is restricted to videos, but detailed eligibility checks are performed by the app after selection rather than by a custom filtered gallery browser.
+* **Video Validation Rules:** Before upload, the app must validate the candidate video locally. MVP acceptance rules are:
+    * maximum duration: **10 seconds**
+    * maximum file size: **100 MB**
+    * supported inputs: native **HEVC (.mov)**, H.264, and common iPhone-exported video variants
+    * unsupported input: **ProRes**
+    * no in-app trimming in MVP
+    * no client-side transcoding or re-encoding in MVP
+* **Video Pipeline:** In-app recording uses native **HEVC (.mov)** with resolution hard-capped at **1920 × 1080 (1080p)**. The cap keeps free-tier clip sizes to approximately 15–25 MB per 10-second recording. Devices that do not support HEVC fall back silently to H.264. For Photos-imported videos, MVP accepts videos that pass the validation rules above, including temporary acceptance of 4K source video for simplicity. Re-evaluation of 4K cost and normalization strategy is deferred.
 * **Multimodal Analysis:** Simultaneous processing of video (body language) and audio (vocalization) via Vertex AI.
 * **Persona Engine:** Logic to assign one of 6 "Cat Personas" to the interpretation to drive engagement and humor.
 * **Mood Diary:** A local history of scans saved using on-device persistent storage.
@@ -34,6 +45,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 
 ### 3.2 Monetization & Sustainability
 * **Credit System:** 5 free scans/day to manage GCP costs.
+* **Quota Burn Rule:** A quota unit is consumed only when analysis completes successfully and a result payload is returned. Failed local validation attempts, rejected selections, and abandoned uploads do not consume quota.
 * **Pro Tier (IAP):** One-time in-app purchase for unlimited scans and watermark removal.
 * **Brand Promotion:** Subtle "Powered by Kathelix" watermark on all free-tier exports.
 
@@ -43,7 +55,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 
 ### 4.1 Role & Context
 Short version:
-You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze 10-second video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
+You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze short video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
 
 Full prompt: `docs/Instructions.md` — this is the single source of truth for the system instruction. The Cloud Function build script copies it into the deployment artifact at build time; editing the file and merging the PR is all that is required to update the live prompt. (See ADR-0008.)
 
@@ -72,9 +84,12 @@ The backend must return ONLY a valid JSON object following this structure:
 ## 5. UI/UX Specifications
 
 ### 5.1 Key Screens
-1. **Home Screen:** Minimalist dashboard showing the latest "Mood" and a "Start Scan" button.
-2. **Recording Screen:** Viewfinder with a 10-second progress ring.
-3. **Result Screen:**
+1. **Home Screen:** Minimalist dashboard showing the latest "Mood" and one primary CTA that launches the scan flow.
+2. **Source Choice Sheet:** A lightweight chooser, similar in spirit to common social-app creation flows, offering:
+    * record a new video
+    * choose a video from Photos
+3. **Recording Screen:** Viewfinder with a 10-second progress ring.
+4. **Result Screen:**
     * Full-screen looping video background.
     * Animated Glassmorphism "Thought Bubble".
     * **Confidence Score UI:** The percentage ring must be dynamically color-coded:
@@ -83,6 +98,15 @@ The backend must return ONLY a valid JSON object following this structure:
         * **Red:** < 50% (Low Confidence/Ambiguous)
     * Expandable "Expert Insights" drawer.
     * "Share to Story" CTA.
+
+### 5.2 Validation UX
+* If a Photos-selected video fails validation, the app must reject it before upload and clearly explain the reason.
+* Rejection messaging must be specific and user-readable, for example:
+    * video is longer than 10 seconds
+    * video exceeds 100 MB
+    * ProRes is not supported
+    * unsupported video format
+* The MVP UX favors clear post-selection validation messaging over a custom gallery browser with disabled or hidden ineligible assets.
 
 ---
 
@@ -132,6 +156,14 @@ The backend must return ONLY a valid JSON object following this structure:
     * Schema: `{ count: integer, lastResetDate: string (YYYY-MM-DD) }`.
     * **Logic:** Backend increments count; rejects request (429) if limit reached.
     * **userId:** A UUID generated once on first launch and persisted in `UserDefaults` under the key `"catvox.userId"`. Sent by the iOS client with every `analyseVideo` request. Forward-compatible with Firebase Auth — when Auth is introduced, the computed property value is replaced with the authenticated UID and the Firestore schema requires no changes. (See ADR-0007.)
+
+### 6.5 Validation & Upload Guardrails
+* **Client Validation:** The iOS client must validate duration, size, and basic format eligibility before requesting a signed upload URL whenever that metadata is available locally.
+* **Backend Validation:** The backend should validate at least these two protected limits before analysis:
+    * duration <= 10 seconds
+    * file size <= 100 MB
+* **Upload Economics:** Signed upload URLs should not be issued for videos that the client already knows are invalid. This is primarily a cost-control and UX measure, not a trust substitute.
+* **Optional Abuse Mitigation:** A lightweight rate-limit on signed URL issuance is desirable if it can be implemented cheaply without materially complicating MVP delivery; otherwise it should be deferred to post-MVP work.
 
 ---
 
@@ -232,6 +264,8 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **Video Upload:** Swift upload of the recorded HEVC file to GCS via signed URL; real pipeline live (`mockMode = false`).
 * [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via `fileData` GCS URI.
 * [x] **Quota Exceeded UI:** Dedicated glassmorphic card shown when the daily scan limit is reached (HTTP 429); includes stub "Upgrade to Pro" CTA (shows "Coming soon" alert) and "Maybe Later" dismiss. StoreKit 2 wiring deferred to the Monetization backlog item.
+* [ ] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
+* [ ] **Backend Upload Validation:** Add backend validation for at least duration <= 10 seconds and file size <= 100 MB before analysis proceeds.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [ ] **Social:** Build branded video overlay and sharing features.
@@ -241,6 +275,9 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 ## 9. Future Enhancements (Post-MVP)
 * **Gemini Model Upgrade:** The backend currently uses `gemini-2.5-flash` (the latest GA Gemini Flash model on Vertex AI as of TRD v2.0). Upgrade to Gemini 3.x Flash once it reaches GA on Vertex AI.
 * **IAM Security Review:** `catvox-ci-sa` currently holds `roles/editor`, `roles/resourcemanager.projectIamAdmin`, `roles/iam.serviceAccountAdmin`, and `roles/secretmanager.secretAccessor` — broad rights required for Terraform to manage IAM bindings via CI. Consider splitting Terraform into an admin layer (IAM, SAs — applied manually or via a privileged gated workflow) and an infra layer (GCS, Firestore, Artifact Registry — applied by CI with `roles/editor` only), removing the need for `projectIamAdmin` and `serviceAccountAdmin` on the routine CI identity.
+* **Picker Eligibility UX:** Consider richer pre-selection eligibility hints or a more advanced gallery experience only if later product testing shows clear value over the simpler MVP rejection flow.
+* **Signed URL Issuance Rate-Limit:** Add a dedicated anti-abuse rate-limit for signed upload URL requests if App Check plus upload-gate quota enforcement prove insufficient.
+* **4K Import Strategy Review:** Re-evaluate cost and UX trade-offs of accepting 4K gallery videos, and decide later whether to keep raw upload, cap imported resolution, or introduce client-side normalization.
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.
 * **Health Monitoring:** Advanced analysis for subtle pain or distress markers.
