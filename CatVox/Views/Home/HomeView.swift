@@ -4,9 +4,10 @@ struct HomeView: View {
 
     @Environment(ScanQuotaStore.self) private var quotaStore
 
-    @State private var showRecording  = false
-    @State private var showResult     = false
-    @State private var selectedSample = 0
+    @State private var showRecording    = false
+    @State private var showResult       = false
+    @State private var showQuotaCard    = false
+    @State private var selectedSample   = 0
 
     var body: some View {
         ZStack {
@@ -35,7 +36,11 @@ struct HomeView: View {
 
                 // MARK: Primary CTA
                 Button {
-                    showRecording = true
+                    if quotaStore.scansRemaining > 0 {
+                        showRecording = true
+                    } else {
+                        showQuotaCard = true
+                    }
                 } label: {
                     Label("Start Scan", systemImage: "video.fill")
                         .font(.headline)
@@ -82,6 +87,17 @@ struct HomeView: View {
                 }
 
                 Spacer().frame(height: 56)
+            }
+        }
+        .overlay {
+            if showQuotaCard {
+                ZStack {
+                    Color.black.opacity(0.55).ignoresSafeArea()
+                    QuotaExceededView { showQuotaCard = false }
+                        .padding(.horizontal, 20)
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.2), value: showQuotaCard)
             }
         }
         .preferredColorScheme(.dark)
