@@ -36,3 +36,21 @@ variable "app_check_debug_token" {
   type        = string
   sensitive   = true
 }
+
+variable "wif_pool_id" {
+  description = "Workload Identity Federation pool ID used by GitHub Actions. Created once by bootstrap_wif.sh."
+  type        = string
+  default     = "github-actions-pool"
+}
+
+variable "github_repo" {
+  description = "GitHub repository in 'owner/repo' format, used to scope the WIF token binding on catvox-ci-sa."
+  type        = string
+  default     = "IvanBoyko/catvox"
+}
+
+variable "tf_state_bucket" {
+  description = "GCS bucket name for Terraform remote state. Created by bootstrap_remote_state.sh before first terraform init — outside Terraform scope to avoid circular dependency."
+  type        = string
+  default     = "catvox-tf-state-kathelix-catvox-prod"
+}

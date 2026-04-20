@@ -113,14 +113,16 @@ resource "google_project_iam_member" "compute_sa_log_writer" {
 # catvox-ci-sa: identity for GitHub Actions Terraform plan/apply runs.
 # Holds broader project-level rights needed for IaC, isolated from runtime.
 #
-# After the first terraform apply that creates this SA, three manual steps
-# are required before the next GitHub Actions run will succeed:
-#   1. Re-run terraform/bootstrap_wif.sh — binds the WIF pool to catvox-ci-sa
-#      and grants it objectAdmin on the Terraform state bucket.
-#   2. Update GitHub secret GCP_SERVICE_ACCOUNT to:
+# The WIF pool and OIDC provider are created by bootstrap_wif.sh (one-time,
+# outside Terraform scope). On a fresh project, run bootstrap_wif.sh once
+# before the first GitHub Actions run. The bindings below ensure that after a
+# destroy/recreate of this SA its IAM policy is fully restored by Terraform
+# without any manual steps.
+#
+# After the first terraform apply that creates this SA, one manual step
+# is still required before GitHub Actions will succeed:
+#   1. Update GitHub secret GCP_SERVICE_ACCOUNT to:
 #      catvox-ci-sa@<project-id>.iam.gserviceaccount.com
-#   3. (Optional) Remove the old workloadIdentityUser binding from
-#      catvox-backend-sa via: gcloud iam service-accounts remove-iam-policy-binding
 
 resource "google_service_account" "ci_sa" {
   account_id   = "catvox-ci-sa"
@@ -160,4 +162,24 @@ resource "google_project_iam_member" "tf_ci_sa_admin" {
   project = var.project_id
   role    = "roles/iam.serviceAccountAdmin"
   member  = "serviceAccount:${google_service_account.ci_sa.email}"
+}
+
+# Workload Identity Federation — allow GitHub Actions tokens from
+# IvanBoyko/catvox to impersonate catvox-ci-sa. Previously applied only by
+# bootstrap_wif.sh; tracked here so destroy/recreate of ci_sa restores this
+# binding automatically without needing to re-run the bootstrap script.
+resource "google_service_account_iam_member" "ci_sa_wif_binding" {
+  service_account_id = google_service_account.ci_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${var.wif_pool_id}/attribute.repository/${var.github_repo}"
+}
+
+# Terraform state bucket access — catvox-ci-sa must be able to read, write, and
+# lock the GCS state file. The bucket is outside Terraform scope (bootstrapped
+# before first tf init), but the IAM binding is tracked here so it is restored
+# after a destroy/recreate of ci_sa without any manual gcloud commands.
+resource "google_storage_bucket_iam_member" "ci_sa_state_bucket_admin" {
+  bucket = var.tf_state_bucket
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.ci_sa.email}"
 }
