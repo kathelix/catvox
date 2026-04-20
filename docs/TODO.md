@@ -3,7 +3,7 @@
 
 # FEATURE: allow not only recording of a new video, but also using the exising video from Photos gallery
 
-# Gemini 3.1 Flash System Instructions
+# Gemini 2.5 Flash System Instructions
 
 Engineering & Backend Parameters.
 To ensure this logic ships with the high standards of Kathelix Ltd, Claude Code should configure the Vertex AI call with these settings:

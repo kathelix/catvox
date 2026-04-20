@@ -9,9 +9,10 @@ import { join } from 'path';
 const LOCATION = 'us-central1';
 const MAX_OUTPUT_TOKENS = 300;
 
-// Verify this model ID at https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
-// Update to the GA Gemini 3.1 Flash model ID once available on Vertex AI.
-const MODEL = 'gemini-2.0-flash-001';
+// Gemini 2.5 Flash is the current GA model on Vertex AI.
+// Gemini 3.x Flash is in preview only — upgrade when GA.
+// Verify at https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
+const MODEL = 'gemini-2.5-flash';
 
 // Safety settings — BLOCK_ONLY_HIGH across all categories.
 // Critical for CatVox: standard violence thresholds would trigger on natural

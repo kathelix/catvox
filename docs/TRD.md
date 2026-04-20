@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.9
+**Version:** 2.0
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -9,7 +9,7 @@
 ---
 
 ## 1. Executive Summary
-CatVox AI is a premium, minimalist iOS application designed to interpret cat behavior from 10-second video clips using multimodal Generative AI (Gemini 3.1 Flash). The app serves as a high-tech brand ambassador for Kathelix Ltd, showcasing expertise in AI integration, Cloud architecture, and superior UX design.
+CatVox AI is a premium, minimalist iOS application designed to interpret cat behavior from 10-second video clips using multimodal Generative AI (Gemini 2.5 Flash). The app serves as a high-tech brand ambassador for Kathelix Ltd, showcasing expertise in AI integration, Cloud architecture, and superior UX design.
 
 ---
 
@@ -102,13 +102,13 @@ The backend must return ONLY a valid JSON object following this structure:
 ### 6.2 Compute & API Orchestration
 * **Environment:** Firebase Cloud Functions (2nd Generation).
 * **Runtime:** Node.js 22 (TypeScript).
-* **Vertex AI Integration:** Call Gemini 3.1 Flash using `fileData` (GCS URI) for multimodal analysis.
+* **Vertex AI Integration:** Call Gemini 2.5 Flash using `fileData` (GCS URI) for multimodal analysis.
 
 ### 6.3 Security & Identity
 * **App Verification:** Firebase App Check mandatory for all backend entry points. App Attest is the production provider for Apple platforms; Debug Provider is used for local development. (See ADR-0002.)
 * **Secrets:** Zero hardcoded identifiers; all retrieved via Secret Manager at runtime.
 * **Service Account: `catvox-backend-sa`** — Runtime identity for Cloud Functions. Holds only the minimal roles required at runtime; never has CI-level access.
-    * `roles/aiplatform.user` — invoke Gemini 3.1 Flash via Vertex AI.
+    * `roles/aiplatform.user` — invoke Gemini 2.5 Flash via Vertex AI.
     * `roles/storage.objectViewer` — read video objects from GCS for Vertex AI.
     * `roles/datastore.user` — read/write Firestore usage documents.
     * `roles/secretmanager.secretAccessor` — resolve secrets at function startup.
@@ -188,7 +188,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 * [x] **Backend Proxy:** Firebase Cloud Functions (TypeScript) deployed — `getSignedUploadURL` and `analyseVideo` live in `us-central1`; Firestore usage guard, Vertex AI call, CI deploy pipeline via GitHub Actions.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
 * [ ] **Video Upload:** Implement Swift-based background upload of the recorded HEVC file to GCS via signed URL.
-* [ ] **AI Connection:** Connect Cloud Function to Vertex AI Gemini 3.1 Flash.
+* [ ] **AI Connection:** Connect Cloud Function to Vertex AI Gemini 2.5 Flash.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [ ] **Social:** Build branded video overlay and sharing features.
@@ -196,6 +196,7 @@ The following one-time manual setup is required before the Terraform pipeline ca
 ---
 
 ## 9. Future Enhancements (Post-MVP)
+* **Gemini Model Upgrade:** The backend currently uses `gemini-2.5-flash` (the latest GA Gemini Flash model on Vertex AI as of TRD v2.0). Upgrade to Gemini 3.x Flash once it reaches GA on Vertex AI.
 * **IAM Security Review:** `catvox-ci-sa` currently holds `roles/editor`, `roles/resourcemanager.projectIamAdmin`, `roles/iam.serviceAccountAdmin`, and `roles/secretmanager.secretAccessor` — broad rights required for Terraform to manage IAM bindings via CI. Consider splitting Terraform into an admin layer (IAM, SAs — applied manually or via a privileged gated workflow) and an infra layer (GCS, Firestore, Artifact Registry — applied by CI with `roles/editor` only), removing the need for `projectIamAdmin` and `serviceAccountAdmin` on the routine CI identity.
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.

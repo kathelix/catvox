@@ -32,7 +32,7 @@ When an ADR is accepted:
 
 ## 2. Project Identity
 
-- **App:** CatVox AI — iOS app that interprets cat behavior from 10-second video clips using Gemini 3.1 Flash
+- **App:** CatVox AI — iOS app that interprets cat behavior from 10-second video clips using Gemini 2.5 Flash
 - **Company:** Kathelix Ltd
 - **Bundle ID:** `com.kathelix.catvox`
 - **GCP Project:** `kathelix-catvox-prod` (project number: `953500951129`)
@@ -230,7 +230,7 @@ See TRD §8 for the definitive backlog. As of TRD v1.8:
 - App Check: configure in Apple + Firebase consoles; wire Firebase SDK into iOS app
 - Backend proxy: Firebase Cloud Function (TypeScript) with usage-limit guard (Firestore) and Vertex AI call
 - Video upload: Swift GCS signed-URL upload (`GCPService.mockMode = false`)
-- AI connection: Cloud Function → Vertex AI Gemini 3.1 Flash
+- AI connection: Cloud Function → Vertex AI Gemini 2.5 Flash
 - SwiftData persistence: local scan history
 - StoreKit 2: Pro tier (unlimited scans)
 - Social sharing: branded video overlay

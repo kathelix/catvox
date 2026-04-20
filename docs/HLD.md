@@ -5,7 +5,7 @@ It should stay concise and remain aligned with `docs/TRD.md`, which holds the de
 For formal architecture decisions, see `docs/adr/README.md` and the ADR files under `docs/adr/`.
 
 ## 1. Project Context & Vision
-CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It uses multimodal AI (Gemini 3.1 Flash) to interpret 10-second cat video clips, providing behavioral analysis and a humorous "inner monologue" translation based on specific feline personas.
+CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It uses multimodal AI (Gemini 2.5 Flash) to interpret 10-second cat video clips, providing behavioral analysis and a humorous "inner monologue" translation based on specific feline personas.
 
 ## 2. System Flow
 1. The iOS app records a fixed 10-second cat video clip.
@@ -20,7 +20,7 @@ CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It
 * **Monetization:** A "Freemium" model with a 5-scan daily limit and a StoreKit 2-based Pro tier for unlimited use.
 
 ## 4. Key Design Decisions
-* **Multimodal Engine:** Selected Gemini 3.1 Flash for its ability to process video and audio simultaneously via GCS URIs, reducing mobile device memory overhead.
+* **Multimodal Engine:** Selected Gemini 2.5 Flash for its ability to process video and audio simultaneously via GCS URIs, reducing mobile device memory overhead.
 * **Video Pipeline:** Chose to stick with native **HEVC (.mov)** at 1080p for the MVP to minimize bandwidth usage and avoid complex client-side transcoding.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.

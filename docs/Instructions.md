@@ -3,7 +3,7 @@
 # These are NOT the instructions to ChatGPT LLM used for the top-level design work.
 
 
-**Target Model:** Gemini 3.1 Flash (Vertex AI)
+**Target Model:** Gemini 2.5 Flash (Vertex AI)
 **Tone of Voice:** Expert Feline Ethologist + Witty Translator
 **Output Format:** Strict JSON
 
