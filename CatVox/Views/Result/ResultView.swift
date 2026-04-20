@@ -208,8 +208,7 @@ struct ResultView: View {
     private func shareButton(_ vm: ResultViewModel) -> some View {
         ShareLink(
             item: vm.shareText,
-            subject: Text("My cat's inner monologue"),
-            message: Text(vm.shareText)
+            subject: Text("My cat's inner monologue")
         ) {
             HStack(spacing: 8) {
                 Image(systemName: "square.and.arrow.up")
