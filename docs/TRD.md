@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 2.1
+**Version:** 2.2
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -119,7 +119,7 @@ The backend must return ONLY a valid JSON object following this structure:
     * `roles/resourcemanager.projectIamAdmin` — read and write project-level IAM bindings.
     * `roles/iam.serviceAccountAdmin` — set IAM policies on individual service accounts (`google_service_account_iam_member` resources); intentionally excluded from `roles/editor`.
     * `roles/secretmanager.secretAccessor` — read secret versions during `terraform plan/apply`; intentionally excluded from `roles/editor`.
-    * `roles/storage.objectAdmin` (state bucket only) — read/write Terraform state; granted via `bootstrap_wif.sh`, not Terraform (state bucket is outside IaC scope).
+    * `roles/storage.objectAdmin` (state bucket only) — read/write Terraform state. Managed by Terraform (`google_storage_bucket_iam_member.ci_sa_state_bucket_admin`); the bucket itself is outside IaC scope.
 
 ### 6.4 Data Lifecycle & Persistence
 * **Google Cloud Storage (GCS):**
@@ -176,6 +176,44 @@ The following one-time manual setup is required before the Terraform pipeline ca
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full WIF provider resource name (output of `bootstrap_wif.sh`) |
 | `GCP_SERVICE_ACCOUNT` | `catvox-ci-sa@<project-id>.iam.gserviceaccount.com` |
 | `TF_VAR_app_check_debug_token` | Firebase App Check debug token |
+
+### 7.5 From-Scratch Environment Runbook
+
+Use this when deploying to a new GCP project, or after a full `terraform destroy`.
+
+#### Prerequisites (one-time per GCP project)
+1. Create the GCP project and enable billing — manual, unavoidable.
+2. Initialise Firebase on the project:
+   ```bash
+   firebase projects:addfirebase <PROJECT_ID>
+   ```
+3. Run the bootstrap scripts from `terraform/`:
+   ```bash
+   PROJECT_ID=<your-project-id> ./bootstrap_remote_state.sh  # creates TF state bucket
+   PROJECT_ID=<your-project-id> ./bootstrap_wif.sh            # creates WIF pool + OIDC provider
+   ```
+4. Add the four GitHub Actions secrets printed by `bootstrap_wif.sh` (see §7.4).
+
+#### Deploy infrastructure and backend
+```bash
+# 1. Provision all GCP infrastructure
+cd terraform
+terraform apply
+
+# 2. Deploy Cloud Functions
+cd ../functions
+firebase deploy --only functions
+```
+
+After step 1 the GitHub Actions CI pipeline is fully functional — all subsequent infrastructure changes go through CI.
+
+#### Known gotchas
+
+| Issue | Cause | Fix |
+|---|---|---|
+| `terraform apply` fails with 409 on Firestore | `(default)` database is soft-deleted after destroy; GCP retains it for a grace period | `terraform import 'google_firestore_database.default' 'projects/<PROJECT_ID>/databases/(default)'` then re-run apply |
+| `terraform destroy` fails on raw videos bucket | Bucket contains objects and `force_destroy = false` | `gcloud storage rm -r "gs://catvox-raw-videos-<PROJECT_ID>/**"` then re-run destroy |
+| WIF pool ID conflict after destroy | WIF pools are soft-deleted for 30 days — same ID cannot be reused | WIF pool/provider are intentionally outside Terraform; `bootstrap_wif.sh` only needs to be re-run on a genuinely new GCP project |
 
 ---
 
