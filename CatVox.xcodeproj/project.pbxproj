@@ -17,6 +17,7 @@
 		4F25F5EF0770D910A04EE964 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0A06657FF5E304418C27E21 /* Assets.xcassets */; };
 		53EBF6283E37AC40C2FBF31C /* AnimatedVideoBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25B98C7A388BAC230FA34DE /* AnimatedVideoBackground.swift */; };
 		61C87E117CBDFD72736557E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08F33CD1AC4F31C7769CE96 /* ContentView.swift */; };
+		696CA07C08B3CC4EDE48028D /* ScanQuotaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */; };
 		8C2CEB06889AD660A126DB42 /* PersonaBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */; };
 		93C8E173BFE2C46040F5EA46 /* ResultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95B88E4B8C3A92CC6B7C716 /* ResultViewModel.swift */; };
 		96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C3FCEEFAA51F645F5BECDC /* ThoughtBubbleView.swift */; };
@@ -41,7 +42,8 @@
 		4F5C098EA923D7B7D2B7746F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		689AC1D0436D57C04DBE7694 /* CatPersona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersona.swift; sourceTree = "<group>"; };
 		6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
-		7BC4DFCD54831F1AA990A7C3 /* CatVox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatVox.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7BC4DFCD54831F1AA990A7C3 /* CatVox.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CatVox.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanQuotaStore.swift; sourceTree = "<group>"; };
 		8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAnalysisService.swift; sourceTree = "<group>"; };
 		A8E77CD777F85F8155EEE27D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 			children = (
 				E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */,
 				689AC1D0436D57C04DBE7694 /* CatPersona.swift */,
+				82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -221,7 +224,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					A7EDDBB8F04B431FAC25DB3C = {
 						DevelopmentTeam = 93SH436384;
@@ -281,6 +284,7 @@
 				C3ADEFA683DE26DFF3392AD6 /* RecordingView.swift in Sources */,
 				F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */,
 				93C8E173BFE2C46040F5EA46 /* ResultViewModel.swift in Sources */,
+				696CA07C08B3CC4EDE48028D /* ScanQuotaStore.swift in Sources */,
 				CC4D468FA76148B25B2DFE40 /* Theme.swift in Sources */,
 				96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */,
 				02E96012C9F9B33780525AE7 /* UploadProgressView.swift in Sources */,
@@ -325,10 +329,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 93SH436384;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -349,7 +351,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -363,6 +364,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_ASSET_PATHS = "\"CatVox/Preview Content\"";
+				DEVELOPMENT_TEAM = 93SH436384;
 				INFOPLIST_FILE = CatVox/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -411,10 +413,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 93SH436384;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -428,7 +428,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -442,6 +441,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_ASSET_PATHS = "\"CatVox/Preview Content\"";
+				DEVELOPMENT_TEAM = 93SH436384;
 				INFOPLIST_FILE = CatVox/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

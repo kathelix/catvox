@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
 
+    @Environment(ScanQuotaStore.self) private var quotaStore
+
     @State private var showRecording  = false
     @State private var showResult     = false
     @State private var selectedSample = 0
@@ -47,7 +49,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 24)
 
-                Text("5 free scans remaining today")
+                Text(quotaLabel)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.35))
                     .padding(.top, 12)
@@ -90,8 +92,14 @@ struct HomeView: View {
             ResultView(analysis: MockAnalysisService.allSamples[selectedSample])
         }
     }
+
+    private var quotaLabel: String {
+        let n = quotaStore.scansRemaining
+        return "\(n) free \(n == 1 ? "scan" : "scans") remaining today"
+    }
 }
 
 #Preview {
     HomeView()
+        .environment(ScanQuotaStore())
 }
