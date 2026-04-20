@@ -6,12 +6,14 @@ on:
     paths:
       - 'functions/**'
       - 'firebase.json'
+      - 'docs/Instructions.md'
       - '.github/workflows/functions.yml'
   pull_request:
     branches: [main]
     paths:
       - 'functions/**'
       - 'firebase.json'
+      - 'docs/Instructions.md'
       - '.github/workflows/functions.yml'
 
 concurrency:

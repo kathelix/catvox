@@ -51,6 +51,9 @@ Each ADR should usually contain:
 | 0003 | Use Firebase Cloud Functions 2nd Gen as Backend Proxy | Accepted |
 | 0004 | Store Terraform Remote State in GCS | Accepted |
 | 0005 | Use Workload Identity Federation for Terraform CI | Accepted |
+| 0006 | Split Runtime and CI Service Accounts | Accepted |
+| 0007 | Persistent Anonymous userId via UserDefaults for Quota Enforcement | Accepted |
+| 0008 | Load AI System Prompt from Markdown at Build Time | Accepted |
 
 ## Workflow
 

@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 1.8
+**Version:** 1.9
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -45,7 +45,7 @@ CatVox AI is a premium, minimalist iOS application designed to interpret cat beh
 Short version:
 You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze 10-second video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
 
-Full version see in the file `docs/Instructions.md`
+Full prompt: `docs/Instructions.md` — this is the single source of truth for the system instruction. The Cloud Function build script copies it into the deployment artifact at build time; editing the file and merging the PR is all that is required to update the live prompt. (See ADR-0008.)
 
 ### 4.2 The 6 Cat Personas
 Select the archetype that best fits the observed behavior:
@@ -113,9 +113,11 @@ The backend must return ONLY a valid JSON object following this structure:
     * `roles/datastore.user` — read/write Firestore usage documents.
     * `roles/secretmanager.secretAccessor` — resolve secrets at function startup.
     * `roles/iam.serviceAccountTokenCreator` (self) — generate signed GCS upload URLs for the iOS client.
-* **Service Account: `catvox-ci-sa`** — Terraform CI identity for GitHub Actions. Holds broader project-level rights needed for IaC; isolated from the runtime SA to limit blast radius if either is compromised.
+* **Service Account: `catvox-ci-sa`** — Terraform CI identity for GitHub Actions. Holds broader project-level rights needed for IaC; isolated from the runtime SA to limit blast radius if either is compromised. (See ADR-0006.)
     * `roles/editor` — manage GCP resources (APIs, GCS, Artifact Registry, Secret Manager, Firestore, service accounts).
     * `roles/resourcemanager.projectIamAdmin` — read and write project-level IAM bindings.
+    * `roles/iam.serviceAccountAdmin` — set IAM policies on individual service accounts (`google_service_account_iam_member` resources); intentionally excluded from `roles/editor`.
+    * `roles/secretmanager.secretAccessor` — read secret versions during `terraform plan/apply`; intentionally excluded from `roles/editor`.
     * `roles/storage.objectAdmin` (state bucket only) — read/write Terraform state; granted via `bootstrap_wif.sh`, not Terraform (state bucket is outside IaC scope).
 
 ### 6.4 Data Lifecycle & Persistence
@@ -124,9 +126,10 @@ The backend must return ONLY a valid JSON object following this structure:
     * **CORS Policy:** Configuration to allow direct uploads from the iOS app.
     * **Lifecycle Rule:** `action: Delete`, `condition: Age > 1 day`.
 * **Firestore (Usage Guard):**
-    * Collection: usage/{userId}.
-    * Schema: { count: integer, lastResetDate: string (YYYY-MM-DD) }.
+    * Collection: `usage/{userId}`.
+    * Schema: `{ count: integer, lastResetDate: string (YYYY-MM-DD) }`.
     * **Logic:** Backend increments count; rejects request (429) if limit reached.
+    * **userId:** A UUID generated once on first launch and persisted in `UserDefaults` under the key `"catvox.userId"`. Sent by the iOS client with every `analyseVideo` request. Forward-compatible with Firebase Auth — when Auth is introduced, the computed property value is replaced with the authenticated UID and the Firestore schema requires no changes. (See ADR-0007.)
 
 ---
 
@@ -150,7 +153,7 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Variables:** `TF_VAR_project_id` and `TF_VAR_app_check_debug_token` supplied from GitHub Actions secrets; `region` and `firestore_location` use the defaults defined in `variables.tf`.
 
 ### 7.3 Firebase Cloud Functions Pipeline
-* **Trigger:** Push or pull request targeting `main` when files under `functions/`, `firebase.json`, or the workflow file itself change.
+* **Trigger:** Push or pull request targeting `main` when files under `functions/`, `firebase.json`, `docs/Instructions.md`, or the workflow file itself change. `docs/Instructions.md` is included because it is copied into the deployment artifact at build time — a prompt-only change must trigger a redeploy. (See ADR-0008.)
 * **Authentication:** Same WIF setup as the Terraform pipeline — `catvox-ci-sa` via `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT` secrets.
 * **Build job (on PR and push):** `npm ci` → `npm run build` (TypeScript compile check).
 * **Deploy job (on merge to `main`):** Runs after build passes → `firebase deploy --only functions`.
