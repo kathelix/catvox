@@ -1,6 +1,6 @@
 # High-level Design: CatVox AI
 
-**Version:** 1.0
+**Version:** 1.1
 **Company:** Kathelix Ltd
 **Project Lead:** Ivan Boyko
 **Date:** April 2026
@@ -10,16 +10,22 @@ It should stay concise and remain aligned with `docs/TRD.md`, which holds the de
 For formal architecture decisions, see `docs/adr/README.md` and the ADR files under `docs/adr/`.
 
 ## 1. Project Context & Vision
-CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It uses multimodal AI (Gemini 2.5 Flash) to interpret 10-second cat video clips, providing behavioral analysis and a humorous "inner monologue" translation based on specific feline personas.
+CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It uses multimodal AI (Gemini 2.5 Flash) to interpret short cat video clips, providing behavioral analysis and a humorous "inner monologue" translation based on specific feline personas.
+
+The MVP supports two local input sources:
+1. recording a new clip in-app
+2. selecting an existing clip from the user's Photos library
 
 The product also includes a local on-device scan history as part of the MVP user experience, allowing users to revisit previous cat mood interpretations without relying on cloud-side user accounts.
 
 ## 2. System Flow
-1. The iOS app records a fixed 10-second cat video clip.
-2. The app requests a signed upload URL from the backend.
-3. The app uploads the video to Google Cloud Storage.
-4. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
-5. The backend validates App Check, enforces usage limits, invokes Vertex AI, and returns a normalized result payload.
+1. The user starts a scan from a unified primary CTA in the iOS app.
+2. The user provides a local video by either recording a new clip or selecting an existing clip from Photos.
+3. The app validates the selected local video against MVP client-side rules before upload.
+4. The app requests a signed upload URL from the backend.
+5. The app uploads the validated video to Google Cloud Storage.
+6. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
+7. The backend validates App Check, enforces usage limits, invokes Vertex AI, and returns a normalized result payload.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.
@@ -28,7 +34,9 @@ The product also includes a local on-device scan history as part of the MVP user
 
 ## 4. Key Design Decisions
 * **Multimodal Engine:** Selected Gemini 2.5 Flash for its ability to process video and audio simultaneously via GCS-hosted media, reducing mobile device memory overhead.
-* **Video Pipeline:** Native HEVC (.mov) at 1080p for the MVP to minimize bandwidth usage and avoid complex client-side transcoding, with silent fallback to H.264 on devices that do not support HEVC.
+* **Video Pipeline:** The MVP accepts validated local videos from either in-app recording or Photos selection. Native HEVC (.mov) at 1080p remains the preferred capture path for in-app recording, with silent fallback to H.264 on devices that do not support HEVC. Client-side transcoding is intentionally out of scope for MVP.
+* **MVP Input Rules:** Submitted videos must already satisfy MVP limits before upload: maximum 10 seconds duration, maximum 100 MB file size, supported codec/container, and no ProRes input. 4K input is temporarily accepted for simplicity.
+* **UX Validation Strategy:** The app validates candidate videos locally before upload and clearly explains rejection reasons when a selected video is ineligible. In-app trimming is out of scope for MVP.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.
 * **Backend Pattern:** Firebase Cloud Functions (2nd Gen) act as the backend proxy between the iOS client and privileged GCP services.
@@ -41,6 +49,7 @@ The product also includes a local on-device scan history as part of the MVP user
 * Firebase App Check is mandatory on backend entry points.
 * Usage policy enforcement is server-side.
 * Secrets and privileged cloud access stay server-side.
+* Client-side validation improves UX, but backend remains the authoritative enforcement point for protected limits.
 
 ## 6. Infrastructure Model
 * CatVox runs on GCP and is provisioned with Terraform.
@@ -51,8 +60,9 @@ The product also includes a local on-device scan history as part of the MVP user
 ## 7. MVP Boundaries / Non-goals
 * No direct client-side access to privileged GCP services.
 * No client-side video transcoding in MVP.
+* No in-app video trimming in MVP.
+* No custom filtered gallery browser in MVP beyond the system video picker flow.
 * User identity for MVP is an anonymous per-install identifier used for quota enforcement; full authenticated user accounts are outside current MVP scope.
-* 4K video capture is outside MVP scope.
 * Older Apple device compatibility is not a design driver for the attestation approach.
 
 ---
