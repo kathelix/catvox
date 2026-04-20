@@ -1,11 +1,18 @@
 # High-level Design: CatVox AI
 
+**Version:** 1.0
+**Company:** Kathelix Ltd
+**Project Lead:** Ivan Boyko
+**Date:** April 2026
+
 This file captures the high-level architecture and stable design intent for CatVox.
 It should stay concise and remain aligned with `docs/TRD.md`, which holds the detailed technical design and implementation constraints.
 For formal architecture decisions, see `docs/adr/README.md` and the ADR files under `docs/adr/`.
 
 ## 1. Project Context & Vision
 CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It uses multimodal AI (Gemini 2.5 Flash) to interpret 10-second cat video clips, providing behavioral analysis and a humorous "inner monologue" translation based on specific feline personas.
+
+The product also includes a local on-device scan history as part of the MVP user experience, allowing users to revisit previous cat mood interpretations without relying on cloud-side user accounts.
 
 ## 2. System Flow
 1. The iOS app records a fixed 10-second cat video clip.
@@ -21,7 +28,7 @@ CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It
 
 ## 4. Key Design Decisions
 * **Multimodal Engine:** Selected Gemini 2.5 Flash for its ability to process video and audio simultaneously via GCS-hosted media, reducing mobile device memory overhead.
-* **Video Pipeline:** Chose to stick with native **HEVC (.mov)** at 1080p for the MVP to minimize bandwidth usage and avoid complex client-side transcoding.
+* **Video Pipeline:** Native HEVC (.mov) at 1080p for the MVP to minimize bandwidth usage and avoid complex client-side transcoding, with silent fallback to H.264 on devices that do not support HEVC.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.
 * **Backend Pattern:** Firebase Cloud Functions (2nd Gen) act as the backend proxy between the iOS client and privileged GCP services.
@@ -44,7 +51,7 @@ CatVox AI is a premium iOS application and brand ambassador for Kathelix Ltd. It
 ## 7. MVP Boundaries / Non-goals
 * No direct client-side access to privileged GCP services.
 * No client-side video transcoding in MVP.
-* User identity for MVP is lightweight and non-account-based; full authenticated user accounts are outside current MVP scope.
+* User identity for MVP is an anonymous per-install identifier used for quota enforcement; full authenticated user accounts are outside current MVP scope.
 * 4K video capture is outside MVP scope.
 * Older Apple device compatibility is not a design driver for the attestation approach.
 
