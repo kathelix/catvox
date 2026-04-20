@@ -20,7 +20,7 @@ const MODEL = 'gemini-2.5-flash';
 
 // Safety settings — BLOCK_ONLY_HIGH across all categories.
 // Critical for CatVox: standard violence thresholds would trigger on natural
-// feline hunting and play-fighting behaviour. (See docs/TODO.md)
+// feline hunting and play-fighting behaviour.
 const SAFETY_SETTINGS = [
   HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
   HarmCategory.HARM_CATEGORY_HARASSMENT,
