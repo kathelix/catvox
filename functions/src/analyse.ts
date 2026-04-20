@@ -7,9 +7,9 @@ const REGION = 'us-central1';
 export const analyseVideo = onRequest(
   {
     region: REGION,
-    // TODO: enforce App Check once wired in the iOS app (ADR-0002).
-    // In firebase-functions v5, App Check enforcement on onRequest uses
-    // request.app token validation middleware rather than an HttpsOptions flag.
+    invoker: 'public', // Unauthenticated iOS clients must reach this endpoint.
+    // Security boundary: Firebase App Check (ADR-0002) — enforce once wired in iOS.
+    serviceAccount: 'catvox-backend-sa@kathelix-catvox-prod.iam.gserviceaccount.com',
     timeoutSeconds: 120, // Vertex AI multimodal calls can take up to ~30s; headroom for retries.
     memory: '512MiB',
   },

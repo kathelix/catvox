@@ -7,7 +7,11 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const LOCATION = 'us-central1';
-const MAX_OUTPUT_TOKENS = 300;
+// Gemini 2.5 Flash is a thinking model: thinking tokens are consumed before
+// the visible output is written. 300 was calibrated for non-thinking models
+// and leaves no budget for the actual JSON response once reasoning runs.
+// 1024 output tokens gives the model room to reason and still emit compact JSON.
+const MAX_OUTPUT_TOKENS = 1024;
 
 // Gemini 2.5 Flash is the current GA model on Vertex AI.
 // Gemini 3.x Flash is in preview only — upgrade when GA.
@@ -73,10 +77,25 @@ export async function callGemini(
     ],
   });
 
-  const text =
-    result.response.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const candidates = result.response.candidates;
+  const parts = candidates?.[0]?.content?.parts ?? [];
+  const finishReason = candidates?.[0]?.finishReason;
 
-  if (!text) throw new Error('Empty response from Vertex AI');
+  // Gemini 2.5 Flash is a thinking model: parts may include reasoning chunks
+  // flagged with `thought: true`. Skip those and use the first output part.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const outputPart = parts.find((p: any) => !p.thought);
+  const text = outputPart?.text ?? '';
+
+  if (!text) {
+    const summary = JSON.stringify({
+      candidateCount: candidates?.length ?? 0,
+      finishReason,
+      partCount: parts.length,
+      partTypes: parts.map((p: any) => (p.thought ? 'thought' : 'text')),
+    });
+    throw new Error(`Empty response from Vertex AI — ${summary}`);
+  }
 
   return text;
 }

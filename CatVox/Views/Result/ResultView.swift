@@ -88,6 +88,8 @@ struct ResultView: View {
 
                 if let viewModel {
                     resultContent(viewModel)
+                } else if gcpService.uploadState == .quotaExceeded {
+                    quotaExceededContent
                 } else {
                     loadingContent
                 }
@@ -108,6 +110,14 @@ struct ResultView: View {
     }
 
     // MARK: - Content branches
+
+    /// Shown when the daily free scan quota is exhausted (HTTP 429).
+    private var quotaExceededContent: some View {
+        QuotaExceededView { dismiss() }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 60)
+            .transition(.opacity)
+    }
 
     /// Shown while GCPService is working. Sits in the same vertical zone
     /// as the thought bubble so the transition feels continuous.

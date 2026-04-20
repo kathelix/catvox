@@ -13,7 +13,7 @@ resource "google_service_account" "backend_sa" {
   description  = "Least-privilege runtime identity for CatVox Cloud Functions (TRD §6.3)."
 }
 
-# Vertex AI — call Gemini 3.1 Flash for multimodal video analysis.
+# Vertex AI — call Gemini 2.5 Flash for multimodal video analysis.
 resource "google_project_iam_member" "aiplatform_user" {
   project = var.project_id
   role    = "roles/aiplatform.user"
@@ -24,6 +24,15 @@ resource "google_project_iam_member" "aiplatform_user" {
 resource "google_project_iam_member" "storage_object_viewer" {
   project = var.project_id
   role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.backend_sa.email}"
+}
+
+# Cloud Storage — create objects in GCS. Required so that signed URLs generated
+# by this SA (via signBlob) are accepted by GCS when the iOS client PUTs the
+# video file. objectViewer alone is read-only and does not grant write access.
+resource "google_project_iam_member" "storage_object_creator" {
+  project = var.project_id
+  role    = "roles/storage.objectCreator"
   member  = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
