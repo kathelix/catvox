@@ -267,7 +267,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via `fileData` GCS URI.
 * [x] **Quota Exceeded UI:** Dedicated glassmorphic card shown when the daily scan limit is reached (HTTP 429); includes stub "Upgrade to Pro" CTA (shows "Coming soon" alert) and "Maybe Later" dismiss. StoreKit 2 wiring deferred to the Monetization backlog item.
 * [x] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
-* [ ] **Backend Upload Validation:** Add backend validation for at least duration <= 10 seconds and file size <= 100 MB in the analysis path before Vertex AI is invoked.
+* [x] **Backend File Size Validation:** Add backend validation for file size <= 100 MB in the analysis path before Vertex AI is invoked.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [ ] **Social:** Build branded video overlay and sharing features.
@@ -280,6 +280,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * **Picker Eligibility UX:** Consider richer pre-selection eligibility hints or a more advanced gallery experience only if later product testing shows clear value over the simpler MVP rejection flow.
 * **Signed URL Issuance Rate-Limit:** Add a dedicated anti-abuse rate-limit for signed upload URL requests if App Check plus upload-gate quota enforcement prove insufficient.
 * **Quota Race Hardening:** The MVP may intentionally accept a small race between non-mutating quota pre-checks and post-success usage increments when concurrent requests start near the daily limit. Add reservation or idempotency-based quota accounting later if this becomes visible in production.
+* **Backend Duration Validation:** Add backend validation for uploaded video duration <= 10 seconds before Vertex AI is invoked, rather than relying only on client-side duration checks.
 * **4K Import Strategy Review:** Re-evaluate cost and UX trade-offs of accepting 4K gallery videos, and decide later whether to keep raw upload, cap imported resolution, or introduce client-side normalization.
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.

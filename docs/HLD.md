@@ -28,7 +28,7 @@ The product also includes a local on-device scan history as part of the MVP user
 5. The app requests a signed upload URL from the backend.
 6. The app uploads the validated video to Google Cloud Storage.
 7. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
-8. The backend validates App Check, enforces usage limits, validates protected input constraints, invokes Vertex AI, and returns a normalized result payload.
+8. The backend validates App Check, enforces usage limits, validates server-side guardrails such as upload file size, invokes Vertex AI, and returns a normalized result payload.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.
@@ -52,7 +52,7 @@ The product also includes a local on-device scan history as part of the MVP user
 * Firebase App Check is mandatory on backend entry points.
 * Usage policy enforcement is server-side.
 * Secrets and privileged cloud access stay server-side.
-* Client-side validation improves UX, but backend remains the authoritative enforcement point for protected limits.
+* Client-side validation improves UX and is the primary MVP enforcement point for duration/format eligibility, while the backend remains authoritative for server-side guardrails such as quota and upload file size.
 
 ## 6. Infrastructure Model
 * CatVox runs on GCP and is provisioned with Terraform.
@@ -64,6 +64,7 @@ The product also includes a local on-device scan history as part of the MVP user
 * No direct client-side access to privileged GCP services.
 * No client-side video transcoding in MVP.
 * No in-app video trimming in MVP.
+* No backend video-duration validation in MVP; duration is enforced client-side, with server-side upload file-size guardrails only.
 * No custom filtered gallery browser in MVP beyond the system video picker flow.
 * User identity for MVP is an anonymous per-install identifier used for quota enforcement; full authenticated user accounts are outside current MVP scope.
 * Older Apple device compatibility is not a design driver for the attestation approach.
