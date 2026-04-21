@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+
+# Usage:
+#   ./scripts/run-on-iphone.sh
+#   ./scripts/run-on-iphone.sh launch
+#   ./scripts/run-on-iphone.sh console
+#
+# Modes:
+#   launch   Generate, clean build, install, and launch the app. Default.
+#   console  Generate, clean build, install, and launch attached with
+#            `devicectl --console`. This attaches stdio only; Swift `Logger`
+#            output on a physical iPhone is better viewed in Xcode or
+#            Console.app on macOS.
+#
+# Environment overrides:
+#   DEVICE_ID  Target device UDID.
+
+set -euo pipefail
+
+DEVICE_ID="${DEVICE_ID:-264DA990-A302-5C43-8D51-91BB11C7A1E4}"
+SCHEME="CatVox"
+PROJECT="CatVox.xcodeproj"
+BUNDLE_ID="com.kathelix.catvox"
+DERIVED_DATA_PATH=".build/ios-device"
+APP_PATH="${DERIVED_DATA_PATH}/Build/Products/Debug-iphoneos/${SCHEME}.app"
+MODE="${1:-launch}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+cd "${REPO_ROOT}"
+
+usage() {
+  cat <<EOF
+Usage: ./scripts/run-on-iphone.sh [launch|console]
+
+Modes:
+  launch   Generate, clean build, install, and launch the app. Default.
+  console  Generate, clean build, install, and launch attached with devicectl --console.
+           For Swift Logger output on a physical iPhone, use Xcode's console
+           or Console.app on macOS.
+
+Environment overrides:
+  DEVICE_ID  Target device UDID. Current default: ${DEVICE_ID}
+EOF
+}
+
+case "${MODE}" in
+  launch|console)
+    ;;
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown mode: ${MODE}" >&2
+    usage >&2
+    exit 1
+    ;;
+esac
+
+for tool in xcodegen xcodebuild xcrun; do
+  if ! command -v "${tool}" >/dev/null 2>&1; then
+    echo "Missing required tool: ${tool}" >&2
+    exit 1
+  fi
+done
+
+echo "Generating Xcode project..."
+xcodegen generate
+
+echo "Cleaning derived data at ${DERIVED_DATA_PATH}..."
+rm -rf "${DERIVED_DATA_PATH}"
+
+echo "Building ${SCHEME} for device ${DEVICE_ID}..."
+xcodebuild \
+  -project "${PROJECT}" \
+  -scheme "${SCHEME}" \
+  -configuration Debug \
+  -destination "id=${DEVICE_ID}" \
+  -derivedDataPath "${DERIVED_DATA_PATH}" \
+  -allowProvisioningUpdates \
+  -allowProvisioningDeviceRegistration \
+  clean build
+
+if [[ ! -d "${APP_PATH}" ]]; then
+  echo "Built app not found at ${APP_PATH}" >&2
+  exit 1
+fi
+
+echo "Installing app on device ${DEVICE_ID}..."
+xcrun devicectl device install app \
+  --device "${DEVICE_ID}" \
+  "${APP_PATH}"
+
+echo "Launching ${BUNDLE_ID} on device ${DEVICE_ID}..."
+if [[ "${MODE}" == "console" ]]; then
+  xcrun devicectl device process launch \
+    --device "${DEVICE_ID}" \
+    "${BUNDLE_ID}" \
+    --terminate-existing \
+    --console
+else
+  xcrun devicectl device process launch \
+    --device "${DEVICE_ID}" \
+    "${BUNDLE_ID}" \
+    --terminate-existing
+fi
+
+echo "Done."
