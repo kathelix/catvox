@@ -6,6 +6,11 @@ name = "catvox"
 script = ""
 
 [[actions]]
-name = "Run"
+name = "App - build and deploy"
 icon = "run"
 command = "./scripts/run-on-iphone.sh launch"
+
+[[actions]]
+name = "Deploy backend"
+icon = "run"
+command = "firebase deploy --only functions"
