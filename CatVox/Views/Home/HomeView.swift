@@ -5,10 +5,12 @@ struct HomeView: View {
     @Environment(ScanQuotaStore.self) private var quotaStore
 
     @State private var showSourceChoice = false
+    @State private var showPhotoPicker  = false
     @State private var showRecording    = false
     @State private var showResult       = false
     @State private var showQuotaCard    = false
-    @State private var showPhotosStub   = false
+    @State private var showPhotoNotice  = false
+    @State private var photoNoticeText  = ""
     @State private var selectedSample   = 0
 
     var body: some View {
@@ -113,12 +115,20 @@ struct HomeView: View {
             }
 
             Button("Choose from Photos") {
-                showPhotosStub = true
+                showPhotoPicker = true
             }
 
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Start with a new recording or pick an existing clip.")
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            HomeVideoPicker { didSelectVideo in
+                if didSelectVideo {
+                    photoNoticeText = "Video selected. Import processing will be wired in the next implementation slice."
+                    showPhotoNotice = true
+                }
+            }
         }
         .fullScreenCover(isPresented: $showRecording) {
             RecordingView()
@@ -126,10 +136,10 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $showResult) {
             ResultView(analysis: MockAnalysisService.allSamples[selectedSample])
         }
-        .alert("Photos Import", isPresented: $showPhotosStub) {
+        .alert("Photos Import", isPresented: $showPhotoNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Choosing an existing video will be wired in the next implementation slice.")
+            Text(photoNoticeText)
         }
     }
 
