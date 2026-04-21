@@ -96,6 +96,23 @@ xcodegen generate
 
 The `schemes:` block in `project.yml` is intentional — XcodeGen silently deletes shared schemes unless they are declared there. Do not remove it.
 
+### Local Xcode / Build Verification
+
+- The machine is configured to use full Xcode, not Command Line Tools:
+  - `xcode-select -p` should be `/Applications/Xcode.app/Contents/Developer`
+  - plain `xcodebuild -version` should work without a `DEVELOPER_DIR` override
+- For local build verification, run `xcodebuild` from the repo root (`/Users/Shared/git/github.com/catvox`), not from a subdirectory.
+- Canonical verification command:
+
+```bash
+xcodebuild -project CatVox.xcodeproj \
+  -scheme CatVox \
+  -destination 'generic/platform=iOS Simulator' \
+  build CODE_SIGNING_ALLOWED=NO
+```
+
+- In Codex, simulator builds may fail inside the sandbox because of `CoreSimulatorService` and `~/Library` access. If that happens, rerun the same `xcodebuild` command outside the sandbox instead of changing the build command.
+
 ### Key Implementation Details
 
 - **Video recording:** `CameraService.swift` — `sessionPreset = .hd1920x1080` caps at 1080p; HEVC codec enforced via `setOutputSettings` after `addOutput()`. Falls back to H.264 silently on pre-A10 devices.
