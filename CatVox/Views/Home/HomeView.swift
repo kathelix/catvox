@@ -4,9 +4,11 @@ struct HomeView: View {
 
     @Environment(ScanQuotaStore.self) private var quotaStore
 
+    @State private var showSourceChoice = false
     @State private var showRecording    = false
     @State private var showResult       = false
     @State private var showQuotaCard    = false
+    @State private var showPhotosStub   = false
     @State private var selectedSample   = 0
 
     var body: some View {
@@ -37,12 +39,12 @@ struct HomeView: View {
                 // MARK: Primary CTA
                 Button {
                     if quotaStore.scansRemaining > 0 {
-                        showRecording = true
+                        showSourceChoice = true
                     } else {
                         showQuotaCard = true
                     }
                 } label: {
-                    Label("Start Scan", systemImage: "video.fill")
+                    Label("Read My Cat", systemImage: "video.fill")
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -101,11 +103,33 @@ struct HomeView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .confirmationDialog(
+            "Choose Video Source",
+            isPresented: $showSourceChoice,
+            titleVisibility: .visible
+        ) {
+            Button("Record New Video") {
+                showRecording = true
+            }
+
+            Button("Choose from Photos") {
+                showPhotosStub = true
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Start with a new recording or pick an existing clip.")
+        }
         .fullScreenCover(isPresented: $showRecording) {
             RecordingView()
         }
         .fullScreenCover(isPresented: $showResult) {
             ResultView(analysis: MockAnalysisService.allSamples[selectedSample])
+        }
+        .alert("Photos Import", isPresented: $showPhotosStub) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Choosing an existing video will be wired in the next implementation slice.")
         }
     }
 
