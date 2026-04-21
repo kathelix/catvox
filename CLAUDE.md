@@ -118,11 +118,11 @@ Persona names in code (`CatPersona.swift` rawValues) must exactly match TRD §4.
 
 ### Vertex AI Call Parameters (for Cloud Function implementation)
 
-From `docs/TODO.md` — use these when implementing the Cloud Function:
+Implemented in `functions/src/gemini.ts` — update there, not here:
 - **Temperature:** 0.7
 - **Response MIME type:** `application/json`
 - **Safety settings:** `BLOCK_ONLY_HIGH` (standard violence filters trip on feline hunting behavior)
-- **Max output tokens:** ~300
+- **Max output tokens:** 2048 (Gemini 2.5 Flash is a thinking model; raised from 300 → 1024 → 2048 as reasoning budget consumed earlier values before the JSON response could complete)
 
 ---
 
