@@ -211,6 +211,28 @@ PROJECT_ID=kathelix-catvox-prod ./terraform/bootstrap_wif.sh
 - The Terraform pipeline posts a plan comment on every PR — review it before merging.
 - Use descriptive branch names: `feature/`, `fix/`, `infra/`.
 
+### Product Feature Workflow
+
+For user-facing product changes, use this order unless the user explicitly asks otherwise:
+
+1. Discuss UX / product behavior first.
+2. Update `docs/HLD.md` if the change affects high-level behavior or MVP boundaries.
+3. Update `docs/TRD.md` before implementing code.
+4. Only then implement code.
+
+Do not treat user-facing flow changes as isolated code tweaks when they change app behavior, validation, or state transitions.
+
+### Pre-Merge Checklist
+
+Before merging a feature PR, verify all of the following:
+
+- the PR description matches the final implementation
+- acceptance criteria / test checklist is current
+- related completed items are removed or updated in `docs/TODO.md`
+- implemented backlog items are checked off in `docs/TRD.md` §8
+- `docs/HLD.md` still matches the implemented MVP boundary
+- no leftover dev-only UI, preview shortcuts, or debug scaffolding remains in the user-facing flow
+
 ### Commit Style
 
 Short, imperative subject line. No period. Examples from this repo's history:
