@@ -30,7 +30,11 @@ For MVP, the user can either record a new video in-app or select an existing vid
 * **Unified Scan Entry:** The home screen exposes one primary CTA labeled **Read My Cat**. After tapping it, the app presents a source choice sheet with:
     * **Record New Video**
     * **Choose from Photos**
-* **Video Capture:** Fixed 10-second recording window with a visual countdown UI and an audio ping at the moment recording ends.
+* **Video Capture:** In-app recording supports clips up to **10 seconds**. The user may stop recording early once a minimum capture threshold of **2.0 seconds** has elapsed. If the user does not stop manually, recording ends automatically at 10 seconds, with an audio ping at the moment recording ends.
+* **Post-Capture Review:** After an in-app recording ends, the app presents a lightweight review decision with:
+    * **Retake**
+    * **Use This Clip**
+  Upload and analysis begin only after the user chooses **Use This Clip**.
 * **Photos Import:** The app supports selecting an existing video from the user's Photos library using the system video picker flow. The picker is restricted to videos, but detailed eligibility checks are performed by the app after selection rather than by a custom filtered gallery browser.
 * **Video Validation Rules:** Before upload, the app must validate the candidate video locally. MVP acceptance rules are:
     * maximum duration: **10 seconds**
@@ -90,8 +94,13 @@ The backend must return ONLY a valid JSON object following this structure:
 2. **Source Choice Sheet:** A lightweight chooser offering:
     * **Record New Video**
     * **Choose from Photos**
-3. **Recording Screen:** Viewfinder with a 10-second progress ring.
-4. **Result Screen:**
+3. **Recording Screen:** Viewfinder with a progress ring for a clip up to 10 seconds, a tappable stop control after the minimum threshold is reached, and a lightweight post-capture review step.
+4. **Post-Capture Review State:**
+    * shown immediately after recording ends, whether by early stop or automatic 10-second completion
+    * offers:
+        * **Retake**
+        * **Use This Clip**
+5. **Result Screen:**
     * Full-screen looping video background.
     * Animated Glassmorphism "Thought Bubble".
     * **Confidence Score UI:** The percentage ring must be dynamically color-coded:
@@ -109,6 +118,20 @@ The backend must return ONLY a valid JSON object following this structure:
     * "ProRes videos aren't supported."
     * "This video format isn't supported."
 * The MVP UX favors clear post-selection validation messaging over a custom gallery browser with disabled or hidden ineligible assets.
+
+### 5.3 Recording UX
+* The record control starts capture when tapped from idle state.
+* During recording, the central capture control must become the stop affordance once the minimum capture threshold is reached.
+* Minimum early-stop threshold: **2.0 seconds**.
+* Before 2.0 seconds, tapping the control must not end recording.
+* If the user taps the control before 2.0 seconds, the app should show a brief hint such as `KEEP RECORDING A BIT LONGER`.
+* The UI must make the early-stop affordance clear while recording, using explicit helper text such as:
+    * before early-stop is allowed: `KEEP RECORDING`
+    * after early-stop is allowed: `TAP TO FINISH`
+* When recording ends, the app must not begin upload or analysis immediately.
+* Upload and analysis begin only after the user taps **Use This Clip**.
+* Tapping **Retake** discards the recorded clip and returns the user to the live camera view in ready-to-record state.
+* The same post-capture review flow applies whether recording ended by manual early stop or by automatic completion at 10 seconds.
 
 ---
 
@@ -267,6 +290,8 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via `fileData` GCS URI.
 * [x] **Quota Exceeded UI:** Dedicated glassmorphic card shown when the daily scan limit is reached (HTTP 429); includes stub "Upgrade to Pro" CTA (shows "Coming soon" alert) and "Maybe Later" dismiss. StoreKit 2 wiring deferred to the Monetization backlog item.
 * [x] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
+* [x] **Early Stop Recording:** Allow users to stop in-app recording after a 2.0-second minimum threshold using the main capture control.
+* [x] **Post-Capture Review:** Add `Retake` and `Use This Clip` actions after recording ends; only `Use This Clip` continues to upload and analysis.
 * [x] **Backend File Size Validation:** Add backend validation for file size <= 100 MB in the analysis path before Vertex AI is invoked.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
