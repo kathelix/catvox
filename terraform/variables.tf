@@ -54,3 +54,8 @@ variable "tf_state_bucket" {
   type        = string
   default     = "catvox-tf-state-kathelix-catvox-prod"
 }
+
+variable "alert_email" {
+  description = "Email address to receive Cloud Monitoring alerts when a Cloud Function emits an ERROR-level log entry."
+  type        = string
+}

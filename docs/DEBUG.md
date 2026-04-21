@@ -140,22 +140,30 @@ logs reactively. Below are the options for moving to proactive detection.
 
 ---
 
-### Option A — GCP Error Reporting notifications (easiest, zero code)
+### Option A — Cloud Monitoring log-match alert (implemented in IaC)
 
-GCP Error Reporting automatically groups unhandled exceptions from Cloud Run
-and can send email alerts when new error groups appear or when error frequency
-spikes.
+A Cloud Monitoring alerting policy fires directly on ERROR-level log entries
+from either Cloud Function, with no manual console steps required.
 
-**Setup (5 minutes, Firebase console):**
-1. Open [GCP Error Reporting](https://console.cloud.google.com/errors?project=kathelix-catvox-prod).
-2. Click the bell icon → **Notifications** → enable email alerts.
-3. Optionally connect a PagerDuty or Slack channel via the **Notification channels** link.
+**This is already implemented in `terraform/monitoring.tf`.** Add your email
+to `terraform.tfvars` and the next `terraform apply` (or CI merge) activates it:
 
-**What you get:** an email within minutes of a new unhandled exception pattern,
-linking directly to the grouped error with stack trace and frequency graph.
+```hcl
+# terraform.tfvars
+alert_email = "you@example.com"
+```
 
-**Limitation:** groups by stack trace, not by root cause message. Two distinct
-Vertex AI errors (JSON truncation vs. empty response) may appear as one group.
+**What you get:** an email within ~1 minute of any unhandled exception, with a
+link to the alert and the documentation note pointing to `docs/DEBUG.md`.
+Rate-limited to one email per 5 minutes to prevent alert storms.
+
+**What the alert email contains:** timestamp, service name, link to Cloud
+Logging filtered to the error window, and the documentation snippet from
+`monitoring.tf`. From there, run the Step 2 command in §2 to get the full
+payload.
+
+**Limitation:** one email per alert wave, not per individual error. For
+per-error detail you still need `gcloud logging read` (§2).
 
 ---
 
