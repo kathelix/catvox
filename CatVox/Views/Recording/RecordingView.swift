@@ -4,10 +4,11 @@ import SwiftUI
 ///
 /// Lifecycle:
 ///   1. onAppear   → requests camera + mic permissions, starts AVCaptureSession
-///   2. Tap record → 10-second countdown begins (progress ring + integer timer)
-///   3. Progress reaches 1.0 → recording stops, temp file URL saved
-///   4. captureState == .finished → fullScreenCover presents ResultView
-///      (Phase 1: always uses mock data; Phase 2: passes real video URL)
+///   2. Tap record → countdown begins (progress ring + integer timer)
+///   3. After 2 seconds, tapping the capture control stops recording early
+///   4. Recording ends automatically at 10 seconds if the user does not stop
+///   5. captureState == .finished → lightweight review state appears
+///   6. "Use This Clip" → fullScreenCover presents ResultView
 ///
 /// Simulator note: no physical camera is available so the preview is black,
 /// but the countdown and handoff simulation run identically to a real device.
@@ -21,6 +22,8 @@ struct RecordingView: View {
     @State private var recordedURL:  URL?
     @State private var errorMessage  = ""
     @State private var showError     = false
+    @State private var transientStatusMessage: String?
+    @State private var hintTask: Task<Void, Never>?
 
     // Integer countdown derived from continuous progress (0 – 10).
     private var countdown: Int {
@@ -65,12 +68,17 @@ struct RecordingView: View {
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
         .onAppear  { service.requestPermissionsAndConfigure() }
-        .onDisappear { service.stopSession() }
+        .onDisappear {
+            hintTask?.cancel()
+            service.stopSession()
+            if !showResult {
+                discardRecordedClip()
+            }
+        }
         .onChange(of: service.captureState) { _, state in
             switch state {
             case .finished(let url):
                 recordedURL = url
-                showResult  = true
             case .failed(let msg):
                 errorMessage = msg
                 showError    = true
@@ -123,11 +131,11 @@ struct RecordingView: View {
                         .frame(width: 7, height: 7)
                         .opacity(0.9)
                 }
-                Text(isRecording ? "REC" : "10 SEC")
+                Text(topBarLabel)
                     .font(.system(size: 11, weight: .heavy))
                     .foregroundStyle(.white.opacity(0.55))
                     .tracking(2.5)
-                    .animation(.default, value: isRecording)
+                    .animation(.default, value: topBarLabel)
             }
 
             Spacer()
@@ -161,12 +169,18 @@ struct RecordingView: View {
                 centreContent
             }
             .frame(width: 128, height: 128)
+            .contentShape(Circle())
+            .onTapGesture(perform: handleCaptureTap)
 
             Text(statusLabel)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.45))
                 .tracking(2.2)
                 .animation(.default, value: statusLabel)
+
+            if hasReviewActions {
+                reviewActions
+            }
         }
     }
 
@@ -192,11 +206,58 @@ struct RecordingView: View {
                 .animation(.spring(response: 0.3, dampingFraction: 0.7),
                            value: countdown)
 
-        case .finished(_), .failed(_):
+        case .finalizing:
+            ProgressView()
+                .tint(.white)
+                .scaleEffect(1.4)
+
+        case .finished:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(.white)
+
+        case .failed(_):
             ProgressView()
                 .tint(.white)
                 .scaleEffect(1.4)
         }
+    }
+
+    private var reviewActions: some View {
+        HStack(spacing: 12) {
+            Button {
+                retakeRecording()
+            } label: {
+                Text("Retake")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(.white.opacity(0.08))
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+                    }
+            }
+
+            Button {
+                useRecordedClip()
+            } label: {
+                Text("Use This Clip")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        CatVoxTheme.brandGradient,
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+            }
+        }
+        .padding(.horizontal, 20)
     }
 
     // MARK: - Camera placeholder
@@ -228,12 +289,79 @@ struct RecordingView: View {
         return false
     }
 
+    private var hasReviewActions: Bool {
+        if case .finished = service.captureState { return true }
+        return false
+    }
+
+    private var topBarLabel: String {
+        switch service.captureState {
+        case .recording:
+            return "REC"
+        case .finished:
+            return "REVIEW"
+        default:
+            return "10 SEC"
+        }
+    }
+
     private var statusLabel: String {
+        if let transientStatusMessage {
+            return transientStatusMessage
+        }
+
         switch service.captureState {
         case .idle:         return "TAP TO START"
-        case .recording:    return "RECORDING"
-        case .finished(_):  return "PROCESSING"
+        case .recording:
+            return service.canStopRecording ? "TAP TO FINISH" : "KEEP RECORDING"
+        case .finalizing:   return "FINALIZING"
+        case .finished(_):  return "CHOOSE NEXT STEP"
         case .failed(_):    return "FAILED"
+        }
+    }
+
+    private func handleCaptureTap() {
+        guard isRecording else { return }
+
+        if service.canStopRecording {
+            clearTransientStatusMessage()
+            service.stopRecording()
+        } else {
+            showTransientStatusMessage("KEEP RECORDING A BIT LONGER")
+        }
+    }
+
+    private func showTransientStatusMessage(_ message: String) {
+        hintTask?.cancel()
+        transientStatusMessage = message
+
+        hintTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.25))
+            transientStatusMessage = nil
+        }
+    }
+
+    private func clearTransientStatusMessage() {
+        hintTask?.cancel()
+        hintTask = nil
+        transientStatusMessage = nil
+    }
+
+    private func useRecordedClip() {
+        guard recordedURL != nil else { return }
+        showResult = true
+    }
+
+    private func retakeRecording() {
+        clearTransientStatusMessage()
+        discardRecordedClip()
+        recordedURL = nil
+        service.reset()
+    }
+
+    private func discardRecordedClip() {
+        if let recordedURL {
+            try? FileManager.default.removeItem(at: recordedURL)
         }
     }
 }

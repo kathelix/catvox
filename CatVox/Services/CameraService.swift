@@ -2,7 +2,7 @@ import AudioToolbox
 import AVFoundation
 import Observation
 
-/// Manages the full AVCaptureSession lifecycle for a fixed 10-second recording.
+/// Manages the full AVCaptureSession lifecycle for an up-to-10-second recording.
 ///
 /// Design notes:
 ///   - CameraService is @Observable but must NOT subclass NSObject.
@@ -20,12 +20,14 @@ final class CameraService {
     enum CaptureState: Equatable {
         case idle
         case recording
+        case finalizing
         case finished(URL)
         case failed(String)
 
         static func == (lhs: CaptureState, rhs: CaptureState) -> Bool {
             switch (lhs, rhs) {
-            case (.idle, .idle), (.recording, .recording): return true
+            case (.idle, .idle), (.recording, .recording), (.finalizing, .finalizing):
+                return true
             case let (.finished(a), .finished(b)):         return a == b
             case let (.failed(a),   .failed(b)):           return a == b
             default:                                       return false
@@ -52,6 +54,7 @@ final class CameraService {
 
     /// Fixed clip length per TRD §3.1.
     static let clipDuration: TimeInterval = 10
+    static let minimumRecordDuration: TimeInterval = 2
 
     private var displayLink: CADisplayLink?
     private var startTime:   CFTimeInterval = 0
@@ -164,6 +167,16 @@ final class CameraService {
         #endif
     }
 
+    var canStopRecording: Bool {
+        guard case .recording = captureState else { return false }
+        return progress * Self.clipDuration >= Self.minimumRecordDuration
+    }
+
+    func stopRecording() {
+        guard canStopRecording else { return }
+        finishRecording()
+    }
+
     private func attachDisplayLink() {
         let link = CADisplayLink(target: captureDelegate,
                                  selector: #selector(CaptureDelegate.tick))
@@ -178,20 +191,8 @@ final class CameraService {
         progress = min(elapsed / Self.clipDuration, 1.0)
 
         guard progress >= 1.0 else { return }
-
-        displayLink?.invalidate()
-        displayLink = nil
-
-        // TRD §3.1 — audio ping at exactly 10 s.
-        #if targetEnvironment(simulator)
-        AudioServicesPlaySystemSound(1117)
-        let stubURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("catvox_mock.mov")
-        captureState = .finished(stubURL)
-        #else
-        fileOutput.stopRecording()
-        AudioServicesPlaySystemSound(1117)
-        #endif
+        progress = 1
+        finishRecording()
     }
 
     fileprivate func handleRecordingFinished(url: URL, error: Error?) {
@@ -205,11 +206,33 @@ final class CameraService {
         }
     }
 
+    private func finishRecording() {
+        guard case .recording = captureState else { return }
+
+        displayLink?.invalidate()
+        displayLink = nil
+        captureState = .finalizing
+
+        // TRD §3.1 — audio ping at the moment recording ends, whether
+        // by early user stop or automatic completion at 10 seconds.
+        AudioServicesPlaySystemSound(1117)
+
+        #if targetEnvironment(simulator)
+        let stubURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("catvox_mock.mov")
+        captureState = .finished(stubURL)
+        #else
+        fileOutput.stopRecording()
+        #endif
+    }
+
     // MARK: - Reset
 
     /// Returns to `.idle` so the user can record again without
     /// dismissing RecordingView.
     func reset() {
+        displayLink?.invalidate()
+        displayLink = nil
         captureState = .idle
         progress     = 0
     }
