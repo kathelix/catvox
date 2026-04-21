@@ -7,12 +7,10 @@ struct HomeView: View {
     @State private var showSourceChoice = false
     @State private var showPhotoPicker  = false
     @State private var showRecording    = false
-    @State private var showResult       = false
     @State private var showImportedResult = false
     @State private var showQuotaCard    = false
     @State private var showPhotoNotice  = false
     @State private var photoNoticeText  = ""
-    @State private var selectedSample   = 0
     @State private var importedVideoURL: URL?
 
     var body: some View {
@@ -64,33 +62,6 @@ struct HomeView: View {
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.35))
                     .padding(.top, 12)
-
-                // MARK: Dev preview shortcut
-                Rectangle()
-                    .fill(.white.opacity(0.07))
-                    .frame(height: 1)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 28)
-
-                VStack(spacing: 10) {
-                    Text("DEV PREVIEW")
-                        .font(.system(size: 9, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.25))
-                        .tracking(2)
-
-                    Picker("Persona", selection: $selectedSample) {
-                        Text("Grumpy Boss").tag(0)
-                        Text("Philosopher").tag(1)
-                        Text("Chaotic Hunter").tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 24)
-
-                    Button("Preview Result") { showResult = true }
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.35))
-                        .padding(.top, 2)
-                }
 
                 Spacer().frame(height: 56)
             }
@@ -149,9 +120,6 @@ struct HomeView: View {
             } else {
                 ResultView(analysis: MockAnalysisService.sampleAnalysis)
             }
-        }
-        .fullScreenCover(isPresented: $showResult) {
-            ResultView(analysis: MockAnalysisService.allSamples[selectedSample])
         }
         .onChange(of: showImportedResult) { _, isShowing in
             if !isShowing {
