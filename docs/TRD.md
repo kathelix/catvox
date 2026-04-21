@@ -259,15 +259,14 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
 * [x] **Remote Terraform State:** GCS backend configured and local state migrated; state bucket bootstrapped with versioning enabled.
 * [x] **CI/CD Terraform Pipeline:** GitHub Actions workflow live — plan on PR (with PR comment), apply on merge; authenticated via Workload Identity Federation.
-* [ ] **App Check Setup:** Configure App Attest in Apple Developer and Firebase App Check consoles, plus Debug Provider for local development. (See ADR-0002.) When App Check is wired in, two temporary workarounds must be reverted:
+* [ ] **App Check Setup:** Configure App Attest in Apple Developer and Firebase App Check consoles, plus Debug Provider for local development. (See ADR-0002.) When App Check is wired in, one temporary workaround must be reverted:
     1. **`invoker: 'public'` on both Cloud Functions** (`functions/src/signedUrl.ts`, `functions/src/analyse.ts`) — currently allows unauthenticated callers. Replace with App Check token validation in-code: verify the `X-Firebase-AppCheck` header using the Firebase Admin SDK at the top of each handler, before any business logic.
-    2. **No quota guard on `getSignedUploadURL`** — currently any caller can request signed upload URLs without any quota pre-check. Add a non-mutating quota check (or an equivalent lightweight rate-limit) to `signedUrl.ts` so requests from already-exhausted users are rejected before upload starts, but do **not** increment usage there; per §3.2, usage is incremented only after `analyseVideo` completes successfully and returns a result payload.
 * [x] **Backend Proxy:** Firebase Cloud Functions (TypeScript) deployed — `getSignedUploadURL` and `analyseVideo` live in `us-central1`; Firestore usage guard, Vertex AI call, CI deploy pipeline via GitHub Actions.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
 * [x] **Video Upload:** Swift upload of the recorded HEVC file to GCS via signed URL; real pipeline live (`mockMode = false`).
 * [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via `fileData` GCS URI.
 * [x] **Quota Exceeded UI:** Dedicated glassmorphic card shown when the daily scan limit is reached (HTTP 429); includes stub "Upgrade to Pro" CTA (shows "Coming soon" alert) and "Maybe Later" dismiss. StoreKit 2 wiring deferred to the Monetization backlog item.
-* [ ] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
+* [x] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
 * [ ] **Backend Upload Validation:** Add backend validation for at least duration <= 10 seconds and file size <= 100 MB in the analysis path before Vertex AI is invoked.
 * [ ] **Persistence:** Set up SwiftData for local scan history storage.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).

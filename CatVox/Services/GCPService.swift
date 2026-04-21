@@ -190,6 +190,7 @@ final class GCPService {
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
+        if http.statusCode == 429 { throw GCPError.quotaExceeded }
         guard http.statusCode == 200 else {
             let body = String(data: data, encoding: .utf8) ?? "(no body)"
             logger.error("getSignedUploadURL: HTTP \(http.statusCode) — \(body)")
