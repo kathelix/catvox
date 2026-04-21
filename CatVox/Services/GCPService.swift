@@ -6,8 +6,8 @@ import os
 ///
 /// Pipeline:
 ///   1. Fetch a short-lived signed PUT URL from the Firebase Cloud Function.
-///   2. Stream the recorded .mov file to Google Cloud Storage via HTTP PUT
-///      with Content-Type: video/quicktime (matches the QuickTime container).
+///   2. Stream the local video file to Google Cloud Storage via HTTP PUT
+///      with the content type inferred from the file container.
 ///   3. Trigger the Vertex AI analysis Cloud Function and return a CatAnalysis.
 ///
 /// Mock mode (default on):
@@ -155,12 +155,17 @@ final class GCPService {
     // MARK: - Real pipeline (Phase 2)
 
     private func realPipeline(localURL: URL) async throws {
+        let contentType = ImportedVideoService.mimeType(for: localURL)
+
         uploadState = .fetchingSignedURL
-        let (signedURL, gcsUri) = try await fetchSignedURL(for: localURL)
+        let (signedURL, gcsUri) = try await fetchSignedURL(
+            for: localURL,
+            contentType: contentType
+        )
         try Task.checkCancellation()
 
         uploadState = .uploading(0)
-        try await upload(fileURL: localURL, to: signedURL)
+        try await upload(fileURL: localURL, to: signedURL, contentType: contentType)
         try Task.checkCancellation()
 
         uploadState = .analysing
@@ -170,13 +175,14 @@ final class GCPService {
 
     /// Returns `(signedURL, gcsUri)` — the signed PUT URL for the upload and
     /// the GCS URI (`gs://…`) passed to the analysis function.
-    private func fetchSignedURL(for videoURL: URL) async throws -> (URL, String) {
+    private func fetchSignedURL(for videoURL: URL, contentType: String) async throws -> (URL, String) {
         var request = URLRequest(url: Endpoint.signedURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let payload: [String: String] = [
             "filename":    videoURL.lastPathComponent,
-            "contentType": "video/quicktime",
+            "contentType": contentType,
+            "userId":      userId,
         ]
         request.httpBody = try JSONEncoder().encode(payload)
 
@@ -201,7 +207,7 @@ final class GCPService {
     /// Streams the video file to GCS with a PUT request.
     /// Uses an NSObject delegate shim to relay byte-level progress back to the
     /// main actor — the same pattern used by CaptureDelegate in CameraService.
-    private func upload(fileURL: URL, to signedURL: URL) async throws {
+    private func upload(fileURL: URL, to signedURL: URL, contentType: String) async throws {
         let progressDelegate = UploadProgressDelegate { [weak self] progress in
             Task { @MainActor [weak self] in
                 self?.uploadState = .uploading(progress)
@@ -220,7 +226,7 @@ final class GCPService {
 
         var request = URLRequest(url: signedURL)
         request.httpMethod = "PUT"
-        request.setValue("video/quicktime", forHTTPHeaderField: "Content-Type")
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
 
         let (data, response) = try await session.upload(for: request, fromFile: fileURL)
         guard let http = response as? HTTPURLResponse else {
