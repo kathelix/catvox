@@ -38,21 +38,21 @@ provider "google-beta" {
 
 resource "google_project_service" "apis" {
   for_each = toset([
-    "aiplatform.googleapis.com",       # Vertex AI / Gemini
-    "cloudfunctions.googleapis.com",   # Cloud Functions
-    "cloudbuild.googleapis.com",       # Cloud Build — containerises Functions 2nd gen
-    "run.googleapis.com",              # Functions 2nd gen runs on Cloud Run
-    "eventarc.googleapis.com",         # Event routing for Functions 2nd gen
-    "pubsub.googleapis.com",           # Required by Eventarc
-    "firestore.googleapis.com",        # Usage guard storage
-    "storage.googleapis.com",          # Video uploads + Cloud Build staging bucket
-    "secretmanager.googleapis.com",    # Credential management
-    "firebase.googleapis.com",         # Firebase platform
-    "firebaseappcheck.googleapis.com", # App Check enforcement
-    "iam.googleapis.com",              # SA + role management
-    "artifactregistry.googleapis.com",  # Container images for Functions 2nd gen
-    "cloudbilling.googleapis.com",      # Required by Firebase CLI for Functions deploy
-    "monitoring.googleapis.com",        # Cloud Monitoring — alerting policies + notification channels
+    "aiplatform.googleapis.com",          # Vertex AI / Gemini
+    "cloudfunctions.googleapis.com",      # Cloud Functions
+    "cloudbuild.googleapis.com",          # Cloud Build — containerises Functions 2nd gen
+    "run.googleapis.com",                 # Functions 2nd gen runs on Cloud Run
+    "eventarc.googleapis.com",            # Event routing for Functions 2nd gen
+    "pubsub.googleapis.com",              # Required by Eventarc
+    "firestore.googleapis.com",           # Usage guard storage
+    "storage.googleapis.com",             # Video uploads + Cloud Build staging bucket
+    "secretmanager.googleapis.com",       # Credential management
+    "firebase.googleapis.com",            # Firebase platform
+    "firebaseappcheck.googleapis.com",    # App Check enforcement
+    "iam.googleapis.com",                 # SA + role management
+    "artifactregistry.googleapis.com",    # Container images for Functions 2nd gen
+    "cloudbilling.googleapis.com",        # Required by Firebase CLI for Functions deploy
+    "monitoring.googleapis.com",          # Cloud Monitoring — alerting policies + notification channels
     "clouderrorreporting.googleapis.com", # Error Reporting — groups unhandled exceptions from Cloud Run
   ])
 
