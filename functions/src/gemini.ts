@@ -8,10 +8,11 @@ import { join } from 'path';
 
 const LOCATION = 'us-central1';
 // Gemini 2.5 Flash is a thinking model: thinking tokens are consumed before
-// the visible output is written. 300 was calibrated for non-thinking models
-// and leaves no budget for the actual JSON response once reasoning runs.
-// 1024 output tokens gives the model room to reason and still emit compact JSON.
-const MAX_OUTPUT_TOKENS = 1024;
+// the visible output is written. maxOutputTokens controls only the non-thinking
+// output budget. When reasoning is more elaborate, a low ceiling causes the
+// JSON response to be hard-truncated mid-stream (observed at 1024 in prod).
+// 2048 gives comfortable headroom for the full 6-field JSON schema.
+const MAX_OUTPUT_TOKENS = 2048;
 
 // Gemini 2.5 Flash is the current GA model on Vertex AI.
 // Gemini 3.x Flash is in preview only — upgrade when GA.
