@@ -1,8 +1,14 @@
 import { onRequest } from 'firebase-functions/v2/https';
-import { checkAndIncrementUsage } from './usageGuard';
+import { getStorage } from 'firebase-admin/storage';
+import {
+  checkUsageAvailable,
+  incrementUsage,
+  isLimitExceededError,
+} from './usageGuard';
 import { callGemini } from './gemini';
 
 const REGION = 'us-central1';
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 export const analyseVideo = onRequest(
   {
@@ -29,11 +35,10 @@ export const analyseVideo = onRequest(
       return;
     }
 
-    // Enforce daily scan limit — rejects with 429 when cap is reached.
     try {
-      await checkAndIncrementUsage(userId);
+      await checkUsageAvailable(userId);
     } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'LIMIT_EXCEEDED') {
+      if (isLimitExceededError(err)) {
         res.status(429).json({
           error: 'Daily scan limit reached. Upgrade to Pro for unlimited scans.',
         });
@@ -45,8 +50,36 @@ export const analyseVideo = onRequest(
     const projectId = process.env.GCLOUD_PROJECT;
     if (!projectId) throw new Error('GCLOUD_PROJECT env var is not set');
 
+    const objectInfo = parseGcsUri(gcsUri);
+    if (!objectInfo) {
+      res.status(400).json({ error: 'Invalid gcsUri' });
+      return;
+    }
+
+    const file = getStorage().bucket(objectInfo.bucketName).file(objectInfo.objectName);
+    const [metadata] = await file.getMetadata();
+
+    const sizeBytes = Number(metadata.size ?? 0);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      res.status(400).json({ error: 'Uploaded video metadata is missing a valid size.' });
+      return;
+    }
+
+    if (sizeBytes > MAX_UPLOAD_BYTES) {
+      res.status(413).json({
+        error: 'Uploaded video exceeds the 100 MB limit.',
+      });
+      return;
+    }
+
+    const mimeType = normalizedVertexVideoMimeType(metadata.contentType);
+    if (!mimeType) {
+      res.status(400).json({ error: 'Uploaded object is not a supported video.' });
+      return;
+    }
+
     // Call Vertex AI and forward the parsed result to the iOS client.
-    const rawJson = await callGemini(projectId, gcsUri);
+    const rawJson = await callGemini(projectId, gcsUri, mimeType);
 
     let parsed: unknown;
     try {
@@ -55,6 +88,39 @@ export const analyseVideo = onRequest(
       throw new Error(`Vertex AI returned invalid JSON: ${rawJson}`);
     }
 
+    await incrementUsage(userId);
     res.status(200).json(parsed);
   }
 );
+
+function parseGcsUri(gcsUri: string): { bucketName: string; objectName: string } | null {
+  const match = /^gs:\/\/([^/]+)\/(.+)$/.exec(gcsUri);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    bucketName: match[1],
+    objectName: match[2],
+  };
+}
+
+function normalizedVertexVideoMimeType(contentType?: string): string | null {
+  switch (contentType) {
+    case 'video/mp4':
+    case 'video/mov':
+    case 'video/quicktime':
+    case 'video/mpeg':
+    case 'video/mpg':
+    case 'video/avi':
+    case 'video/wmv':
+    case 'video/mpegps':
+    case 'video/flv':
+    case 'video/x-flv':
+      return contentType;
+    case 'video/x-m4v':
+      return 'video/mp4';
+    default:
+      return null;
+  }
+}

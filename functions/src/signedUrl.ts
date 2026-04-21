@@ -1,6 +1,7 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'crypto';
+import { checkUsageAvailable, isLimitExceededError } from './usageGuard';
 
 const REGION = 'us-central1';
 const URL_TTL_MS = 15 * 60 * 1000; // 15 minutes — enough for any upload
@@ -18,14 +19,27 @@ export const getSignedUploadURL = onRequest(
       return;
     }
 
-    const { filename, contentType } = req.body as {
+    const { filename, contentType, userId } = req.body as {
       filename?: string;
       contentType?: string;
+      userId?: string;
     };
 
-    if (!filename || !contentType) {
-      res.status(400).json({ error: 'filename and contentType are required' });
+    if (!filename || !contentType || !userId) {
+      res.status(400).json({ error: 'filename, contentType, and userId are required' });
       return;
+    }
+
+    try {
+      await checkUsageAvailable(userId);
+    } catch (err: unknown) {
+      if (isLimitExceededError(err)) {
+        res.status(429).json({
+          error: 'Daily scan limit reached. Upgrade to Pro for unlimited scans.',
+        });
+        return;
+      }
+      throw err;
     }
 
     const projectId = process.env.GCLOUD_PROJECT;

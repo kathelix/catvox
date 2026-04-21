@@ -46,7 +46,8 @@ const SYSTEM_INSTRUCTION = readFileSync(
  */
 export async function callGemini(
   projectId: string,
-  gcsUri: string
+  gcsUri: string,
+  mimeType = 'video/quicktime'
 ): Promise<string> {
   const vertexAI = new VertexAI({ project: projectId, location: LOCATION });
 
@@ -69,7 +70,7 @@ export async function callGemini(
           {
             fileData: {
               fileUri: gcsUri,
-              mimeType: 'video/quicktime',
+              mimeType,
             },
           },
           { text: 'Analyse this cat video and return a JSON result.' },
