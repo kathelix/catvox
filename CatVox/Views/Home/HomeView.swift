@@ -8,10 +8,12 @@ struct HomeView: View {
     @State private var showPhotoPicker  = false
     @State private var showRecording    = false
     @State private var showResult       = false
+    @State private var showImportedResult = false
     @State private var showQuotaCard    = false
     @State private var showPhotoNotice  = false
     @State private var photoNoticeText  = ""
     @State private var selectedSample   = 0
+    @State private var importedVideoURL: URL?
 
     var body: some View {
         ZStack {
@@ -123,9 +125,17 @@ struct HomeView: View {
             Text("Start with a new recording or pick an existing clip.")
         }
         .sheet(isPresented: $showPhotoPicker) {
-            HomeVideoPicker { didSelectVideo in
-                if didSelectVideo {
-                    photoNoticeText = "Video selected. Import processing will be wired in the next implementation slice."
+            HomeVideoPicker { outcome in
+                switch outcome {
+                case .cancelled:
+                    break
+
+                case .success(let videoURL):
+                    importedVideoURL = videoURL
+                    showImportedResult = true
+
+                case .failure(let message):
+                    photoNoticeText = message
                     showPhotoNotice = true
                 }
             }
@@ -133,8 +143,20 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $showRecording) {
             RecordingView()
         }
+        .fullScreenCover(isPresented: $showImportedResult) {
+            if let importedVideoURL {
+                ResultView(videoURL: importedVideoURL)
+            } else {
+                ResultView(analysis: MockAnalysisService.sampleAnalysis)
+            }
+        }
         .fullScreenCover(isPresented: $showResult) {
             ResultView(analysis: MockAnalysisService.allSamples[selectedSample])
+        }
+        .onChange(of: showImportedResult) { _, isShowing in
+            if !isShowing {
+                importedVideoURL = nil
+            }
         }
         .alert("Photos Import", isPresented: $showPhotoNotice) {
             Button("OK", role: .cancel) {}
