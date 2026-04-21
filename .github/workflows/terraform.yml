@@ -29,6 +29,7 @@ env:
   # TF_VAR_* prefix is picked up automatically — no extra wiring needed.
   TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
   TF_VAR_app_check_debug_token: ${{ secrets.TF_VAR_app_check_debug_token }}
+  TF_VAR_alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
 
 jobs:
   # ── Plan ────────────────────────────────────────────────────────────────────
