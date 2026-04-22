@@ -63,6 +63,7 @@ final class GCPService {
     // MARK: - Private
 
     private var currentTask: Task<Void, Never>?
+    private var currentRequestID = UUID()
 
     // MARK: - Logging
 
@@ -94,7 +95,10 @@ final class GCPService {
     /// Starts the upload + analysis pipeline. Cancels any in-flight request first.
     func uploadAndAnalyse(videoAt localURL: URL) {
         currentTask?.cancel()
-        currentTask = Task { await run(localURL: localURL) }
+        let requestID = UUID()
+        currentRequestID = requestID
+        uploadState = .fetchingSignedURL
+        currentTask = Task { await run(localURL: localURL, requestID: requestID) }
     }
 
     /// Re-starts the pipeline after a failure.
@@ -106,33 +110,37 @@ final class GCPService {
     /// Cancels any in-flight task and returns to `.idle`.
     func reset() {
         currentTask?.cancel()
+        currentRequestID = UUID()
         uploadState = .idle
     }
 
     // MARK: - Pipeline orchestration
 
-    private func run(localURL: URL) async {
+    private func run(localURL: URL, requestID: UUID) async {
         do {
             if mockMode {
-                try await mockPipeline()
+                try await mockPipeline(requestID: requestID)
             } else {
-                try await realPipeline(localURL: localURL)
+                try await realPipeline(localURL: localURL, requestID: requestID)
             }
         } catch GCPError.quotaExceeded {
-            uploadState = .quotaExceeded
-        } catch is CancellationError {
-            uploadState = .idle
+            setUploadState(.quotaExceeded, for: requestID)
         } catch {
+            if isCancellation(error) {
+                setUploadState(.idle, for: requestID)
+                return
+            }
+
             logger.error("pipeline failed: \(error)")
-            uploadState = .failed(error.localizedDescription)
+            setUploadState(.failed(error.localizedDescription), for: requestID)
         }
     }
 
     // MARK: - Mock pipeline
 
-    private func mockPipeline() async throws {
+    private func mockPipeline(requestID: UUID) async throws {
         // Step 1 — simulate signed URL negotiation
-        uploadState = .fetchingSignedURL
+        setUploadState(.fetchingSignedURL, for: requestID)
         try await Task.sleep(for: .seconds(0.7))
         try Task.checkCancellation()
 
@@ -141,36 +149,41 @@ final class GCPService {
         for step in 1...steps {
             try await Task.sleep(for: .milliseconds(70))
             try Task.checkCancellation()
-            uploadState = .uploading(Double(step) / Double(steps))
+            setUploadState(.uploading(Double(step) / Double(steps)), for: requestID)
         }
 
         // Step 3 — simulate Vertex AI analysis latency
-        uploadState = .analysing
+        setUploadState(.analysing, for: requestID)
         try await Task.sleep(for: .seconds(1.4))
         try Task.checkCancellation()
 
-        uploadState = .complete(MockAnalysisService.sampleAnalysis)
+        setUploadState(.complete(MockAnalysisService.sampleAnalysis), for: requestID)
     }
 
     // MARK: - Real pipeline (Phase 2)
 
-    private func realPipeline(localURL: URL) async throws {
+    private func realPipeline(localURL: URL, requestID: UUID) async throws {
         let contentType = ImportedVideoService.mimeType(for: localURL)
 
-        uploadState = .fetchingSignedURL
+        setUploadState(.fetchingSignedURL, for: requestID)
         let (signedURL, gcsUri) = try await fetchSignedURL(
             for: localURL,
             contentType: contentType
         )
         try Task.checkCancellation()
 
-        uploadState = .uploading(0)
-        try await upload(fileURL: localURL, to: signedURL, contentType: contentType)
+        setUploadState(.uploading(0), for: requestID)
+        try await upload(
+            fileURL: localURL,
+            to: signedURL,
+            contentType: contentType,
+            requestID: requestID
+        )
         try Task.checkCancellation()
 
-        uploadState = .analysing
+        setUploadState(.analysing, for: requestID)
         let analysis = try await triggerAnalysis(gcsUri: gcsUri)
-        uploadState = .complete(analysis)
+        setUploadState(.complete(analysis), for: requestID)
     }
 
     /// Returns `(signedURL, gcsUri)` — the signed PUT URL for the upload and
@@ -208,10 +221,10 @@ final class GCPService {
     /// Streams the video file to GCS with a PUT request.
     /// Uses an NSObject delegate shim to relay byte-level progress back to the
     /// main actor — the same pattern used by CaptureDelegate in CameraService.
-    private func upload(fileURL: URL, to signedURL: URL, contentType: String) async throws {
+    private func upload(fileURL: URL, to signedURL: URL, contentType: String, requestID: UUID) async throws {
         let progressDelegate = UploadProgressDelegate { [weak self] progress in
             Task { @MainActor [weak self] in
-                self?.uploadState = .uploading(progress)
+                self?.setUploadState(.uploading(progress), for: requestID)
             }
         }
         // Use an ephemeral session so it has no inherited HTTP/3 alternative-service
@@ -240,6 +253,23 @@ final class GCPService {
             throw URLError(.badServerResponse)
         }
         logger.debug("GCS PUT: HTTP \(http.statusCode) — upload complete")
+    }
+
+    private func setUploadState(_ state: UploadState, for requestID: UUID) {
+        guard requestID == currentRequestID else { return }
+        uploadState = state
+    }
+
+    private func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError {
+            return true
+        }
+
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return true
+        }
+
+        return false
     }
 
     private func triggerAnalysis(gcsUri: String) async throws -> CatAnalysis {

@@ -162,7 +162,7 @@ struct ResultView: View {
             Button("Retry") {
                 if let url = videoURL { gcpService.retry(videoAt: url) }
             }
-            Button("Cancel", role: .cancel) { dismiss() }
+            Button("Cancel", role: .cancel) { dismissResult() }
         } message: {
             Text(failureMessage)
         }
@@ -248,7 +248,7 @@ struct ResultView: View {
         ZStack(alignment: .top) {
             if !showsCompletedResult {
                 HStack {
-                    Button { dismiss() } label: {
+                    Button { dismissResult() } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title3)
                             .symbolRenderingMode(.hierarchical)
@@ -369,7 +369,7 @@ struct ResultView: View {
 
     private func doneButton(_ vm: ResultViewModel) -> some View {
         Button {
-            dismiss()
+            dismissResult()
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
@@ -460,10 +460,18 @@ struct ResultView: View {
 
         if viewModel != nil {
             viewModel?.onAppear()
-        } else if let url = videoURL {
+        } else if let url = videoURL, gcpService.uploadState == .idle {
             // Recording path — kick off the upload pipeline.
             gcpService.uploadAndAnalyse(videoAt: url)
         }
+    }
+
+    private func dismissResult() {
+        if !showsCompletedResult {
+            gcpService.reset()
+        }
+        shareRenderTask?.cancel()
+        dismiss()
     }
 
     private func handleUploadState(_ state: GCPService.UploadState) {

@@ -101,12 +101,12 @@ struct ResultVideoBackdrop: View {
     }
 
     private func loadVisualContext() async {
-        let context = await Task.detached(priority: .userInitiated) {
-            await VisualContextLoader.makeVisualContext(
-                videoURL: videoURL,
-                ambientImageURL: ambientImageURL
-            )
-        }.value
+        let context = await VisualContextLoader.makeVisualContext(
+            videoURL: videoURL,
+            ambientImageURL: ambientImageURL
+        )
+
+        guard !Task.isCancelled else { return }
 
         videoAspectRatio = context.aspectRatio.map { CGFloat($0) }
         ambientImage = context.ambientImageData.flatMap(UIImage.init(data:))
