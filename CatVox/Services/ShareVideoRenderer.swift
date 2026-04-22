@@ -31,6 +31,33 @@ enum ShareVideoRenderer {
     private static let renderedSharesDirectoryName = "RenderedShares"
     private static let expirationInterval: TimeInterval = 24 * 60 * 60
 
+    static func existingRenderedVideoURL(for scanID: UUID) throws -> URL? {
+        try cleanupExpiredArtifacts()
+
+        let directoryURL = try scanDirectoryURL(for: scanID, createIfMissing: false)
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: directoryURL.path) else {
+            return nil
+        }
+
+        let contents = try fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        let outputURL = contents.first { url in
+            guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey]),
+                  values.isRegularFile == true else {
+                return false
+            }
+
+            return url.pathExtension.lowercased() == "mp4" || url.pathExtension.lowercased() == "mov"
+        }
+
+        return outputURL
+    }
+
     static func renderVideo(for request: Request) async throws -> URL {
         try cleanupExpiredArtifacts()
 
