@@ -54,6 +54,7 @@ For MVP, the user can either record a new video in-app or select an existing vid
 * **History Save Rule:** A scan is persisted only after analysis completes successfully and a valid result payload is returned. Failed validation attempts, rejected selections, upload failures, quota rejections, retakes, and abandoned flows must not create history entries.
 * **History Reliability:** For MVP, CatVox must preserve its own app-local copy of the original clip for each successful scan, including clips imported from Photos. This keeps history self-contained and reliable even if the user later deletes the original Photos asset.
 * **History Replay:** Opening a saved scan from history must use the locally persisted clip and AI result. It must not trigger a new upload, a new backend analysis request, or quota consumption.
+* **Result Completion Flow:** Successful scans are already persisted before the user leaves the Result screen. The Result screen action is therefore a completion/exit action rather than the persistence trigger.
 * **Social Sharing:** Deferred as a separate MVP backlog item. It is not part of the persistence / scan history feature defined in this section.
 
 ### 3.2 Monetization & Sustainability
@@ -118,7 +119,7 @@ The backend must return ONLY a valid JSON object following this structure:
         * **Amber:** 50% - 80% (Moderate Confidence)
         * **Red:** < 50% (Low Confidence/Ambiguous)
     * Expandable "Expert Insights" drawer.
-    * "Save" CTA.
+    * "Done" CTA.
 6. **Scan History List:**
     * Presents saved scans in chronological order, with the newest saved scan closest to the bottom of the list.
     * Each row corresponds to one saved scan.
@@ -156,6 +157,8 @@ The backend must return ONLY a valid JSON object following this structure:
 * The history list must use chronological ordering so earlier scans appear higher in the list and the newest saved scan sits nearest to the primary CTA at the bottom of Home.
 * If there is no saved scan history yet, the Home screen should show a lightweight empty state indicating that completed scans will appear there.
 * Each history row must remain lightweight and scannable, prioritizing thumbnail, interpretation cue, and short text preview over dense metadata.
+* The `Done` action on the Result screen must return the user to the Home screen.
+* After the user returns from a successful result, the newly persisted scan must be visible in the scan history list in its chronological position.
 * Deleting a saved scan must always require user confirmation.
 * Confirmed deletion must remove:
     * the persisted history record
