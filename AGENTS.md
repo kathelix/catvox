@@ -215,6 +215,9 @@ PROJECT_ID=kathelix-catvox-prod ./terraform/bootstrap_wif.sh
 - Feature work goes on a branch; open a PR to `main`.
 - Create or switch to the intended feature branch before making any feature-related doc or code edits. Avoid starting feature work on `main`, even for documentation-only changes.
 - The Terraform pipeline posts a plan comment on every PR — review it before merging.
+- Before final review or merge, check all PR bot / AI review findings and explicitly triage each one as fix, reject with reasoning, or defer.
+- Treat bot findings touching concurrency, cancellation, state ownership, persistence, navigation, or other direct user-facing behavior as high-signal by default until disproven.
+- Before opening or finalizing a PR, compare the branch against `origin/main` and rebase or merge as needed so PR review and conflict resolution happen before the final merge step.
 - Use descriptive branch names: `feature/`, `fix/`, `infra/`.
 
 ### Product Feature Workflow
@@ -244,6 +247,12 @@ Before coding a non-trivial feature, do a short implementation design pass cover
 - cleanup / deletion behavior
 - any remaining open product questions
 
+For user-facing async or stateful flows, add a short async-state safety pass before or during implementation. Explicitly check:
+- stale task overwrite risk when inputs, IDs, or backing assets change
+- whether dismiss / cancel actions stop the underlying work, not just the UI
+- repeated `onAppear`, retry, and transition safety
+- ownership of any `Task`, `.task(id:)`, `.onChange`, or callback-driven state updates
+
 When a feature expands materially beyond its original scope, update the PR title and description promptly so they match the actual branch contents.
 
 ### Pre-Merge Checklist
@@ -252,10 +261,19 @@ Before merging a feature PR, verify all of the following:
 
 - the PR description matches the final implementation
 - acceptance criteria / test checklist is current
+- all PR bot / AI review findings have been reviewed and explicitly resolved, rejected with reasoning, or consciously deferred
+- the branch has been compared against `origin/main`, and any needed rebase / conflict resolution has already been handled
 - related completed items are removed or updated in `docs/TODO.md`
 - implemented backlog items are checked off in `docs/TRD.md` §8
 - `docs/HLD.md` still matches the implemented MVP boundary
 - no leftover dev-only UI, preview shortcuts, or debug scaffolding remains in the user-facing flow
+
+For user-facing async/stateful features, also verify a small manual regression matrix before merge where relevant:
+- dismiss or cancel during in-flight work
+- retry after failure
+- transitions between temporary and persisted assets or IDs
+- reopening from history / saved state where applicable
+- repeated share/export or other secondary actions where applicable
 
 ### Commit Style
 
