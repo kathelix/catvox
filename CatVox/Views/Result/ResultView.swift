@@ -490,6 +490,13 @@ struct ResultView: View {
             return
         }
 
+        if let cachedOutputURL = try? ShareVideoRenderer.existingRenderedVideoURL(for: analysis.id),
+           FileManager.default.fileExists(atPath: cachedOutputURL.path) {
+            renderedShareVideoURL = cachedOutputURL
+            performShareAction(action, using: cachedOutputURL)
+            return
+        }
+
         guard let backgroundVideoURL, FileManager.default.fileExists(atPath: backgroundVideoURL.path) else {
             exportAlertMessage = "We couldn't find the saved clip for this export."
             showExportAlert = true
