@@ -119,6 +119,11 @@ xcodebuild -project CatVox.xcodeproj \
 - **Mock mode:** `GCPService.swift` has `mockMode = true` by default. The real upload pipeline is stubbed until the backend is deployed. Flip to `false` once the Cloud Function is live.
 - **Confidence score color coding:** Result screen ring is green (>80%), amber (50–80%), red (<50%) — implemented in ResultViewModel.
 - **Share watermark:** "Powered by Kathelix" (no ".com") on free-tier exports.
+- **Share rendering:** `ShareVideoRenderer.swift` builds the shareable derived video locally on device using AVFoundation composition/export plus Core Animation overlay layers.
+- **Share export format:** MVP share exports preserve the original clip aspect ratio and scale overlay layout/typography from the actual rendered frame, so the visual hierarchy stays consistent across portrait, landscape, square, HD, and 4K clips.
+- **Share cache lifecycle:** Rendered share videos are temporary app-owned cache artifacts, not durable scan-history assets. They are cleaned up with normal cache lifecycle and when a scan is deleted.
+- **Share cache reuse:** If a rendered share file for a scan is still present in cache, the app can reuse it after app or device restart instead of re-rendering immediately.
+- **Share cancellation:** In-flight share exports are cancelled when the Result view disappears so abandoned exports do not continue into save/share side effects.
 
 ### Persona Names
 
@@ -277,24 +282,25 @@ If a feature that was originally tracked under one broad backlog item becomes se
 
 ## 7. Current Implementation Status
 
-See TRD §8 for the definitive backlog. As of TRD v1.8:
+See TRD §8 for the definitive backlog and implementation status. This section is only a lightweight orientation snapshot for new contributors, not the source of truth.
 
-**Done:**
+**Recently completed:**
 - App icon + accent colors
 - Confidence score color-coding (Result screen)
 - GCP Foundation (Terraform): GCS bucket, Firestore, IAM, Artifact Registry, Secret Manager
 - Remote Terraform state (GCS backend)
 - CI/CD: GitHub Actions plan/apply pipeline with WIF auth
 - Video recording: HEVC enforced, 1080p hard cap
+- Photos import with local validation
+- SwiftData-backed local scan history, reopen-from-history flow, and scan deletion
+- On-device share rendering, save-to-Photos/share-sheet actions, temporary render-cache cleanup, and cached share-video reuse after restart
 
 **Pending:**
 - App Check: configure in Apple + Firebase consoles; wire Firebase SDK into iOS app
 - Backend proxy: Firebase Cloud Function (TypeScript) with usage-limit guard (Firestore) and Vertex AI call
 - Video upload: Swift GCS signed-URL upload (`GCPService.mockMode = false`)
 - AI connection: Cloud Function → Vertex AI Gemini 2.5 Flash
-- SwiftData persistence: local scan history
 - StoreKit 2: Pro tier (unlimited scans)
-- Social sharing: branded video overlay
 
 ---
 
