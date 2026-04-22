@@ -99,7 +99,7 @@ The backend must return ONLY a valid JSON object following this structure:
 
 ### 5.1 Key Screens
 1. **Home Screen:** Minimalist dashboard with this top-to-bottom order:
-    * Cat logo and `Powered by Kathelix` text
+    * the app icon itself and `Powered by Kathelix` text
     * a browsable list of previous scans
     * one primary CTA labeled **Read My Cat** and supporting quota text such as `5 free scans remaining today`
 2. **Source Choice Sheet:** A lightweight chooser offering:

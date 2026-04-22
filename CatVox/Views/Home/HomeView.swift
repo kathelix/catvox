@@ -128,8 +128,16 @@ struct HomeView: View {
 
     private var logoSection: some View {
         VStack(spacing: 10) {
-            Text("🐱")
-                .font(.system(size: 72))
+            Image("HomeAppIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 88, height: 88)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
 
             Text("CatVox")
                 .font(.largeTitle)
