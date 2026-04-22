@@ -67,6 +67,34 @@ for e in json.load(sys.stdin):
 **What this does:** fetches the 5 most recent errors in full JSON and extracts
 the relevant payload fields.
 
+For the malformed-Vertex hotfix path specifically, query both the retry warning
+and the final controlled error:
+
+```bash
+gcloud logging read \
+  'resource.type="cloud_run_revision"
+   AND resource.labels.service_name="analysevideo"
+   AND severity>=WARNING
+   AND (
+     jsonPayload.message="Retrying malformed Vertex AI analysis payload"
+     OR jsonPayload.message="Vertex AI returned malformed analysis payload"
+   )' \
+  --project=kathelix-catvox-prod \
+  --limit=50 \
+  --freshness=24h \
+  --format=json
+```
+
+**How to read it:**
+- `attempt: 1` warning = first Gemini response was malformed and the backend retried.
+- `attempt: 2` warning followed by the final error = both attempts were malformed and the request returned a controlled HTTP `502`.
+- `issues` tells you whether the failure was truncated / invalid JSON or missing / invalid required fields.
+- `rawResponsePreview` gives the start of the bad model output without dumping the full payload into logs.
+
+**Important:** this hotfix no longer relies on an unhandled exception for this
+failure mode. Debug it from Cloud Logging, not from expecting the same Error
+Reporting email path as a crashing `500`.
+
 ---
 
 ### Step 3 — Correlate a specific request end-to-end
@@ -125,6 +153,7 @@ the failure was downstream (Vertex AI call).
 | Log message | Root cause | Fix |
 |---|---|---|
 | `Vertex AI returned invalid JSON: { "primary_emotion": ...` (truncated) | `MAX_OUTPUT_TOKENS` too low — thinking model consumed budget before finishing JSON | Raise `MAX_OUTPUT_TOKENS` in `functions/src/gemini.ts` |
+| `Retrying malformed Vertex AI analysis payload` then `Vertex AI returned malformed analysis payload` | Gemini returned malformed output twice; backend converted it to a controlled `502` instead of crashing | Inspect `issues`, `attempt`, and `rawResponsePreview` in logs; if frequent, revisit prompt / output constraints or `MAX_OUTPUT_TOKENS` |
 | `Empty response from Vertex AI` | Response had only `thought` parts, no output part | Check `finishReason` in the error summary; may indicate safety block or token exhaustion |
 | `signBlob` permission denied | Cloud Run running as wrong service account | Verify `serviceAccount:` is set in both function options; redeploy |
 | GCS PUT returns HTTP 403 | `catvox-backend-sa` missing `storage.objectCreator` | Check IAM bindings via `gcloud projects get-iam-policy` |
@@ -156,6 +185,10 @@ alert_email = "you@example.com"
 **What you get:** an email within ~1 minute of any unhandled exception, with a
 link to the alert and the documentation note pointing to `docs/DEBUG.md`.
 Rate-limited to one email per 5 minutes to prevent alert storms.
+
+**Important:** the malformed-Vertex hotfix in `analysevideo` now returns a
+handled `502` with application logs instead of an unhandled exception, so do
+not assume this specific failure mode will arrive via the same email path.
 
 **What the alert email contains:** timestamp, service name, link to Cloud
 Logging filtered to the error window, and the documentation snippet from
