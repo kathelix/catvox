@@ -515,6 +515,7 @@ struct ResultView: View {
         shareRenderTask = Task {
             do {
                 let outputURL = try await ShareVideoRenderer.renderVideo(for: request)
+                try Task.checkCancellation()
                 await MainActor.run {
                     renderedShareVideoURL = outputURL
                     shareProgressMessage = nil
