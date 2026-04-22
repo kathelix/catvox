@@ -208,6 +208,7 @@ PROJECT_ID=kathelix-catvox-prod ./terraform/bootstrap_wif.sh
 ### Branching
 
 - Feature work goes on a branch; open a PR to `main`.
+- Create or switch to the intended feature branch before making any feature-related doc or code edits. Avoid starting feature work on `main`, even for documentation-only changes.
 - The Terraform pipeline posts a plan comment on every PR — review it before merging.
 - Use descriptive branch names: `feature/`, `fix/`, `infra/`.
 
@@ -221,6 +222,24 @@ For user-facing product changes, use this order unless the user explicitly asks 
 4. Only then implement code.
 
 Do not treat user-facing flow changes as isolated code tweaks when they change app behavior, validation, or state transitions.
+
+For non-trivial user-facing features, capture a short decision snapshot before updating HLD/TRD:
+- feature goal
+- MVP scope
+- explicit non-goals / deferred work
+- data ownership / persistence model if relevant
+- completion / return flow if relevant
+
+Prefer the simplest user-facing behavior that preserves trust and product clarity. Do not over-design recovery, reporting, or secondary frameworks in TRD unless they are clearly part of MVP. When in doubt, keep MVP behavior minimal and move broader patterns to backlog or future enhancements.
+
+Before coding a non-trivial feature, do a short implementation design pass covering:
+- data model
+- file/storage ownership
+- navigation / screen ownership
+- cleanup / deletion behavior
+- any remaining open product questions
+
+When a feature expands materially beyond its original scope, update the PR title and description promptly so they match the actual branch contents.
 
 ### Pre-Merge Checklist
 
@@ -245,11 +264,14 @@ TRD v1.8 — add CI/CD section, fix six audit findings
 
 Any time you implement something from TRD §8 backlog, mark it `[x]` in TRD immediately — in the same commit as the implementation. The TRD is the source of truth for implementation status.
 
+If a feature that was originally tracked under one broad backlog item becomes several concrete implementation slices, update TRD §8 so the backlog reflects those separate slices explicitly rather than leaving one vague umbrella item.
+
 ### HLD vs TRD
 
 - **docs/HLD.md** — only stable design decisions (the "why"). No implementation status, no concrete values that will change.
 - **docs/TRD.md** — everything concrete: versions, bucket names, roles, backlog status.
 - When you want to change a design decision, update HLD first, then TRD, then code.
+- Manual verification is acceptable during MVP, but once core user flows stabilize, add follow-up automated test coverage to TRD §9 if tests are intentionally deferred.
 
 ---
 
