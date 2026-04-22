@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 2.5
+**Version:** 2.6
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -127,9 +127,11 @@ The backend must return ONLY a valid JSON object following this structure:
         * **Retake**
         * **Use This Clip**
 5. **Result Screen:**
-    * Full-screen looping background using the original scanned clip.
+    * The original scanned clip remains the visual foundation of the screen during upload, completed result display, and reopened saved-scan playback.
     * Background playback is muted and continuous.
-    * The same looping local clip background is used when reopening a saved scan from history.
+    * The clip must preserve its full original frame using a fitted presentation rather than stretch or crop-to-fill treatment.
+    * When the clip aspect ratio does not fill the display, the surrounding space should use a soft ambient treatment derived from the same clip so the presentation feels intentional and premium rather than like plain dead padding.
+    * The same fitted local clip presentation is used when reopening a saved scan from history.
     * Animated Glassmorphism "Thought Bubble".
     * **Confidence Score UI:** The percentage ring must be dynamically color-coded:
         * **Green:** > 80% (High Confidence)
@@ -379,6 +381,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **Scan History UI:** Add the frontend history list to the Home experience, showing prior scans with thumbnail, mood/persona cue, and short `cat_thought` preview.
 * [x] **Saved Result Reopen:** Allow users to reopen a saved scan from local history without re-upload or re-analysis.
 * [x] **Scan Deletion:** Add confirmed deletion of saved scans, removing the history record and CatVox-owned local assets without touching the original Photos asset.
+* [x] **Fitted Result Clip Presentation:** Preserve the full original frame on upload, completed result, and reopened history screens, using ambient treatment around unused space instead of crop-to-fill.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [x] **Share Rendering Pipeline:** Add an on-device AVFoundation-based export pipeline that renders a derived share video from the preserved local clip with CatVox overlays.
 * [x] **Share Actions:** Add Result-screen actions to save the rendered share video to Photos or open it in the system share sheet.

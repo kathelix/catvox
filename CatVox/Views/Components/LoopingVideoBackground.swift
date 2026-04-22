@@ -1,9 +1,12 @@
 import AVFoundation
 import SwiftUI
+import UIKit
 import os
 
 struct LoopingVideoBackground: UIViewRepresentable {
     let url: URL
+    var videoGravity: AVLayerVideoGravity = .resizeAspectFill
+    var backgroundColor: UIColor = .black
     var onPlaybackFailure: (URL, String) -> Void = { _, _ in }
 
     func makeCoordinator() -> Coordinator {
@@ -12,17 +15,24 @@ struct LoopingVideoBackground: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PlayerContainerView {
         let view = PlayerContainerView()
-        view.playerLayer.videoGravity = .resizeAspectFill
-        view.backgroundColor = .black
+        applyPresentation(to: view)
         return view
     }
 
     func updateUIView(_ uiView: PlayerContainerView, context: Context) {
+        applyPresentation(to: uiView)
         context.coordinator.configure(url: url, in: uiView)
     }
 
     static func dismantleUIView(_ uiView: PlayerContainerView, coordinator: Coordinator) {
         coordinator.teardown(from: uiView)
+    }
+
+    private func applyPresentation(to view: PlayerContainerView) {
+        view.playerLayer.videoGravity = videoGravity
+        view.playerLayer.backgroundColor = backgroundColor.cgColor
+        view.backgroundColor = backgroundColor
+        view.isOpaque = backgroundColor != .clear
     }
 
     final class Coordinator: NSObject {

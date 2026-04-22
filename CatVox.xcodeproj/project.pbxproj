@@ -16,6 +16,7 @@
 		31B52FE6FAEC9B396E3D0C27 /* QuotaExceededView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */; };
 		37039B5FADDEA9E57A423699 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F5C098EA923D7B7D2B7746F /* HomeView.swift */; };
 		374FEBF00E6B6956F5361432 /* ScanHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */; };
+		4266499BA9E91B5D6B035BB7 /* ResultVideoBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = C772B5F55DE9DC6D8C628BB8 /* ResultVideoBackdrop.swift */; };
 		44C6BC1CB2E18E7DDD3361F3 /* HomeVideoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EFAA94F5454E9ABF6B9D09 /* HomeVideoPicker.swift */; };
 		46ECBCFF9DD385E7670A980D /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 215145685222056D654FFBD5 /* CameraService.swift */; };
 		4F25F5EF0770D910A04EE964 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0A06657FF5E304418C27E21 /* Assets.xcassets */; };
@@ -68,6 +69,7 @@
 		BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaExceededView.swift; sourceTree = "<group>"; };
 		C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedVideoService.swift; sourceTree = "<group>"; };
 		C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareVideoRenderer.swift; sourceTree = "<group>"; };
+		C772B5F55DE9DC6D8C628BB8 /* ResultVideoBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultVideoBackdrop.swift; sourceTree = "<group>"; };
 		C7BA98BD11A2006135A1026D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		D81F4FC3E926629C4422BFA0 /* SavedScanRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedScanRow.swift; sourceTree = "<group>"; };
 		DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaBadgeView.swift; sourceTree = "<group>"; };
@@ -120,6 +122,7 @@
 				8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */,
 				431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */,
 				DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */,
+				C772B5F55DE9DC6D8C628BB8 /* ResultVideoBackdrop.swift */,
 				4C40315F8DBC5B5AD38A13C2 /* Theme.swift */,
 			);
 			path = Components;
@@ -310,6 +313,7 @@
 				8C2CEB06889AD660A126DB42 /* PersonaBadgeView.swift in Sources */,
 				31B52FE6FAEC9B396E3D0C27 /* QuotaExceededView.swift in Sources */,
 				C3ADEFA683DE26DFF3392AD6 /* RecordingView.swift in Sources */,
+				4266499BA9E91B5D6B035BB7 /* ResultVideoBackdrop.swift in Sources */,
 				F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */,
 				93C8E173BFE2C46040F5EA46 /* ResultViewModel.swift in Sources */,
 				F6CC1D6EFE3B0806EF52737B /* SavedScan.swift in Sources */,

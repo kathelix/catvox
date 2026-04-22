@@ -1,6 +1,6 @@
 # High-level Design: CatVox AI
 
-**Version:** 1.6
+**Version:** 1.7
 **Company:** Kathelix Ltd
 **Project Lead:** Ivan Boyko
 **Date:** April 2026
@@ -36,10 +36,10 @@ The MVP also supports on-demand creation of a funny shareable result video deriv
 9. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
 10. The backend validates App Check, enforces usage limits, validates server-side guardrails such as upload file size, invokes Vertex AI, and returns a normalized result payload.
 11. After a successful analysis, the app saves the scan locally as a history item that includes the original clip and the AI result.
-12. The user views the completed result against the original local clip as the visual background, then returns to Home via a lightweight completion action.
+12. The user views the completed result against the original local clip as the visual background, preserving the full frame with ambient styling when needed, then returns to Home via a lightweight completion action.
 13. From the completed result experience, the user can optionally generate a separate shareable video derived from the preserved local clip and CatVox interpretation.
 14. The user can save or share that derived video, while the original preserved clip remains unchanged.
-15. The user can revisit past scans through a local history view on Home that presents previous results as reusable memories, reopening them against the same preserved local clip and offering the same on-demand share export path.
+15. The user can revisit past scans through a local history view on Home that presents previous results as reusable memories, reopening them against the same preserved local clip with the same fitted full-frame presentation and offering the same on-demand share export path.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.
@@ -54,7 +54,7 @@ The MVP also supports on-demand creation of a funny shareable result video deriv
 * **MVP Input Rules:** Submitted videos must already satisfy MVP limits before upload: maximum 10 seconds duration, maximum 100 MB file size, supported codec/container, and no ProRes input. 4K input is temporarily accepted for simplicity.
 * **UX Validation Strategy:** The app validates candidate videos locally before upload and clearly explains rejection reasons when a selected video is ineligible. In-app trimming is out of scope for MVP.
 * **History Reliability Over External References:** For MVP, scan history should remain self-contained and reliable even if the user later removes the source video from Photos. The app should therefore preserve its own app-local copy of the original clip for successful scans rather than depending solely on a Photos-library reference.
-* **Clip-Centric Result Presentation:** The original preserved local clip remains the canonical visual context for a scan. The completed result experience, including reopened history items, should present the interpretation against that same local clip rather than against a generic decorative background.
+* **Clip-Centric Result Presentation:** The original preserved local clip remains the canonical visual context for a scan. The completed result experience, including reopened history items, should present the interpretation against that same local clip, preserving the full original frame and using ambient styling around it when needed rather than cropping the clip to force edge-to-edge fill.
 * **History-First Presentation:** The history experience lives on Home as a simple, browsable list of past scans. Each entry represents one preserved clip and should surface a thumbnail together with lightweight interpretation cues so the user can quickly recognize and reopen a prior memory.
 * **Derived Share Export:** Shareable video output is a derived artifact created from a saved scan, never a mutation of the original preserved clip. The share path should always treat the original clip as canonical and leave it untouched. See ADR-0009.
 * **On-Device Share Rendering:** Shareable exports are rendered locally on iOS rather than by backend infrastructure. This keeps the share feature privacy-preserving, reduces cloud cost, and allows previously saved scans to be re-rendered on demand without another upload. See ADR-0009.
