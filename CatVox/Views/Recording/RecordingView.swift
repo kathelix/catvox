@@ -8,7 +8,7 @@ import SwiftUI
 ///   3. After 2 seconds, tapping the capture control stops recording early
 ///   4. Recording ends automatically at 10 seconds if the user does not stop
 ///   5. captureState == .finished → lightweight review state appears
-///   6. "Use This Clip" → fullScreenCover presents ResultView
+///   6. "Use This Clip" → hand off the recorded file back to Home for ResultView
 ///
 /// Simulator note: no physical camera is available so the preview is black,
 /// but the countdown and handoff simulation run identically to a real device.
@@ -18,12 +18,14 @@ struct RecordingView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var service       = CameraService()
-    @State private var showResult    = false
     @State private var recordedURL:  URL?
     @State private var errorMessage  = ""
     @State private var showError     = false
     @State private var transientStatusMessage: String?
     @State private var hintTask: Task<Void, Never>?
+    @State private var handoffToResult = false
+
+    let onUseClip: (URL) -> Void
 
     // Integer countdown derived from continuous progress (0 – 10).
     private var countdown: Int {
@@ -71,7 +73,7 @@ struct RecordingView: View {
         .onDisappear {
             hintTask?.cancel()
             service.stopSession()
-            if !showResult {
+            if !handoffToResult {
                 discardRecordedClip()
             }
         }
@@ -84,21 +86,6 @@ struct RecordingView: View {
                 showError    = true
             default:
                 break
-            }
-        }
-        // When ResultView is dismissed, reset so the user can record again.
-        .onChange(of: showResult) { _, showing in
-            if !showing {
-                service.reset()
-                recordedURL = nil
-            }
-        }
-        .fullScreenCover(isPresented: $showResult) {
-            if let url = recordedURL {
-                ResultView(videoURL: url)
-            } else {
-                // Fallback: should not normally be reached.
-                ResultView(analysis: MockAnalysisService.sampleAnalysis)
             }
         }
         .alert("Recording Failed", isPresented: $showError) {
@@ -348,8 +335,10 @@ struct RecordingView: View {
     }
 
     private func useRecordedClip() {
-        guard recordedURL != nil else { return }
-        showResult = true
+        guard let recordedURL else { return }
+        handoffToResult = true
+        onUseClip(recordedURL)
+        dismiss()
     }
 
     private func retakeRecording() {
@@ -367,5 +356,5 @@ struct RecordingView: View {
 }
 
 #Preview {
-    RecordingView()
+    RecordingView { _ in }
 }

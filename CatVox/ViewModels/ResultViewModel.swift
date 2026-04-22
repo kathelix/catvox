@@ -17,18 +17,6 @@ final class ResultViewModel {
         CatPersona.from(analysis.personaType)
     }
 
-    var shareText: String {
-        """
-        My cat just spoke... \(persona.emoji)
-
-        "\(analysis.catThought)"
-
-        Mood: \(analysis.primaryEmotion)
-
-        Decoded by CatVox AI – Powered by Kathelix
-        """
-    }
-
     // MARK: - Init
 
     init(analysis: CatAnalysis) {

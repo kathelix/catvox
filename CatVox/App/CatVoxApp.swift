@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct CatVoxApp: App {
@@ -10,5 +11,6 @@ struct CatVoxApp: App {
             ContentView()
                 .environment(quotaStore)
         }
+        .modelContainer(for: SavedScan.self)
     }
 }

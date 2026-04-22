@@ -46,8 +46,16 @@ For MVP, the user can either record a new video in-app or select an existing vid
 * **Video Pipeline:** In-app recording uses native **HEVC (.mov)** with resolution hard-capped at **1920 × 1080 (1080p)**. The cap keeps free-tier clip sizes to approximately 15–25 MB per 10-second recording. Devices that do not support HEVC fall back silently to H.264. For Photos-imported videos, MVP accepts videos that pass the validation rules above, including temporary acceptance of 4K source video for simplicity. Re-evaluation of 4K cost and normalization strategy is deferred.
 * **Multimodal Analysis:** Simultaneous processing of video (body language) and audio (vocalization) via Vertex AI.
 * **Persona Engine:** Logic to assign one of 6 "Cat Personas" to the interpretation to drive engagement and humor.
-* **Mood Diary:** A local history of scans saved using on-device persistent storage.
-* **Social Sharing:** Integrated "Share to Story" feature with a branded overlay.
+* **Scan History:** The app saves a local history of successful scans using on-device persistent storage. Each saved scan is a self-contained record consisting of:
+    * the original clip preserved in CatVox app-local storage
+    * the structured AI result returned by the backend
+    * a locally generated thumbnail for list presentation
+    * source metadata and timestamps
+* **History Save Rule:** A scan is persisted only after analysis completes successfully and a valid result payload is returned. Failed validation attempts, rejected selections, upload failures, quota rejections, retakes, and abandoned flows must not create history entries.
+* **History Reliability:** For MVP, CatVox must preserve its own app-local copy of the original clip for each successful scan, including clips imported from Photos. This keeps history self-contained and reliable even if the user later deletes the original Photos asset.
+* **History Replay:** Opening a saved scan from history must use the locally persisted clip and AI result. It must not trigger a new upload, a new backend analysis request, or quota consumption.
+* **Result Completion Flow:** Successful scans are already persisted before the user leaves the Result screen. The Result screen action is therefore a completion/exit action rather than the persistence trigger.
+* **Social Sharing:** Deferred as a separate MVP backlog item. It is not part of the persistence / scan history feature defined in this section.
 
 ### 3.2 Monetization & Sustainability
 * **Credit System:** 5 free scans/day to manage GCP costs.
@@ -90,7 +98,10 @@ The backend must return ONLY a valid JSON object following this structure:
 ## 5. UI/UX Specifications
 
 ### 5.1 Key Screens
-1. **Home Screen:** Minimalist dashboard showing the latest "Mood" and one primary CTA labeled **Read My Cat**.
+1. **Home Screen:** Minimalist dashboard with this top-to-bottom order:
+    * Cat logo and `Powered by Kathelix` text
+    * a browsable list of previous scans
+    * one primary CTA labeled **Read My Cat** and supporting quota text such as `5 free scans remaining today`
 2. **Source Choice Sheet:** A lightweight chooser offering:
     * **Record New Video**
     * **Choose from Photos**
@@ -101,14 +112,24 @@ The backend must return ONLY a valid JSON object following this structure:
         * **Retake**
         * **Use This Clip**
 5. **Result Screen:**
-    * Full-screen looping video background.
+    * Full-screen looping background using the original scanned clip.
+    * Background playback is muted and continuous.
+    * The same looping local clip background is used when reopening a saved scan from history.
     * Animated Glassmorphism "Thought Bubble".
     * **Confidence Score UI:** The percentage ring must be dynamically color-coded:
         * **Green:** > 80% (High Confidence)
         * **Amber:** 50% - 80% (Moderate Confidence)
         * **Red:** < 50% (Low Confidence/Ambiguous)
     * Expandable "Expert Insights" drawer.
-    * "Share to Story" CTA.
+    * "Done" CTA.
+6. **Scan History List:**
+    * Presents saved scans in chronological order, with the newest saved scan closest to the bottom of the list.
+    * Each row corresponds to one saved scan.
+    * Each row shows:
+        * a thumbnail image for the saved clip
+        * a mood and/or persona label
+        * the beginning of the saved `cat_thought` text
+    * Tapping a row opens the saved result for that scan.
 
 ### 5.2 Validation UX
 * If a Photos-selected video fails validation, the app must reject it before upload and clearly explain the reason.
@@ -132,6 +153,20 @@ The backend must return ONLY a valid JSON object following this structure:
 * Upload and analysis begin only after the user taps **Use This Clip**.
 * Tapping **Retake** discards the recorded clip and returns the user to the live camera view in ready-to-record state.
 * The same post-capture review flow applies whether recording ended by manual early stop or by automatic completion at 10 seconds.
+
+### 5.4 Scan History UX
+* Scan history is part of the Home experience and should be easy to browse without entering a separate management flow.
+* The history list must use chronological ordering so earlier scans appear higher in the list and the newest saved scan sits nearest to the primary CTA at the bottom of Home.
+* If there is no saved scan history yet, the Home screen should show a lightweight empty state indicating that completed scans will appear there.
+* Each history row must remain lightweight and scannable, prioritizing thumbnail, interpretation cue, and short text preview over dense metadata.
+* The `Done` action on the Result screen must return the user to the Home screen.
+* After the user returns from a successful result, the newly persisted scan must be visible in the scan history list in its chronological position.
+* Deleting a saved scan must always require user confirmation.
+* Confirmed deletion must remove:
+    * the persisted history record
+    * the CatVox-owned local original clip
+    * any other CatVox-owned local assets associated with that scan
+* Deleting a saved scan must never delete the user's original Photos asset.
 
 ---
 
@@ -181,6 +216,20 @@ The backend must return ONLY a valid JSON object following this structure:
     * Schema: `{ count: integer, lastResetDate: string (YYYY-MM-DD) }`.
     * **Logic:** Backend increments count; rejects request (429) if limit reached.
     * **userId:** A UUID generated once on first launch and persisted in `UserDefaults` under the key `"catvox.userId"`. Sent by the iOS client with every `analyseVideo` request. Forward-compatible with Firebase Auth — when Auth is introduced, the computed property value is replaced with the authenticated UID and the Firestore schema requires no changes. (See ADR-0007.)
+* **App-Local Scan Persistence:**
+    * Local scan history is stored on-device using SwiftData for metadata persistence.
+    * Each persisted scan record must include at least:
+        * a stable local identifier
+        * the local file location of the CatVox-owned original clip
+        * the saved AI result fields
+        * source type metadata (`recorded` or `photos`)
+        * thumbnail reference
+        * created-at timestamp
+    * Original clip files are stored in CatVox-controlled app-local storage and referenced by the persisted scan record.
+    * Thumbnail images are generated locally and stored for fast history rendering.
+    * Persisted scan history must remain available offline.
+    * Removing a saved scan must delete the SwiftData record together with CatVox-owned local files for that scan.
+    * CatVox must never attempt to delete the user's original Photos-library asset.
 
 ### 6.5 Validation & Upload Guardrails
 * **Client Validation:** The iOS client must validate duration, size, and basic format eligibility before requesting a signed upload URL whenever that metadata is available locally.
@@ -293,7 +342,10 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **Early Stop Recording:** Allow users to stop in-app recording after a 2.0-second minimum threshold using the main capture control.
 * [x] **Post-Capture Review:** Add `Retake` and `Use This Clip` actions after recording ends; only `Use This Clip` continues to upload and analysis.
 * [x] **Backend File Size Validation:** Add backend validation for file size <= 100 MB in the analysis path before Vertex AI is invoked.
-* [ ] **Persistence:** Set up SwiftData for local scan history storage.
+* [x] **Scan History Persistence:** Set up SwiftData-backed local storage for successful scans, including saved AI result metadata, thumbnail reference, and CatVox-owned original clip reference.
+* [x] **Scan History UI:** Add the frontend history list to the Home experience, showing prior scans with thumbnail, mood/persona cue, and short `cat_thought` preview.
+* [x] **Saved Result Reopen:** Allow users to reopen a saved scan from local history without re-upload or re-analysis.
+* [x] **Scan Deletion:** Add confirmed deletion of saved scans, removing the history record and CatVox-owned local assets without touching the original Photos asset.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [ ] **Social:** Build branded video overlay and sharing features.
 
@@ -307,6 +359,8 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * **Quota Race Hardening:** The MVP may intentionally accept a small race between non-mutating quota pre-checks and post-success usage increments when concurrent requests start near the daily limit. Add reservation or idempotency-based quota accounting later if this becomes visible in production.
 * **Backend Duration Validation:** Add backend validation for uploaded video duration <= 10 seconds before Vertex AI is invoked, rather than relying only on client-side duration checks.
 * **4K Import Strategy Review:** Re-evaluate cost and UX trade-offs of accepting 4K gallery videos, and decide later whether to keep raw upload, cap imported resolution, or introduce client-side normalization.
+* **Failure Reporting UX Review:** Review likely user-visible failure points across the app and design one simple, consistent way for users to report failures without adding bespoke report flows to individual screens. Example failure points should include failure to open a saved video on the Result screen, including the case where the Result screen uses the original local clip as its looping background. The future design should also decide what diagnostic context to capture internally for such failures.
+* **Automated Test Coverage:** Add automated tests for critical user flows that are currently manually verified in MVP, especially scan persistence, reopen from history, deletion, and local video playback behavior.
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.
 * **Health Monitoring:** Advanced analysis for subtle pain or distress markers.

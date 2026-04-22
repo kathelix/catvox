@@ -8,4 +8,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environment(ScanQuotaStore())
+        .modelContainer(for: SavedScan.self, inMemory: true)
 }

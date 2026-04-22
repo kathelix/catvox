@@ -1,6 +1,6 @@
 # High-level Design: CatVox AI
 
-**Version:** 1.1
+**Version:** 1.4
 **Company:** Kathelix Ltd
 **Project Lead:** Ivan Boyko
 **Date:** April 2026
@@ -16,7 +16,7 @@ The MVP supports two local input sources:
 1. recording a new clip in-app, with the ability to stop early once a brief minimum capture threshold is reached
 2. selecting an existing clip from the user's Photos library
 
-The product also includes a local on-device scan history as part of the MVP user experience, allowing users to revisit previous cat mood interpretations without relying on cloud-side user accounts.
+The product also includes a local on-device scan history as part of the MVP user experience. Each successful scan is treated as a reusable memory artifact that preserves the original cat moment together with its AI interpretation, allowing users to revisit previous results without relying on cloud-side user accounts.
 
 ## 2. System Flow
 1. The user taps the primary CTA `Read My Cat` in the iOS app.
@@ -33,17 +33,25 @@ The product also includes a local on-device scan history as part of the MVP user
 8. The app uploads the validated video to Google Cloud Storage.
 9. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
 10. The backend validates App Check, enforces usage limits, validates server-side guardrails such as upload file size, invokes Vertex AI, and returns a normalized result payload.
+11. After a successful analysis, the app saves the scan locally as a history item that includes the original clip and the AI result.
+12. The user views the completed result against the original local clip as the visual background, then returns to Home via a lightweight completion action.
+13. The user can revisit past scans through a local history view on Home that presents previous results as reusable memories, reopening them against the same preserved local clip.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.
 * **User Experience:** Focus on "Glassmorphism" design, minimalist interactions, and high-performance video processing.
+* **Memorable History:** The product should preserve emotionally valuable cat moments as durable, revisit-able memories rather than disposable one-time AI responses.
 * **Monetization:** A freemium model with server-enforced daily usage limits and a StoreKit 2-based Pro tier for unlimited use.
 
 ## 4. Key Design Decisions
 * **Multimodal Engine:** Selected Gemini 2.5 Flash for its ability to process video and audio simultaneously via GCS-hosted media, reducing mobile device memory overhead.
 * **Video Pipeline:** The MVP accepts validated local videos from either in-app recording or Photos selection. In-app recording captures up to 10 seconds, with support for early user stop after a short minimum threshold, followed by a lightweight `Retake` / `Use This Clip` review step before upload. Native HEVC (.mov) at 1080p remains the preferred capture path for in-app recording, with silent fallback to H.264 on devices that do not support HEVC. Client-side transcoding is intentionally out of scope for MVP.
+* **Scan Memory Model:** A completed scan is conceptually a durable bundle of the original clip and the structured AI interpretation. This bundled record is the canonical unit of local history.
 * **MVP Input Rules:** Submitted videos must already satisfy MVP limits before upload: maximum 10 seconds duration, maximum 100 MB file size, supported codec/container, and no ProRes input. 4K input is temporarily accepted for simplicity.
 * **UX Validation Strategy:** The app validates candidate videos locally before upload and clearly explains rejection reasons when a selected video is ineligible. In-app trimming is out of scope for MVP.
+* **History Reliability Over External References:** For MVP, scan history should remain self-contained and reliable even if the user later removes the source video from Photos. The app should therefore preserve its own app-local copy of the original clip for successful scans rather than depending solely on a Photos-library reference.
+* **Clip-Centric Result Presentation:** The original preserved local clip remains the canonical visual context for a scan. The completed result experience, including reopened history items, should present the interpretation against that same local clip rather than against a generic decorative background.
+* **History-First Presentation:** The history experience lives on Home as a simple, browsable list of past scans. Each entry represents one preserved clip and should surface a thumbnail together with lightweight interpretation cues so the user can quickly recognize and reopen a prior memory.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.
 * **Backend Pattern:** Firebase Cloud Functions (2nd Gen) act as the backend proxy between the iOS client and privileged GCP services.
