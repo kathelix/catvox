@@ -112,7 +112,9 @@ The backend must return ONLY a valid JSON object following this structure:
         * **Retake**
         * **Use This Clip**
 5. **Result Screen:**
-    * Full-screen looping video background.
+    * Full-screen looping background using the original scanned clip.
+    * Background playback is muted and continuous.
+    * The same looping local clip background is used when reopening a saved scan from history.
     * Animated Glassmorphism "Thought Bubble".
     * **Confidence Score UI:** The percentage ring must be dynamically color-coded:
         * **Green:** > 80% (High Confidence)

@@ -38,6 +38,8 @@ struct ResultView: View {
     @State private var failureMessage  = ""
     @State private var persistenceMessage = ""
     @State private var showPersistenceAlert = false
+    @State private var backgroundVideoURL: URL?
+    @State private var backgroundPlaybackMessage: String?
 
     /// Set at init; nil in dev-preview mode (analysis provided directly).
     private let videoURL: URL?
@@ -49,6 +51,7 @@ struct ResultView: View {
     init(analysis: CatAnalysis) {
         videoURL = nil
         sourceType = nil
+        _backgroundVideoURL = State(initialValue: nil)
         _viewModel = State(initialValue: ResultViewModel(analysis: analysis))
     }
 
@@ -56,6 +59,7 @@ struct ResultView: View {
     init(videoURL: URL, sourceType: ScanSourceType) {
         self.videoURL = videoURL
         self.sourceType = sourceType
+        _backgroundVideoURL = State(initialValue: videoURL)
         _viewModel = State(initialValue: nil)
     }
 
@@ -63,6 +67,7 @@ struct ResultView: View {
     init(savedScan: SavedScan) {
         videoURL = ScanHistoryStore.originalVideoURL(for: savedScan)
         sourceType = savedScan.sourceType
+        _backgroundVideoURL = State(initialValue: ScanHistoryStore.originalVideoURL(for: savedScan))
         _viewModel = State(initialValue: ResultViewModel(analysis: savedScan.analysis))
     }
 
@@ -84,8 +89,7 @@ struct ResultView: View {
         ZStack(alignment: .bottom) {
 
             // ── 1. Background ──────────────────────────────────────────────
-            AnimatedVideoBackground(persona: activePersona)
-                .ignoresSafeArea()
+            backgroundView
 
             // ── 2. Vignette ────────────────────────────────────────────────
             LinearGradient(
@@ -104,6 +108,12 @@ struct ResultView: View {
             VStack(spacing: 0) {
                 topBar
                     .padding(.top, 8)
+
+                if let backgroundPlaybackMessage {
+                    backgroundPlaybackNotice(backgroundPlaybackMessage)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                }
 
                 Spacer()
 
@@ -136,6 +146,20 @@ struct ResultView: View {
     }
 
     // MARK: - Content branches
+
+    @ViewBuilder
+    private var backgroundView: some View {
+        if let backgroundVideoURL, backgroundPlaybackMessage == nil {
+            LoopingVideoBackground(url: backgroundVideoURL) { failedURL, message in
+                guard failedURL == self.backgroundVideoURL else { return }
+                backgroundPlaybackMessage = message
+            }
+            .ignoresSafeArea()
+        } else {
+            AnimatedVideoBackground(persona: activePersona)
+                .ignoresSafeArea()
+        }
+    }
 
     /// Shown when the daily free scan quota is exhausted (HTTP 429).
     private var quotaExceededContent: some View {
@@ -234,6 +258,28 @@ struct ResultView: View {
         .padding(.bottom, 40)
     }
 
+    private func backgroundPlaybackNotice(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.78))
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.white.opacity(0.84))
+                .multilineTextAlignment(.leading)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(.black.opacity(0.38), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+        }
+    }
+
     private func doneButton(_ vm: ResultViewModel) -> some View {
         Button {
             dismiss()
@@ -265,6 +311,8 @@ struct ResultView: View {
     // MARK: - Event handlers
 
     private func handleAppear() {
+        backgroundPlaybackMessage = nil
+
         if viewModel != nil {
             viewModel?.onAppear()
         } else if let url = videoURL {
@@ -303,12 +351,15 @@ struct ResultView: View {
         }
 
         do {
-            _ = try ScanHistoryStore.saveScan(
+            let savedScan = try ScanHistoryStore.saveScan(
                 from: videoURL,
                 sourceType: sourceType,
                 analysis: analysis,
                 in: modelContext
             )
+
+            backgroundVideoURL = ScanHistoryStore.originalVideoURL(for: savedScan)
+            backgroundPlaybackMessage = nil
 
             let vm = ResultViewModel(analysis: analysis)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
