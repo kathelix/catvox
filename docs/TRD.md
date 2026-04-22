@@ -1,6 +1,6 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 2.3
+**Version:** 2.5
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
 **Date:** April 2026  
@@ -55,13 +55,28 @@ For MVP, the user can either record a new video in-app or select an existing vid
 * **History Reliability:** For MVP, CatVox must preserve its own app-local copy of the original clip for each successful scan, including clips imported from Photos. This keeps history self-contained and reliable even if the user later deletes the original Photos asset.
 * **History Replay:** Opening a saved scan from history must use the locally persisted clip and AI result. It must not trigger a new upload, a new backend analysis request, or quota consumption.
 * **Result Completion Flow:** Successful scans are already persisted before the user leaves the Result screen. The Result screen action is therefore a completion/exit action rather than the persistence trigger.
-* **Social Sharing:** Deferred as a separate MVP backlog item. It is not part of the persistence / scan history feature defined in this section.
+* **Shareable Result Video:** From a completed result, the user may generate a separate rendered video derived from the preserved local clip and saved AI result. The original clip must remain untouched. See ADR-0009.
+* **On-Demand Rendering Rule:** CatVox must render shareable videos only when the user explicitly taps a save/share action. The app must not auto-render derived videos after every scan.
+* **Overlay Content:** The rendered overlay must include:
+    * the saved `cat_thought` as the primary visual overlay
+    * the saved persona label
+    * the saved primary emotion label
+    * subtle CatVox / Kathelix branding
+* **MVP Export Style:** The first share export style should be a single CatVox-owned template rendered on top of the original clip. In MVP, that template should keep the `cat_thought` as the dominant bottom card, present persona and primary emotion in a compact secondary metadata card, and use subtle CatVox / Kathelix branding rather than loud decorative framing. Multiple style packs are out of scope for MVP.
+* **Aspect Ratio Rule:** MVP share exports must preserve the original input clip aspect ratio rather than reframing into a fixed social aspect ratio. This keeps export behavior predictable and avoids crop / letterbox decisions in the first release. See ADR-0009.
+* **Adaptive Overlay Scaling Rule:** Share-overlay layout and typography must scale from the actual rendered frame and available card geometry rather than from fixed absolute caps, so the exported style stays proportionate across portrait, landscape, square, HD, and 4K clips.
+* **Preview Rule:** MVP does not require a separate rendered-video preview screen before save/share. The user triggers rendering directly from the Result screen and then proceeds to save or share the derived output.
+* **Share Destinations:** The app must support both:
+    * saving the rendered output to Photos
+    * opening the system share sheet for the rendered output
+* **Export Failure Handling:** If rendering or export fails, the app must show a minimal user-facing error and log internal diagnostics for developer investigation.
 
 ### 3.2 Monetization & Sustainability
 * **Credit System:** 5 free scans/day to manage GCP costs.
 * **Quota Burn Rule:** A quota unit is consumed only when analysis completes successfully and a result payload is returned. Failed local validation attempts, rejected selections, and abandoned uploads do not consume quota.
 * **Pro Tier (IAP):** One-time in-app purchase for unlimited scans and watermark removal.
 * **Brand Promotion:** Subtle "Powered by Kathelix" watermark on all free-tier exports.
+* **MVP Watermark Rule:** Until StoreKit 2 Pro entitlement logic exists, CatVox should treat exported share videos as free-tier exports and burn in subtle CatVox / Kathelix branding by default.
 
 ---
 
@@ -121,6 +136,10 @@ The backend must return ONLY a valid JSON object following this structure:
         * **Amber:** 50% - 80% (Moderate Confidence)
         * **Red:** < 50% (Low Confidence/Ambiguous)
     * Expandable "Expert Insights" drawer.
+    * On-demand actions to:
+        * generate and save the rendered share video to Photos
+        * generate and open the system share sheet for the rendered share video
+    * MVP does not require a separate preview step before those actions.
     * "Done" CTA.
 6. **Scan History List:**
     * Presents saved scans in chronological order, with the newest saved scan closest to the bottom of the list.
@@ -167,6 +186,15 @@ The backend must return ONLY a valid JSON object following this structure:
     * the CatVox-owned local original clip
     * any other CatVox-owned local assets associated with that scan
 * Deleting a saved scan must never delete the user's original Photos asset.
+
+### 5.5 Share Export UX
+* Share export actions live on the Result screen so the user can act from either a newly completed scan or a reopened saved scan.
+* The app must not block normal result viewing on initial load by eagerly rendering a share export in the background.
+* When the user taps a share-export action, the app should show lightweight in-context progress while rendering is underway.
+* The share overlay should keep the `cat_thought` visually dominant over the persona and emotion labels.
+* The MVP share template should feel visually aligned with the in-app result UI: soft glass surfaces, restrained borders, subtle branding, and no heavy badge framing around secondary metadata.
+* Branding should be present but subtle rather than overpowering the clip content or thought overlay.
+* If saving to Photos succeeds, the app should confirm success with a lightweight user-facing confirmation.
 
 ---
 
@@ -230,13 +258,18 @@ The backend must return ONLY a valid JSON object following this structure:
     * Persisted scan history must remain available offline.
     * Removing a saved scan must delete the SwiftData record together with CatVox-owned local files for that scan.
     * CatVox must never attempt to delete the user's original Photos-library asset.
+* **Rendered Share Output Lifecycle:**
+    * Rendered share videos are temporary derived artifacts, not part of the durable scan-history record.
+    * Rendered outputs should be stored in CatVox-owned cache or temporary storage, outside the canonical original-clip location.
+    * The app should opportunistically clean up old rendered outputs and must delete render-cache artifacts associated with a scan when that scan is deleted.
+    * MVP does not require permanent retention, indexing, or browsing of all previously rendered share files.
 
 ### 6.5 Validation & Upload Guardrails
 * **Client Validation:** The iOS client must validate duration, size, and basic format eligibility before requesting a signed upload URL whenever that metadata is available locally.
 * **Backend Validation Point:** The backend must validate uploaded object constraints in the analysis path before invoking Vertex AI.
-* **Backend Validation Rules:** For MVP, backend validation should enforce at least these two protected limits:
-    * duration <= 10 seconds
+* **Backend Validation Rules:** For MVP, backend validation should enforce upload file-size guardrails before invoking Vertex AI:
     * file size <= 100 MB
+* Duration <= 10 seconds remains a client-side MVP rule for now; backend duration enforcement is deferred and tracked in backlog.
 * **Upload Economics:** Signed upload URLs should not be issued for videos that the client already knows are invalid. This is primarily a cost-control and UX measure, not a trust substitute.
 * **Optional Abuse Mitigation:** A lightweight rate-limit on signed URL issuance is desirable if it can be implemented cheaply without materially complicating MVP delivery; otherwise it should be deferred to post-MVP work.
 
@@ -347,7 +380,9 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **Saved Result Reopen:** Allow users to reopen a saved scan from local history without re-upload or re-analysis.
 * [x] **Scan Deletion:** Add confirmed deletion of saved scans, removing the history record and CatVox-owned local assets without touching the original Photos asset.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
-* [ ] **Social:** Build branded video overlay and sharing features.
+* [x] **Share Rendering Pipeline:** Add an on-device AVFoundation-based export pipeline that renders a derived share video from the preserved local clip with CatVox overlays.
+* [x] **Share Actions:** Add Result-screen actions to save the rendered share video to Photos or open it in the system share sheet.
+* [x] **Rendered Output Cleanup:** Store rendered share videos as temporary CatVox-owned artifacts and clean them up with normal cache lifecycle plus scan deletion.
 
 ---
 

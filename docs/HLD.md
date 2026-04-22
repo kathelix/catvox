@@ -1,6 +1,6 @@
 # High-level Design: CatVox AI
 
-**Version:** 1.4
+**Version:** 1.6
 **Company:** Kathelix Ltd
 **Project Lead:** Ivan Boyko
 **Date:** April 2026
@@ -17,6 +17,8 @@ The MVP supports two local input sources:
 2. selecting an existing clip from the user's Photos library
 
 The product also includes a local on-device scan history as part of the MVP user experience. Each successful scan is treated as a reusable memory artifact that preserves the original cat moment together with its AI interpretation, allowing users to revisit previous results without relying on cloud-side user accounts.
+
+The MVP also supports on-demand creation of a funny shareable result video derived from a saved scan. The original preserved clip remains untouched; CatVox generates a separate export-ready video locally on the device with branded overlays and lets the user save or share that derived output when they explicitly ask for it.
 
 ## 2. System Flow
 1. The user taps the primary CTA `Read My Cat` in the iOS app.
@@ -35,7 +37,9 @@ The product also includes a local on-device scan history as part of the MVP user
 10. The backend validates App Check, enforces usage limits, validates server-side guardrails such as upload file size, invokes Vertex AI, and returns a normalized result payload.
 11. After a successful analysis, the app saves the scan locally as a history item that includes the original clip and the AI result.
 12. The user views the completed result against the original local clip as the visual background, then returns to Home via a lightweight completion action.
-13. The user can revisit past scans through a local history view on Home that presents previous results as reusable memories, reopening them against the same preserved local clip.
+13. From the completed result experience, the user can optionally generate a separate shareable video derived from the preserved local clip and CatVox interpretation.
+14. The user can save or share that derived video, while the original preserved clip remains unchanged.
+15. The user can revisit past scans through a local history view on Home that presents previous results as reusable memories, reopening them against the same preserved local clip and offering the same on-demand share export path.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.
@@ -52,6 +56,10 @@ The product also includes a local on-device scan history as part of the MVP user
 * **History Reliability Over External References:** For MVP, scan history should remain self-contained and reliable even if the user later removes the source video from Photos. The app should therefore preserve its own app-local copy of the original clip for successful scans rather than depending solely on a Photos-library reference.
 * **Clip-Centric Result Presentation:** The original preserved local clip remains the canonical visual context for a scan. The completed result experience, including reopened history items, should present the interpretation against that same local clip rather than against a generic decorative background.
 * **History-First Presentation:** The history experience lives on Home as a simple, browsable list of past scans. Each entry represents one preserved clip and should surface a thumbnail together with lightweight interpretation cues so the user can quickly recognize and reopen a prior memory.
+* **Derived Share Export:** Shareable video output is a derived artifact created from a saved scan, never a mutation of the original preserved clip. The share path should always treat the original clip as canonical and leave it untouched. See ADR-0009.
+* **On-Device Share Rendering:** Shareable exports are rendered locally on iOS rather than by backend infrastructure. This keeps the share feature privacy-preserving, reduces cloud cost, and allows previously saved scans to be re-rendered on demand without another upload. See ADR-0009.
+* **On-Demand Export Only:** The app does not auto-render share videos for every completed scan. A derived export is generated only when the user explicitly asks to save or share it.
+* **MVP Share Style Simplicity:** The first share export style keeps the original aspect ratio and overlays the cat thought as the hero element together with lightweight persona, emotion, and CatVox/Kathelix branding. The share overlay should scale proportionally from the actual rendered frame so the visual hierarchy remains consistent across portrait, landscape, square, HD, and 4K clips. Multiple style packs and fixed social-format reframing are deferred.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.
 * **Backend Pattern:** Firebase Cloud Functions (2nd Gen) act as the backend proxy between the iOS client and privileged GCP services.
@@ -77,6 +85,9 @@ The product also includes a local on-device scan history as part of the MVP user
 * No client-side video transcoding in MVP.
 * No in-app video trimming in MVP.
 * No post-capture trimming or clip editing in MVP beyond `Retake` or `Use This Clip`.
+* No backend rendering of shareable result videos in MVP.
+* No automatic post-scan rendering of shareable videos in MVP.
+* No multiple share-video style packs or fixed social-format reframing in MVP.
 * No backend video-duration validation in MVP; duration is enforced client-side, with server-side upload file-size guardrails only.
 * No custom filtered gallery browser in MVP beyond the system video picker flow.
 * User identity for MVP is an anonymous per-install identifier used for quota enforcement; full authenticated user accounts are outside current MVP scope.

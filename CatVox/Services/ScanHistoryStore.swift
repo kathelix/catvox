@@ -52,6 +52,8 @@ enum ScanHistoryStore {
             try FileManager.default.removeItem(at: directoryURL)
         }
 
+        try ShareVideoRenderer.deleteRenderedArtifacts(for: scan.id)
+
         context.delete(scan)
         try context.save()
     }

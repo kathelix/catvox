@@ -12,6 +12,7 @@
 		1861803EF64D9F7FE6C77560 /* CatAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */; };
 		18A039960A12961EBFEBC651 /* LoopingVideoBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */; };
 		2B1DF66382C3129D895D785C /* CatVoxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBC2D72ADC3729A73D65E8D /* CatVoxApp.swift */; };
+		2D40438890094A8E0A0EB71F /* ShareVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */; };
 		31B52FE6FAEC9B396E3D0C27 /* QuotaExceededView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */; };
 		37039B5FADDEA9E57A423699 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F5C098EA923D7B7D2B7746F /* HomeView.swift */; };
 		374FEBF00E6B6956F5361432 /* ScanHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */; };
@@ -24,6 +25,7 @@
 		696CA07C08B3CC4EDE48028D /* ScanQuotaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */; };
 		8C2CEB06889AD660A126DB42 /* PersonaBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */; };
 		93C8E173BFE2C46040F5EA46 /* ResultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95B88E4B8C3A92CC6B7C716 /* ResultViewModel.swift */; };
+		9413B510B33BA0FEA8A3C1EF /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CDA1F15EF954A1E30D11AE3 /* ActivityView.swift */; };
 		96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C3FCEEFAA51F645F5BECDC /* ThoughtBubbleView.swift */; };
 		9CD5CA08C5225D84F30B2646 /* CatPersona.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689AC1D0436D57C04DBE7694 /* CatPersona.swift */; };
 		A5C4EECE806C37E8D53F28E0 /* ExpertInsightsDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337DB0A3CC6E2C83B8244190 /* ExpertInsightsDrawer.swift */; };
@@ -52,6 +54,7 @@
 		689AC1D0436D57C04DBE7694 /* CatPersona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersona.swift; sourceTree = "<group>"; };
 		6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
 		7BC4DFCD54831F1AA990A7C3 /* CatVox.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CatVox.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7CDA1F15EF954A1E30D11AE3 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanQuotaStore.swift; sourceTree = "<group>"; };
 		8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryStore.swift; sourceTree = "<group>"; };
@@ -64,6 +67,7 @@
 		B95B88E4B8C3A92CC6B7C716 /* ResultViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultViewModel.swift; sourceTree = "<group>"; };
 		BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaExceededView.swift; sourceTree = "<group>"; };
 		C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedVideoService.swift; sourceTree = "<group>"; };
+		C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareVideoRenderer.swift; sourceTree = "<group>"; };
 		C7BA98BD11A2006135A1026D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		D81F4FC3E926629C4422BFA0 /* SavedScanRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedScanRow.swift; sourceTree = "<group>"; };
 		DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaBadgeView.swift; sourceTree = "<group>"; };
@@ -111,6 +115,7 @@
 		74F08FAA36CAA3571905D207 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				7CDA1F15EF954A1E30D11AE3 /* ActivityView.swift */,
 				B25B98C7A388BAC230FA34DE /* AnimatedVideoBackground.swift */,
 				8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */,
 				431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */,
@@ -165,6 +170,7 @@
 				C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */,
 				A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */,
 				A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */,
+				C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -286,6 +292,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9413B510B33BA0FEA8A3C1EF /* ActivityView.swift in Sources */,
 				53EBF6283E37AC40C2FBF31C /* AnimatedVideoBackground.swift in Sources */,
 				B4D5970C08C51D76A7FA3AB4 /* CameraPreviewView.swift in Sources */,
 				46ECBCFF9DD385E7670A980D /* CameraService.swift in Sources */,
@@ -309,6 +316,7 @@
 				6902F9587F273B3A3A1CFA3F /* SavedScanRow.swift in Sources */,
 				374FEBF00E6B6956F5361432 /* ScanHistoryStore.swift in Sources */,
 				696CA07C08B3CC4EDE48028D /* ScanQuotaStore.swift in Sources */,
+				2D40438890094A8E0A0EB71F /* ShareVideoRenderer.swift in Sources */,
 				CC4D468FA76148B25B2DFE40 /* Theme.swift in Sources */,
 				96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */,
 				02E96012C9F9B33780525AE7 /* UploadProgressView.swift in Sources */,

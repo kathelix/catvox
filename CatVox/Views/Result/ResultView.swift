@@ -1,5 +1,7 @@
+import Photos
 import SwiftUI
 import SwiftData
+import os
 
 /// The centrepiece of the CatVox experience.
 ///
@@ -22,6 +24,16 @@ import SwiftData
 /// See TRD §5.1 and PROMPT.md §2 for the full specification.
 struct ResultView: View {
 
+    private enum ShareExportAction {
+        case saveToPhotos
+        case shareSheet
+    }
+
+    private struct ShareSheetItem: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+
     @Environment(\.dismiss)        private var dismiss
     @Environment(\.modelContext)   private var modelContext
     @Environment(ScanQuotaStore.self) private var quotaStore
@@ -40,6 +52,15 @@ struct ResultView: View {
     @State private var showPersistenceAlert = false
     @State private var backgroundVideoURL: URL?
     @State private var backgroundPlaybackMessage: String?
+    @State private var renderedShareVideoURL: URL?
+    @State private var shareProgressMessage: String?
+    @State private var exportNoticeMessage: String?
+    @State private var exportAlertMessage = ""
+    @State private var showExportAlert = false
+    @State private var shareSheetItem: ShareSheetItem?
+    @State private var shareRenderTask: Task<Void, Never>?
+
+    private let shareLogger = Logger(subsystem: "com.kathelix.catvox", category: "ResultShare")
 
     /// Set at init; nil in dev-preview mode (analysis provided directly).
     private let videoURL: URL?
@@ -115,6 +136,16 @@ struct ResultView: View {
                         .padding(.top, 12)
                 }
 
+                if let shareProgressMessage {
+                    shareProgressNotice(shareProgressMessage)
+                        .padding(.horizontal, 20)
+                        .padding(.top, backgroundPlaybackMessage == nil ? 12 : 8)
+                } else if let exportNoticeMessage {
+                    exportNotice(exportNoticeMessage)
+                        .padding(.horizontal, 20)
+                        .padding(.top, backgroundPlaybackMessage == nil ? 12 : 8)
+                }
+
                 Spacer()
 
                 if let viewModel {
@@ -130,6 +161,9 @@ struct ResultView: View {
         .statusBarHidden(true)
         .onAppear(perform: handleAppear)
         .onChange(of: gcpService.uploadState) { _, state in handleUploadState(state) }
+        .onDisappear {
+            shareRenderTask?.cancel()
+        }
         .alert("Upload Failed", isPresented: $showRetryAlert) {
             Button("Retry") {
                 if let url = videoURL { gcpService.retry(videoAt: url) }
@@ -142,6 +176,14 @@ struct ResultView: View {
             Button("OK", role: .cancel) { dismiss() }
         } message: {
             Text(persistenceMessage)
+        }
+        .alert("Share Export", isPresented: $showExportAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportAlertMessage)
+        }
+        .sheet(item: $shareSheetItem) { item in
+            ActivityView(activityItems: [item.url])
         }
     }
 
@@ -252,6 +294,10 @@ struct ResultView: View {
                 )
             )
 
+            if backgroundVideoURL != nil {
+                shareActions(vm)
+            }
+
             doneButton(vm)
         }
         .padding(.horizontal, 20)
@@ -259,8 +305,16 @@ struct ResultView: View {
     }
 
     private func backgroundPlaybackNotice(_ message: String) -> some View {
+        statusNotice(message, systemImage: "exclamationmark.triangle.fill")
+    }
+
+    private func exportNotice(_ message: String) -> some View {
+        statusNotice(message, systemImage: "checkmark.circle.fill")
+    }
+
+    private func statusNotice(_ message: String, systemImage: String) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: systemImage)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.78))
 
@@ -305,6 +359,64 @@ struct ResultView: View {
                 ),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
+        }
+    }
+
+    private func shareActions(_ vm: ResultViewModel) -> some View {
+        HStack(spacing: 12) {
+            Button {
+                startShareExport(.saveToPhotos, analysis: vm.analysis)
+            } label: {
+                Label("Save to Photos", systemImage: "square.and.arrow.down")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(.white.opacity(0.08))
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+                    }
+            }
+            .disabled(shareProgressMessage != nil)
+
+            Button {
+                startShareExport(.shareSheet, analysis: vm.analysis)
+            } label: {
+                Label("Share Video", systemImage: "square.and.arrow.up")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        CatVoxTheme.brandGradient,
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+            }
+            .disabled(shareProgressMessage != nil)
+        }
+    }
+
+    private func shareProgressNotice(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            ProgressView()
+                .tint(.white)
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.white.opacity(0.88))
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(.black.opacity(0.38), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(.white.opacity(0.10), lineWidth: 1)
         }
     }
 
@@ -369,6 +481,122 @@ struct ResultView: View {
         } catch {
             persistenceMessage = "We couldn't save this scan to local history."
             showPersistenceAlert = true
+        }
+    }
+
+    private func startShareExport(_ action: ShareExportAction, analysis: CatAnalysis) {
+        if let renderedShareVideoURL, FileManager.default.fileExists(atPath: renderedShareVideoURL.path) {
+            performShareAction(action, using: renderedShareVideoURL)
+            return
+        }
+
+        guard let backgroundVideoURL, FileManager.default.fileExists(atPath: backgroundVideoURL.path) else {
+            exportAlertMessage = "We couldn't find the saved clip for this export."
+            showExportAlert = true
+            return
+        }
+
+        shareRenderTask?.cancel()
+        shareProgressMessage = "Preparing share video..."
+
+        let request = ShareVideoRenderer.Request(
+            scanID: analysis.id,
+            sourceVideoURL: backgroundVideoURL,
+            analysis: analysis
+        )
+
+        shareRenderTask = Task {
+            do {
+                let outputURL = try await ShareVideoRenderer.renderVideo(for: request)
+                await MainActor.run {
+                    renderedShareVideoURL = outputURL
+                    shareProgressMessage = nil
+                    shareRenderTask = nil
+                    performShareAction(action, using: outputURL)
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    shareProgressMessage = nil
+                    shareRenderTask = nil
+                }
+            } catch {
+                shareLogger.error("share render failed scan=\(analysis.id.uuidString, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
+                await MainActor.run {
+                    shareProgressMessage = nil
+                    shareRenderTask = nil
+                    exportAlertMessage = "We couldn't render the share video."
+                    showExportAlert = true
+                }
+            }
+        }
+    }
+
+    private func performShareAction(_ action: ShareExportAction, using outputURL: URL) {
+        switch action {
+        case .shareSheet:
+            shareSheetItem = ShareSheetItem(url: outputURL)
+
+        case .saveToPhotos:
+            shareProgressMessage = "Saving to Photos..."
+
+            Task {
+                do {
+                    try await saveRenderedVideoToPhotos(outputURL)
+                    await MainActor.run {
+                        shareProgressMessage = nil
+                        showTransientExportNotice("Saved to Photos")
+                    }
+                } catch {
+                    shareLogger.error("save to photos failed url=\(outputURL.path, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
+                    await MainActor.run {
+                        shareProgressMessage = nil
+                        exportAlertMessage = "We couldn't save the share video to Photos."
+                        showExportAlert = true
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveRenderedVideoToPhotos(_ outputURL: URL) async throws {
+        let currentStatus = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        let resolvedStatus: PHAuthorizationStatus
+
+        if currentStatus == .notDetermined {
+            resolvedStatus = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        } else {
+            resolvedStatus = currentStatus
+        }
+
+        guard resolvedStatus == .authorized || resolvedStatus == .limited else {
+            throw CocoaError(.userCancelled)
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outputURL)
+            }) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: CocoaError(.fileWriteUnknown))
+                }
+            }
+        }
+    }
+
+    private func showTransientExportNotice(_ message: String) {
+        exportNoticeMessage = message
+
+        Task {
+            try? await Task.sleep(for: .seconds(2.2))
+            await MainActor.run {
+                if exportNoticeMessage == message {
+                    exportNoticeMessage = nil
+                }
+            }
         }
     }
 }
