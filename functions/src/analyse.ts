@@ -1,4 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import * as logger from 'firebase-functions/logger';
 import { getStorage } from 'firebase-admin/storage';
 import {
   checkUsageAvailable,
@@ -9,6 +10,27 @@ import { callGemini } from './gemini';
 
 const REGION = 'us-central1';
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const MAX_VERTEX_RESPONSE_ATTEMPTS = 2;
+
+type AnalysisPayload = {
+  primary_emotion: string;
+  confidence_score: number;
+  analysis: string;
+  persona_type: string;
+  cat_thought: string;
+  owner_tip: string;
+};
+
+class InvalidVertexResponseError extends Error {
+  constructor(
+    message: string,
+    readonly issues: string[],
+    readonly rawResponse: string
+  ) {
+    super(message);
+    this.name = 'InvalidVertexResponseError';
+  }
+}
 
 export const analyseVideo = onRequest(
   {
@@ -78,20 +100,83 @@ export const analyseVideo = onRequest(
       return;
     }
 
-    // Call Vertex AI and forward the parsed result to the iOS client.
-    const rawJson = await callGemini(projectId, gcsUri, mimeType);
-
-    let parsed: unknown;
     try {
-      parsed = JSON.parse(rawJson);
-    } catch {
-      throw new Error(`Vertex AI returned invalid JSON: ${rawJson}`);
-    }
+      const parsed = await getAnalysisPayload(() =>
+        callGemini(projectId, gcsUri, mimeType)
+      );
 
-    await incrementUsage(userId);
-    res.status(200).json(parsed);
+      await incrementUsage(userId);
+      res.status(200).json(parsed);
+    } catch (err: unknown) {
+      if (err instanceof InvalidVertexResponseError) {
+        logger.error('Vertex AI returned malformed analysis payload', {
+          issues: err.issues,
+          rawResponsePreview: previewRawResponse(err.rawResponse),
+          gcsUri,
+        });
+        res.status(502).json({
+          error: 'Analysis service returned an invalid response. Please try again.',
+        });
+        return;
+      }
+
+      throw err;
+    }
   }
 );
+
+export async function getAnalysisPayload(
+  getRawResponse: () => Promise<string>
+): Promise<AnalysisPayload> {
+  let lastError: InvalidVertexResponseError | null = null;
+
+  for (let attempt = 1; attempt <= MAX_VERTEX_RESPONSE_ATTEMPTS; attempt += 1) {
+    const rawResponse = await getRawResponse();
+
+    try {
+      return parseAnalysisPayload(rawResponse);
+    } catch (err: unknown) {
+      if (!(err instanceof InvalidVertexResponseError)) {
+        throw err;
+      }
+
+      lastError = err;
+
+      logger.warn('Retrying malformed Vertex AI analysis payload', {
+        attempt,
+        issues: err.issues,
+        rawResponsePreview: previewRawResponse(err.rawResponse),
+      });
+    }
+  }
+
+  throw lastError ?? new Error('Vertex AI response validation failed');
+}
+
+export function parseAnalysisPayload(rawResponse: string): AnalysisPayload {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(rawResponse);
+  } catch {
+    throw new InvalidVertexResponseError(
+      'Vertex AI returned invalid JSON.',
+      ['invalid_json'],
+      rawResponse
+    );
+  }
+
+  const issues = validateAnalysisPayload(parsed);
+  if (issues.length > 0) {
+    throw new InvalidVertexResponseError(
+      'Vertex AI returned an invalid analysis payload.',
+      issues,
+      rawResponse
+    );
+  }
+
+  return parsed as AnalysisPayload;
+}
 
 function parseGcsUri(gcsUri: string): { bucketName: string; objectName: string } | null {
   const match = /^gs:\/\/([^/]+)\/(.+)$/.exec(gcsUri);
@@ -123,4 +208,43 @@ function normalizedVertexVideoMimeType(contentType?: string): string | null {
     default:
       return null;
   }
+}
+
+function validateAnalysisPayload(value: unknown): string[] {
+  if (!isRecord(value)) {
+    return ['payload_not_object'];
+  }
+
+  const issues: string[] = [];
+
+  for (const key of [
+    'primary_emotion',
+    'analysis',
+    'persona_type',
+    'cat_thought',
+    'owner_tip',
+  ] as const) {
+    if (typeof value[key] !== 'string' || value[key].trim().length === 0) {
+      issues.push(`invalid_${key}`);
+    }
+  }
+
+  if (
+    typeof value.confidence_score !== 'number' ||
+    !Number.isFinite(value.confidence_score) ||
+    value.confidence_score < 0 ||
+    value.confidence_score > 1
+  ) {
+    issues.push('invalid_confidence_score');
+  }
+
+  return issues;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function previewRawResponse(rawResponse: string): string {
+  return rawResponse.length > 500 ? `${rawResponse.slice(0, 500)}...` : rawResponse;
 }

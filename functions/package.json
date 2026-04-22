@@ -5,6 +5,7 @@
   "scripts": {
     "build": "mkdir -p assets && cp ../docs/Instructions.md assets/instructions.md && tsc",
     "build:watch": "tsc --watch",
+    "test": "npm run build && node --test test/*.test.js",
     "serve": "npm run build && firebase emulators:start --only functions",
     "predeploy": "npm run build"
   },
