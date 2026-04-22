@@ -1,6 +1,6 @@
 # High-level Design: CatVox AI
 
-**Version:** 1.3
+**Version:** 1.4
 **Company:** Kathelix Ltd
 **Project Lead:** Ivan Boyko
 **Date:** April 2026
@@ -34,7 +34,8 @@ The product also includes a local on-device scan history as part of the MVP user
 9. The app submits the uploaded clip for backend analysis using the server-issued storage reference.
 10. The backend validates App Check, enforces usage limits, validates server-side guardrails such as upload file size, invokes Vertex AI, and returns a normalized result payload.
 11. After a successful analysis, the app saves the scan locally as a history item that includes the original clip and the AI result.
-12. The user can revisit past scans through a local history view that presents previous results as reusable memories.
+12. The user views the completed result against the original local clip as the visual background, then returns to Home via a lightweight completion action.
+13. The user can revisit past scans through a local history view on Home that presents previous results as reusable memories, reopening them against the same preserved local clip.
 
 ## 3. Core Strategic Priorities
 * **Resilient Infrastructure:** The system is built on Google Cloud Platform (GCP) using a "Phoenix" architecture - reproducible, secure, and tool-driven.
@@ -49,7 +50,8 @@ The product also includes a local on-device scan history as part of the MVP user
 * **MVP Input Rules:** Submitted videos must already satisfy MVP limits before upload: maximum 10 seconds duration, maximum 100 MB file size, supported codec/container, and no ProRes input. 4K input is temporarily accepted for simplicity.
 * **UX Validation Strategy:** The app validates candidate videos locally before upload and clearly explains rejection reasons when a selected video is ineligible. In-app trimming is out of scope for MVP.
 * **History Reliability Over External References:** For MVP, scan history should remain self-contained and reliable even if the user later removes the source video from Photos. The app should therefore preserve its own app-local copy of the original clip for successful scans rather than depending solely on a Photos-library reference.
-* **History-First Presentation:** The history experience should open as a simple, browsable list of past scans. Each entry represents one preserved clip and should surface a thumbnail together with lightweight interpretation cues so the user can quickly recognize and reopen a prior memory.
+* **Clip-Centric Result Presentation:** The original preserved local clip remains the canonical visual context for a scan. The completed result experience, including reopened history items, should present the interpretation against that same local clip rather than against a generic decorative background.
+* **History-First Presentation:** The history experience lives on Home as a simple, browsable list of past scans. Each entry represents one preserved clip and should surface a thumbnail together with lightweight interpretation cues so the user can quickly recognize and reopen a prior memory.
 * **Regional Strategy:** Standardized on `us-central1` (Iowa) for the lowest AI infrastructure costs and `nam5` for Firestore multi-region durability across the US market.
 * **Security:** Firebase App Check uses App Attest for production iOS app verification and Debug Provider for local development, preventing unauthorized API calls and managing GCP costs.
 * **Backend Pattern:** Firebase Cloud Functions (2nd Gen) act as the backend proxy between the iOS client and privileged GCP services.
