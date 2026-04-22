@@ -51,6 +51,7 @@ struct ResultView: View {
     @State private var persistenceMessage = ""
     @State private var showPersistenceAlert = false
     @State private var backgroundVideoURL: URL?
+    @State private var backgroundAmbientImageURL: URL?
     @State private var backgroundPlaybackMessage: String?
     @State private var renderedShareVideoURL: URL?
     @State private var shareProgressMessage: String?
@@ -73,6 +74,7 @@ struct ResultView: View {
         videoURL = nil
         sourceType = nil
         _backgroundVideoURL = State(initialValue: nil)
+        _backgroundAmbientImageURL = State(initialValue: nil)
         _viewModel = State(initialValue: ResultViewModel(analysis: analysis))
     }
 
@@ -81,6 +83,7 @@ struct ResultView: View {
         self.videoURL = videoURL
         self.sourceType = sourceType
         _backgroundVideoURL = State(initialValue: videoURL)
+        _backgroundAmbientImageURL = State(initialValue: nil)
         _viewModel = State(initialValue: nil)
     }
 
@@ -89,6 +92,7 @@ struct ResultView: View {
         videoURL = ScanHistoryStore.originalVideoURL(for: savedScan)
         sourceType = savedScan.sourceType
         _backgroundVideoURL = State(initialValue: ScanHistoryStore.originalVideoURL(for: savedScan))
+        _backgroundAmbientImageURL = State(initialValue: ScanHistoryStore.thumbnailURL(for: savedScan))
         _viewModel = State(initialValue: ResultViewModel(analysis: savedScan.analysis))
     }
 
@@ -112,23 +116,13 @@ struct ResultView: View {
             // ── 1. Background ──────────────────────────────────────────────
             backgroundView
 
-            // ── 2. Vignette ────────────────────────────────────────────────
-            LinearGradient(
-                stops: [
-                    .init(color: .black.opacity(0.00), location: 0.00),
-                    .init(color: .black.opacity(0.15), location: 0.35),
-                    .init(color: .black.opacity(0.82), location: 0.75),
-                    .init(color: .black.opacity(0.95), location: 1.00),
-                ],
-                startPoint: .top,
-                endPoint:   .bottom
-            )
-            .ignoresSafeArea()
+            // ── 2. Targeted readability scrims ────────────────────────────
+            chromeScrims
 
             // ── 3 + 4 + 5. Content ─────────────────────────────────────────
             VStack(spacing: 0) {
                 topBar
-                    .padding(.top, 8)
+                    .padding(.top, -26)
 
                 if let backgroundPlaybackMessage {
                     backgroundPlaybackNotice(backgroundPlaybackMessage)
@@ -192,7 +186,10 @@ struct ResultView: View {
     @ViewBuilder
     private var backgroundView: some View {
         if let backgroundVideoURL, backgroundPlaybackMessage == nil {
-            LoopingVideoBackground(url: backgroundVideoURL) { failedURL, message in
+            ResultVideoBackdrop(
+                videoURL: backgroundVideoURL,
+                ambientImageURL: backgroundAmbientImageURL
+            ) { failedURL, message in
                 guard failedURL == self.backgroundVideoURL else { return }
                 backgroundPlaybackMessage = message
             }
@@ -248,32 +245,33 @@ struct ResultView: View {
     // MARK: - Top bar
 
     private var topBar: some View {
-        HStack {
-            if showsCompletedResult {
-                Color.clear.frame(width: 32, height: 32)
-            } else {
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.white.opacity(0.75))
+        ZStack(alignment: .top) {
+            if !showsCompletedResult {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    .padding(4)
+
+                    Spacer()
                 }
-                .padding(4)
             }
 
-            Spacer()
+            HStack {
+                Spacer()
 
-            Text("CAT VOX")
-                .font(.system(size: 11, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.45))
-                .tracking(3)
-
-            Spacer()
-
-            // Balances the close button for optical centering.
-            Color.clear.frame(width: 32, height: 32)
+                Text("CatVox")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .tracking(3)
+                    .padding(.trailing, 2)
+            }
         }
         .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Bottom panel
@@ -332,6 +330,41 @@ struct ResultView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(.white.opacity(0.10), lineWidth: 1)
         }
+    }
+
+    private var chromeScrims: some View {
+        ZStack {
+            Color.black.opacity(0.05)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0.42), location: 0.00),
+                        .init(color: .black.opacity(0.20), location: 0.55),
+                        .init(color: .black.opacity(0.00), location: 1.00),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 168)
+
+                Spacer(minLength: 0)
+
+                LinearGradient(
+                    stops: [
+                        .init(color: .black.opacity(0.00), location: 0.00),
+                        .init(color: .black.opacity(0.14), location: 0.24),
+                        .init(color: .black.opacity(0.28), location: 0.62),
+                        .init(color: .black.opacity(0.42), location: 1.00),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 320)
+            }
+        }
+        .ignoresSafeArea()
     }
 
     private func doneButton(_ vm: ResultViewModel) -> some View {
@@ -471,6 +504,7 @@ struct ResultView: View {
             )
 
             backgroundVideoURL = ScanHistoryStore.originalVideoURL(for: savedScan)
+            backgroundAmbientImageURL = ScanHistoryStore.thumbnailURL(for: savedScan)
             backgroundPlaybackMessage = nil
 
             let vm = ResultViewModel(analysis: analysis)
