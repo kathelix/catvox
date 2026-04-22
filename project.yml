@@ -33,6 +33,7 @@ targets:
         UIUserInterfaceStyle: Dark
         NSCameraUsageDescription: "CatVox records 10-second clips to analyse your cat's behaviour."
         NSMicrophoneUsageDescription: "CatVox captures audio to analyse your cat's vocalisations."
+        NSPhotoLibraryAddUsageDescription: "CatVox saves rendered share videos to your Photos library when you ask it to."
 
 schemes:
   CatVox:

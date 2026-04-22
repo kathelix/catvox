@@ -24,6 +24,8 @@
 	<string>CatVox records 10-second clips to analyse your cat's behaviour.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>CatVox captures audio to analyse your cat's vocalisations.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>CatVox saves rendered share videos to your Photos library when you ask it to.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
