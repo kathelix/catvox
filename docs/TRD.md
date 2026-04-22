@@ -340,10 +340,10 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **Early Stop Recording:** Allow users to stop in-app recording after a 2.0-second minimum threshold using the main capture control.
 * [x] **Post-Capture Review:** Add `Retake` and `Use This Clip` actions after recording ends; only `Use This Clip` continues to upload and analysis.
 * [x] **Backend File Size Validation:** Add backend validation for file size <= 100 MB in the analysis path before Vertex AI is invoked.
-* [ ] **Scan History Persistence:** Set up SwiftData-backed local storage for successful scans, including saved AI result metadata, thumbnail reference, and CatVox-owned original clip reference.
-* [ ] **Scan History UI:** Add the frontend history list to the Home experience, showing prior scans with thumbnail, mood/persona cue, and short `cat_thought` preview.
-* [ ] **Saved Result Reopen:** Allow users to reopen a saved scan from local history without re-upload or re-analysis.
-* [ ] **Scan Deletion:** Add confirmed deletion of saved scans, removing the history record and CatVox-owned local assets without touching the original Photos asset.
+* [x] **Scan History Persistence:** Set up SwiftData-backed local storage for successful scans, including saved AI result metadata, thumbnail reference, and CatVox-owned original clip reference.
+* [x] **Scan History UI:** Add the frontend history list to the Home experience, showing prior scans with thumbnail, mood/persona cue, and short `cat_thought` preview.
+* [x] **Saved Result Reopen:** Allow users to reopen a saved scan from local history without re-upload or re-analysis.
+* [x] **Scan Deletion:** Add confirmed deletion of saved scans, removing the history record and CatVox-owned local assets without touching the original Photos asset.
 * [ ] **Monetization:** Implement StoreKit 2 for "Pro" tier (Unlimited scans).
 * [ ] **Social:** Build branded video overlay and sharing features.
 

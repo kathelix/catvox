@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// The centrepiece of the CatVox experience.
 ///
@@ -8,18 +9,21 @@ import SwiftUI
 ///   `init(videoURL:)`  — Normal recording path.  GCPService drives the upload
 ///                        pipeline; the result UI replaces the loading card once
 ///                        analysis is returned from the backend (or mock).
+///   `init(savedScan:)` — Reopened local history item; result UI uses persisted
+///                        data without re-uploading or re-analysing the clip.
 ///
 /// Layout (bottom-to-top):
 ///   1. Full-screen animated gradient background (persona-tinted)
 ///   2. Soft vignette
 ///   3. ThoughtBubbleView / UploadProgressView — springs in after upload
-///   4. Bottom panel (PersonaBadge + ExpertInsightsDrawer + Share CTA)
-///   5. Top bar with dismiss control
+///   4. Bottom panel (PersonaBadge + ExpertInsightsDrawer + Done CTA)
+///   5. Top bar with a dismiss control only while the result is incomplete
 ///
 /// See TRD §5.1 and PROMPT.md §2 for the full specification.
 struct ResultView: View {
 
     @Environment(\.dismiss)        private var dismiss
+    @Environment(\.modelContext)   private var modelContext
     @Environment(ScanQuotaStore.self) private var quotaStore
 
     /// Becomes non-nil once analysis is available — immediately for the dev
@@ -32,22 +36,34 @@ struct ResultView: View {
     /// Error state for the retry alert.
     @State private var showRetryAlert = false
     @State private var failureMessage  = ""
+    @State private var persistenceMessage = ""
+    @State private var showPersistenceAlert = false
 
     /// Set at init; nil in dev-preview mode (analysis provided directly).
     private let videoURL: URL?
+    private let sourceType: ScanSourceType?
 
     // MARK: - Init
 
     /// Dev-preview / Phase 1: analysis is provided directly, no upload.
     init(analysis: CatAnalysis) {
         videoURL = nil
+        sourceType = nil
         _viewModel = State(initialValue: ResultViewModel(analysis: analysis))
     }
 
     /// Normal recording path: upload is triggered on appear.
-    init(videoURL: URL) {
+    init(videoURL: URL, sourceType: ScanSourceType) {
         self.videoURL = videoURL
+        self.sourceType = sourceType
         _viewModel = State(initialValue: nil)
+    }
+
+    /// Local-history path: result is reconstructed from persisted state.
+    init(savedScan: SavedScan) {
+        videoURL = ScanHistoryStore.originalVideoURL(for: savedScan)
+        sourceType = savedScan.sourceType
+        _viewModel = State(initialValue: ResultViewModel(analysis: savedScan.analysis))
     }
 
     // MARK: - Derived
@@ -56,6 +72,10 @@ struct ResultView: View {
     /// background gradient always has a valid persona to render.
     private var activePersona: CatPersona {
         viewModel?.persona ?? .grumpyBoss
+    }
+
+    private var showsCompletedResult: Bool {
+        viewModel != nil
     }
 
     // MARK: - Body
@@ -108,6 +128,11 @@ struct ResultView: View {
         } message: {
             Text(failureMessage)
         }
+        .alert("History Save Failed", isPresented: $showPersistenceAlert) {
+            Button("OK", role: .cancel) { dismiss() }
+        } message: {
+            Text(persistenceMessage)
+        }
     }
 
     // MARK: - Content branches
@@ -158,13 +183,17 @@ struct ResultView: View {
 
     private var topBar: some View {
         HStack {
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.white.opacity(0.75))
+            if showsCompletedResult {
+                Color.clear.frame(width: 32, height: 32)
+            } else {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+                .padding(4)
             }
-            .padding(4)
 
             Spacer()
 
@@ -199,21 +228,20 @@ struct ResultView: View {
                 )
             )
 
-            shareButton(vm)
+            doneButton(vm)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 40)
     }
 
-    private func shareButton(_ vm: ResultViewModel) -> some View {
-        ShareLink(
-            item: vm.shareText,
-            subject: Text("My cat's inner monologue")
-        ) {
+    private func doneButton(_ vm: ResultViewModel) -> some View {
+        Button {
+            dismiss()
+        } label: {
             HStack(spacing: 8) {
-                Image(systemName: "square.and.arrow.up")
+                Image(systemName: "checkmark.circle.fill")
                     .fontWeight(.semibold)
-                Text("Share to Story")
+                Text("Done")
                     .fontWeight(.bold)
             }
             .font(.subheadline)
@@ -237,26 +265,18 @@ struct ResultView: View {
     // MARK: - Event handlers
 
     private func handleAppear() {
-        if let url = videoURL {
+        if viewModel != nil {
+            viewModel?.onAppear()
+        } else if let url = videoURL {
             // Recording path — kick off the upload pipeline.
             gcpService.uploadAndAnalyse(videoAt: url)
-        } else {
-            // Dev-preview path — trigger entrance animations immediately.
-            viewModel?.onAppear()
         }
     }
 
     private func handleUploadState(_ state: GCPService.UploadState) {
         switch state {
         case .complete(let analysis):
-            quotaStore.recordScan()
-            let vm = ResultViewModel(analysis: analysis)
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
-                viewModel = vm
-            }
-            // Schedule onAppear() after SwiftUI has bound the new viewModel,
-            // so the spring-in animations play against the rendered result UI.
-            Task { @MainActor in vm.onAppear() }
+            handleCompletedAnalysis(analysis)
 
         case .quotaExceeded:
             quotaStore.markExhausted()
@@ -269,6 +289,37 @@ struct ResultView: View {
             break
         }
     }
+
+    private func handleCompletedAnalysis(_ analysis: CatAnalysis) {
+        quotaStore.recordScan()
+
+        guard let videoURL, let sourceType else {
+            let vm = ResultViewModel(analysis: analysis)
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                viewModel = vm
+            }
+            Task { @MainActor in vm.onAppear() }
+            return
+        }
+
+        do {
+            _ = try ScanHistoryStore.saveScan(
+                from: videoURL,
+                sourceType: sourceType,
+                analysis: analysis,
+                in: modelContext
+            )
+
+            let vm = ResultViewModel(analysis: analysis)
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                viewModel = vm
+            }
+            Task { @MainActor in vm.onAppear() }
+        } catch {
+            persistenceMessage = "We couldn't save this scan to local history."
+            showPersistenceAlert = true
+        }
+    }
 }
 
 // MARK: - Previews
@@ -276,19 +327,23 @@ struct ResultView: View {
 #Preview("Grumpy Boss") {
     ResultView(analysis: MockAnalysisService.sampleAnalysis)
         .environment(ScanQuotaStore())
+        .modelContainer(for: SavedScan.self, inMemory: true)
 }
 
 #Preview("Existential Philosopher") {
     ResultView(analysis: MockAnalysisService.allSamples[1])
         .environment(ScanQuotaStore())
+        .modelContainer(for: SavedScan.self, inMemory: true)
 }
 
 #Preview("Chaotic Hunter") {
     ResultView(analysis: MockAnalysisService.allSamples[2])
         .environment(ScanQuotaStore())
+        .modelContainer(for: SavedScan.self, inMemory: true)
 }
 
 #Preview("Upload in Progress") {
-    ResultView(videoURL: URL(fileURLWithPath: "/dev/null"))
+    ResultView(videoURL: URL(fileURLWithPath: "/dev/null"), sourceType: .recorded)
         .environment(ScanQuotaStore())
+        .modelContainer(for: SavedScan.self, inMemory: true)
 }
