@@ -192,26 +192,33 @@ enum ShareVideoRenderer {
     }
 
     private static func export(_ session: AVAssetExportSession) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            session.exportAsynchronously {
-                switch session.status {
-                case .completed:
-                    continuation.resume(returning: ())
+        try Task.checkCancellation()
 
-                case .failed:
-                    let message = session.error?.localizedDescription ?? "unknown"
-                    logger.error("render failed: \(message, privacy: .public)")
-                    continuation.resume(throwing: RenderError.exportFailed(message))
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                session.exportAsynchronously {
+                    switch session.status {
+                    case .completed:
+                        continuation.resume(returning: ())
 
-                case .cancelled:
-                    continuation.resume(throwing: CancellationError())
+                    case .failed:
+                        let message = session.error?.localizedDescription ?? "unknown"
+                        logger.error("render failed: \(message, privacy: .public)")
+                        continuation.resume(throwing: RenderError.exportFailed(message))
 
-                default:
-                    let message = session.error?.localizedDescription ?? "unexpected_export_state"
-                    logger.error("render ended unexpectedly status=\(session.status.rawValue) error=\(message, privacy: .public)")
-                    continuation.resume(throwing: RenderError.exportFailed(message))
+                    case .cancelled:
+                        continuation.resume(throwing: CancellationError())
+
+                    default:
+                        let message = session.error?.localizedDescription ?? "unexpected_export_state"
+                        logger.error("render ended unexpectedly status=\(session.status.rawValue) error=\(message, privacy: .public)")
+                        continuation.resume(throwing: RenderError.exportFailed(message))
+                    }
                 }
             }
+        } onCancel: {
+            logger.info("render cancellation requested")
+            session.cancelExport()
         }
     }
 
