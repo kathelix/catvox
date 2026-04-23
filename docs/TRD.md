@@ -101,7 +101,7 @@ Select the archetype that best fits the observed behavior:
 The backend must return ONLY a valid JSON object following this structure:
 {
   "primary_emotion": "string",
-  "confidence_score": float (0.0 - 1.0),
+  "confidence_score": float (0.00 - 1.00),
   "analysis": "2-3 sentences of expert feline behavior analysis",
   "persona_type": "string",
   "cat_thought": "First-person monologue matching the assigned persona",

@@ -218,6 +218,7 @@ PROJECT_ID=kathelix-catvox-prod ./terraform/bootstrap_wif.sh
 - Before final review or merge, check all PR bot / AI review findings and explicitly triage each one as fix, reject with reasoning, or defer.
 - Treat bot findings touching concurrency, cancellation, state ownership, persistence, navigation, or other direct user-facing behavior as high-signal by default until disproven.
 - Before opening or finalizing a PR, compare the branch against `origin/main` and rebase or merge as needed so PR review and conflict resolution happen before the final merge step.
+- When creating or editing GitHub PR descriptions via `gh pr ...`, prefer plain Markdown with simple shell-safe quoting. Avoid unnecessary escaping of inline code or symbols; if the body is complex, use a file or other safer input method rather than packing heavily escaped Markdown into one shell argument.
 - Use descriptive branch names: `feature/`, `fix/`, `infra/`.
 
 ### Product Feature Workflow
