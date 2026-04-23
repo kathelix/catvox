@@ -142,11 +142,13 @@ export async function getAnalysisPayload(
 
       lastError = err;
 
-      logger.warn('Retrying malformed Vertex AI analysis payload', {
-        attempt,
-        issues: err.issues,
-        rawResponsePreview: previewRawResponse(err.rawResponse),
-      });
+      if (attempt < MAX_VERTEX_RESPONSE_ATTEMPTS) {
+        logger.warn('Retrying malformed Vertex AI analysis payload', {
+          attempt,
+          issues: err.issues,
+          rawResponsePreview: previewRawResponse(err.rawResponse),
+        });
+      }
     }
   }
 

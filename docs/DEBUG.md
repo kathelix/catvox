@@ -87,7 +87,7 @@ gcloud logging read \
 
 **How to read it:**
 - `attempt: 1` warning = first Gemini response was malformed and the backend retried.
-- `attempt: 2` warning followed by the final error = both attempts were malformed and the request returned a controlled HTTP `502`.
+- final error `Vertex AI returned malformed analysis payload` after the retry warning = both attempts were malformed and the request returned a controlled HTTP `502`.
 - `issues` tells you whether the failure was truncated / invalid JSON or missing / invalid required fields.
 - `rawResponsePreview` gives the start of the bad model output without dumping the full payload into logs.
 
@@ -153,7 +153,7 @@ the failure was downstream (Vertex AI call).
 | Log message | Root cause | Fix |
 |---|---|---|
 | `Vertex AI returned invalid JSON: { "primary_emotion": ...` (truncated) | `MAX_OUTPUT_TOKENS` too low — thinking model consumed budget before finishing JSON | Raise `MAX_OUTPUT_TOKENS` in `functions/src/gemini.ts` |
-| `Retrying malformed Vertex AI analysis payload` then `Vertex AI returned malformed analysis payload` | Gemini returned malformed output twice; backend converted it to a controlled `502` instead of crashing | Inspect `issues`, `attempt`, and `rawResponsePreview` in logs; if frequent, revisit prompt / output constraints or `MAX_OUTPUT_TOKENS` |
+| `Retrying malformed Vertex AI analysis payload` then `Vertex AI returned malformed analysis payload` | First Gemini response was malformed, retry also failed, and the backend converted the request to a controlled `502` instead of crashing | Inspect `issues`, `attempt`, and `rawResponsePreview` in logs; if frequent, revisit prompt / output constraints or `MAX_OUTPUT_TOKENS` |
 | `Empty response from Vertex AI` | Response had only `thought` parts, no output part | Check `finishReason` in the error summary; may indicate safety block or token exhaustion |
 | `signBlob` permission denied | Cloud Run running as wrong service account | Verify `serviceAccount:` is set in both function options; redeploy |
 | GCS PUT returns HTTP 403 | `catvox-backend-sa` missing `storage.objectCreator` | Check IAM bindings via `gcloud projects get-iam-policy` |
