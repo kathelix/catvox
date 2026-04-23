@@ -55,6 +55,7 @@ Each ADR should usually contain:
 | 0007 | Persistent Anonymous userId via UserDefaults for Quota Enforcement | Accepted |
 | 0008 | Load AI System Prompt from Markdown at Build Time | Accepted |
 | 0009 | Render Share Videos On Device | Accepted |
+| 0010 | Separate Vertex Response Schema from System Instruction | Accepted |
 
 ## Workflow
 

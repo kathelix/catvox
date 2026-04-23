@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "CatVox AI — Firebase Cloud Functions (2nd Gen)",
   "scripts": {
-    "build": "mkdir -p assets && cp ../docs/Instructions.md assets/instructions.md && tsc",
+    "build": "mkdir -p assets && cp ../docs/systemInstruction.md assets/systemInstruction.md && tsc",
     "build:watch": "tsc --watch",
     "test": "npm run build && node --test test/*.test.js",
     "serve": "npm run build && firebase emulators:start --only functions",
