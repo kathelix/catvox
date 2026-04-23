@@ -86,7 +86,7 @@ For MVP, the user can either record a new video in-app or select an existing vid
 Short version:
 You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze short video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
 
-Full prompt: `docs/Instructions.md` — this is the single source of truth for the system instruction. The Cloud Function build script copies it into the deployment artifact at build time; editing the file and merging the PR is all that is required to update the live prompt. (See ADR-0008.)
+Full prompt: `docs/systemInstruction.md` — this is the single source of truth for the system instruction. The Cloud Function build script copies it into the deployment artifact at build time; editing the file and merging the PR is all that is required to update the live prompt. The machine-enforced JSON output schema is defined separately in `functions/src/gemini.ts` via Vertex `responseSchema`; the prompt should describe behavior, not duplicate the literal schema. (See ADR-0008 and ADR-0010.)
 
 ### 4.2 The 6 Cat Personas
 Select the archetype that best fits the observed behavior:
@@ -107,6 +107,12 @@ The backend must return ONLY a valid JSON object following this structure:
   "cat_thought": "First-person monologue matching the assigned persona",
   "owner_tip": "A practical, actionable suggestion for the owner"
 }
+
+This structure is the human-readable contract. The runtime-enforced schema lives
+in `functions/src/gemini.ts` as Vertex `responseSchema`, with all six fields
+required. `confidence_score` should preserve meaningful fractional precision
+(for example `0.99`, not only `0.9`) because the app may render the value as a
+percentage. See ADR-0010.
 
 ---
 
@@ -297,7 +303,7 @@ The backend must return ONLY a valid JSON object following this structure:
 * **Variables:** `TF_VAR_project_id` and `TF_VAR_app_check_debug_token` supplied from GitHub Actions secrets; `region` and `firestore_location` use the defaults defined in `variables.tf`.
 
 ### 7.3 Firebase Cloud Functions Pipeline
-* **Trigger:** Push or pull request targeting `main` when files under `functions/`, `firebase.json`, `docs/Instructions.md`, or the workflow file itself change. `docs/Instructions.md` is included because it is copied into the deployment artifact at build time — a prompt-only change must trigger a redeploy. (See ADR-0008.)
+* **Trigger:** Push or pull request targeting `main` when files under `functions/`, `firebase.json`, `docs/systemInstruction.md`, or the workflow file itself change. `docs/systemInstruction.md` is included because it is copied into the deployment artifact at build time — a prompt-only change must trigger a redeploy. (See ADR-0008 and ADR-0010.)
 * **Authentication:** Same WIF setup as the Terraform pipeline — `catvox-ci-sa` via `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT` secrets.
 * **Build job (on PR and push):** `npm ci` → `npm run build` (TypeScript compile check).
 * **Deploy job (on merge to `main`):** Runs after build passes → `firebase deploy --only functions`.

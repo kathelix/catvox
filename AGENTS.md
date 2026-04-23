@@ -13,7 +13,7 @@ Read these documents in order before touching any code or infrastructure:
 | `docs/HLD.md` | High-level design decisions only — the stable "why". Feed to Gemini/ChatGPT for design ideation. |
 | `docs/TRD.md` | Full technical spec — the authoritative "what". Feed to Codex for implementation. |
 | `docs/adr/` | Architecture Decision Records — the "why a decision was made". Append-only log. |
-| `docs/Instructions.md` | The Gemini AI system prompt (the "Prompt Gate"). Do not modify without updating TRD §4. |
+| `docs/systemInstruction.md` | The Gemini AI system prompt (the "Prompt Gate"). Do not modify without updating TRD §4. |
 | `docs/PROMPT.md` | Original project vision and developer mindset. Read it once. |
 | `docs/TODO.md` | Scratchpad for feature ideas and engineering parameters not yet in TRD. |
 
@@ -61,7 +61,7 @@ catvox/
 │   ├── adr/                       # Architecture Decision Records (append-only)
 │   ├── HLD.md                     # High-level design
 │   ├── TRD.md                     # Technical requirements
-│   ├── Instructions.md            # Gemini AI system prompt
+│   ├── systemInstruction.md       # Gemini AI system prompt
 │   ├── PROMPT.md                  # Original project vision
 │   └── TODO.md                    # Feature scratchpad + Vertex AI parameters
 ├── project.yml                    # XcodeGen spec — source of truth for .xcodeproj

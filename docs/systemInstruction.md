@@ -32,13 +32,4 @@ Select the archetype that best fits the observed behavior:
 - **Diversity:** Ensure the `cat_thought` is distinct and avoid repetitive tropes.
 
 **Output Format:**
-Return ONLY a valid JSON object. Do not include markdown formatting. Use this schema:
-
-{
-  "primary_emotion": "string",
-  "confidence_score": float (0.0 - 1.0),
-  "analysis": "2-3 sentences of expert feline behavior analysis",
-  "persona_type": "string",
-  "cat_thought": "First-person monologue matching the assigned persona",
-  "owner_tip": "A practical, actionable suggestion for the owner"
-}
+Return ONLY a valid JSON object that matches the response schema provided by the backend. Do not include markdown formatting or any explanatory text outside the JSON object.

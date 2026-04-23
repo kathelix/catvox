@@ -2,6 +2,9 @@ import {
   VertexAI,
   HarmCategory,
   HarmBlockThreshold,
+  SchemaType,
+  type GenerationConfig,
+  type ResponseSchema,
 } from '@google-cloud/vertexai';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -32,11 +35,66 @@ const SAFETY_SETTINGS = [
   threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }));
 
-// Loaded from docs/Instructions.md at build time (copied to assets/ by the
-// build script). Edit docs/Instructions.md to change the prompt — no .ts
-// changes needed.
+// The machine-enforced output contract lives in code so Vertex can apply it via
+// responseSchema. Field descriptions should stay aligned with TRD §4.3 and the
+// behavioral expectations described in docs/systemInstruction.md.
+export const ANALYSIS_RESPONSE_SCHEMA: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  description: 'Structured CatVox multimodal cat behavior analysis result.',
+  required: [
+    'primary_emotion',
+    'confidence_score',
+    'analysis',
+    'persona_type',
+    'cat_thought',
+    'owner_tip',
+  ],
+  properties: {
+    primary_emotion: {
+      type: SchemaType.STRING,
+      description: 'Short label naming the cat\'s main observed emotional state in this clip.',
+    },
+    confidence_score: {
+      type: SchemaType.NUMBER,
+      format: 'double',
+      description:
+        'Confidence score from 0.00 to 1.00 inclusive. Use up to two digits after the decimal point when needed to preserve meaningful precision, for example 0.99.',
+    },
+    analysis: {
+      type: SchemaType.STRING,
+      description:
+        'Two to three sentences of expert feline behavior analysis grounded in the observed video and audio.',
+    },
+    persona_type: {
+      type: SchemaType.STRING,
+      description:
+        'Exact CatVox persona label that best matches the observed behavior, using the current persona names defined by the system instruction.',
+    },
+    cat_thought: {
+      type: SchemaType.STRING,
+      description:
+        'First-person inner monologue written in the voice of the selected persona and grounded in the observed behavior.',
+    },
+    owner_tip: {
+      type: SchemaType.STRING,
+      description:
+        'Practical, actionable advice for the owner based on the observed behavior, using a professional tone when wellbeing is a concern.',
+    },
+  },
+};
+
+export const ANALYSIS_GENERATION_CONFIG: GenerationConfig = {
+  temperature: 0.7,
+  maxOutputTokens: MAX_OUTPUT_TOKENS,
+  responseMimeType: 'application/json',
+  responseSchema: ANALYSIS_RESPONSE_SCHEMA,
+};
+
+// Loaded from docs/systemInstruction.md at build time (copied to assets/ by
+// the build script). Edit docs/systemInstruction.md to change the prompt — no
+// .ts changes needed unless the machine-enforced response schema also changes.
 const SYSTEM_INSTRUCTION = readFileSync(
-  join(__dirname, '../assets/instructions.md'),
+  join(__dirname, '../assets/systemInstruction.md'),
   'utf-8'
 );
 
@@ -54,11 +112,7 @@ export async function callGemini(
   const model = vertexAI.getGenerativeModel({
     model: MODEL,
     systemInstruction: SYSTEM_INSTRUCTION,
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
-      responseMimeType: 'application/json',
-    },
+    generationConfig: ANALYSIS_GENERATION_CONFIG,
     safetySettings: SAFETY_SETTINGS,
   });
 
