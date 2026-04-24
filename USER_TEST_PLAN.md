@@ -38,7 +38,7 @@ The test user:
 
 ## 3. Session setup
 
-Before the session starts, I will:
+Before the session starts, the facilitator will:
 
 1. Ensure the CatVox app is installed and ready on the iPhone.
 2. Ensure screen recording is available on the device.
@@ -52,7 +52,7 @@ Before the session starts, I will:
 
 ## 4. Exact introduction to say to the user
 
-I will say the following word for word before starting:
+The facilitator will say the following word for word before starting:
 
 > Thanks for trying this. This is an early version of a new app, and I'd like you to use it as naturally as possible. Please imagine you've just opened it because you want to understand what your cat is trying to communicate. As you go, please say out loud what you expect, what you notice, and anything that feels confusing, frustrating, or surprisingly good. I'll stay quiet and won't guide you, because I'm testing the app, not you. I'm going to record the screen and your voice comments so I can review the session afterwards.
 
@@ -60,18 +60,19 @@ I will say the following word for word before starting:
 
 ## 5. Start of test
 
-1. I ask the user if they are ready.
-2. I start the iPhone screen recording with microphone enabled.
-3. I hand the device to the user.
-4. I remain silent from that point onward unless there is a technical issue.
+The facilitator:
+1. asks the user if they are ready.
+2. starts the iPhone screen recording with microphone enabled.
+3. hands the device to the user.
+4. remains silent from that point onward unless there is a technical issue.
 
 ---
 
 ## 6. Rules during the test
 
-### 6.1 My rules as facilitator
+### 6.1 Facilitator rules
 
-During the test, I will:
+During the test, the facilitator will:
 
 1. Stay quiet.
 2. Not explain the interface.
@@ -118,19 +119,19 @@ The test ends when one of the following happens:
 3. The user reaches a clear stopping point.
 4. The session becomes repetitive and no longer produces new observations.
 
-Then I will:
+Then the facilitator will:
 
 1. Thank the user.
 2. Immediately ask the 3 post-test questions.
 3. Make sure their answers are also recorded in the same video/voice screen recording session.
-4. Speak my own my own observations (see section 11 below).
+4. Speak his own observations (see section 11 below).
 5. Stop the screen recording.
 
 ---
 
 ## 9. Post-test questions
 
-I will ask these 3 questions exactly:
+The facilitator will ask these 3 questions exactly:
 
 1. What do you think this app is for, in your own words?
 2. What was the most confusing, awkward, or frustrating moment?
@@ -138,9 +139,9 @@ I will ask these 3 questions exactly:
 
 ---
 
-## 10. What I should capture during the session
+## 10. What the facilitator should capture during the session
 
-While observing, I should pay attention to:
+While observing, the facilitator should pay attention to:
 
 1. The first thing the user taps.
 2. Which paths or screens they use.
@@ -157,20 +158,20 @@ While observing, I should pay attention to:
 
 ## 11. Immediate notes after each session
 
-Right after the session, before deep analysis, I should write short notes about:
+As the last step in recording session, before deep analysis, the facilitator should speak on the same microphone short notes about:
 
-1. My first impression of what happened.
+1. His first impression of what happened.
 2. The biggest confusion point.
 3. The strongest positive reaction.
 4. Whether the user seemed to understand the product value.
-5. Whether I believe this person would realistically use it again.
+5. Whether the facilitator believe this person would realistically use it again.
 6. Any quotes worth preserving verbatim.
 
 ---
 
 ## 12. Recording management
 
-After the session, I will:
+After the session, the facilitator will:
 
 1. Save the screen recording.
 2. Give it a clear file name.
@@ -188,7 +189,7 @@ Example:
 
 ## 13. Gemini analysis plan
 
-When reviewing the recording with Gemini, I should ask it to extract and classify:
+When reviewing the recording with Gemini, the facilitator should ask it to extract and classify:
 
 1. User journey path.
 2. Key taps and navigation decisions.
@@ -202,6 +203,7 @@ When reviewing the recording with Gemini, I should ask it to extract and classif
 10. Verbalized value statements.
 11. Points where the user appeared lost or nearly abandoned the flow.
 12. A short summary of the most important product insights.
+13. A separate section with facilitator's observations.
 
 A useful classification model is:
 
@@ -217,7 +219,7 @@ A useful classification model is:
 
 ## 14. Recommended test discipline across multiple users
 
-To keep sessions comparable, I should:
+To keep sessions comparable, the facilitator should:
 
 1. Use the same introduction every time.
 2. Use the same scenario every time.
@@ -231,7 +233,7 @@ To keep sessions comparable, I should:
 
 ## 15. Success criteria for this phase
 
-This test phase is successful if it helps me learn:
+This test phase is successful if it helps product team learn:
 
 1. Whether users understand what CatVox is for.
 2. Whether they can use it without being taught.
