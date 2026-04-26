@@ -165,7 +165,7 @@ resource "google_project_iam_member" "tf_ci_sa_admin" {
 }
 
 # Workload Identity Federation — allow GitHub Actions tokens from
-# IvanBoyko/catvox to impersonate catvox-ci-sa. Previously applied only by
+# kathelix/catvox to impersonate catvox-ci-sa. Previously applied only by
 # bootstrap_wif.sh; tracked here so destroy/recreate of ci_sa restores this
 # binding automatically without needing to re-run the bootstrap script.
 resource "google_service_account_iam_member" "ci_sa_wif_binding" {

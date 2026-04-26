@@ -37,7 +37,7 @@ When an ADR is accepted:
 - **Bundle ID:** `com.kathelix.catvox`
 - **GCP Project:** `kathelix-catvox-prod` (project number: `953500951129`)
 - **Firebase Project:** `kathelix-catvox-prod` (same ID — Firebase and GCP share one project)
-- **GitHub repo:** `IvanBoyko/catvox`
+- **GitHub repo:** `kathelix/catvox`
 - **Primary region:** `us-central1`; Firestore: `nam5` (US multi-region)
 
 > **Note:** `kathelix-491213` is an unrelated GCP project. The Terraform state bucket was briefly mis-created there and since migrated. Ignore it.
@@ -178,7 +178,7 @@ Do not add CI roles to `catvox-backend-sa` — the split is intentional. If a Cl
 
 Keyless auth via Workload Identity Federation — no long-lived service account keys anywhere. GitHub Actions presents an OIDC token; GCP exchanges it for a short-lived credential scoped to `catvox-ci-sa` (the dedicated Terraform CI identity).
 
-The WIF pool is locked to `IvanBoyko/catvox` via `attribute-condition` — no other repo can impersonate the SA.
+The WIF pool is locked to `kathelix/catvox` via `attribute-condition` — no other repo can impersonate the SA.
 
 ### CI/CD Pipelines
 
