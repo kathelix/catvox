@@ -2,6 +2,12 @@
 
 ## Deferred Product Work
 
+### USER_TEST_PLAN.md
+Free version of consumer Gemini allows to analyse max 5 minutes video of user testing session.
+We should allow longer sessions.
+We can upgrade to Plus/Pro tiers, or upload videos to YouTube - both options will accept much longer videos.
+Alterntively we can build a testing backend, in a similar way that the app way behaves - upload testing video to GCS and analyse via Gemini/Vertex.
+
 ### Support iPad
 * While we are still early in dev cycle, it's easier to add support for iPadOS than later when the app will become more complicated.
 

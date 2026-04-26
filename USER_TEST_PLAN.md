@@ -130,11 +130,11 @@ The facilitator will:
 
 Suggested naming format:
 
-`catvox_test_YYYY-MM-DD_userNN.mov`
+`catvox_test_YYYY-MM-DD_userNN.MP4`
 
 Example:
 
-`catvox_test_2026-04-24_user01.mov`
+`catvox_test_2026-04-24_user01.MP4`
 
 ---
 
