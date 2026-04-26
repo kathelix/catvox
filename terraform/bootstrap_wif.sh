@@ -47,7 +47,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
-GITHUB_ORG="IvanBoyko"
+GITHUB_ORG="kathelix"
 GITHUB_REPO="catvox"
 SA_NAME="catvox-ci-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -152,7 +152,7 @@ else
 fi
 
 # ── Step 3: Bind GitHub repo tokens to catvox-backend-sa ─────────────────────
-# Only tokens whose `repository` claim matches IvanBoyko/catvox can impersonate
+# Only tokens whose `repository` claim matches kathelix/catvox can impersonate
 # this SA. No other repo — even within the same GitHub org — can obtain access.
 # add-iam-policy-binding is idempotent — safe to re-run.
 

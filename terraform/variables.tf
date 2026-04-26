@@ -46,7 +46,7 @@ variable "wif_pool_id" {
 variable "github_repo" {
   description = "GitHub repository in 'owner/repo' format, used to scope the WIF token binding on catvox-ci-sa."
   type        = string
-  default     = "IvanBoyko/catvox"
+  default     = "kathelix/catvox"
 }
 
 variable "tf_state_bucket" {

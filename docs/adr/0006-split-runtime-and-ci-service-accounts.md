@@ -39,7 +39,7 @@ IAM changes to the runtime identity are reviewed through Terraform PRs, not conf
 
 ### 4. Alignment with WIF security model
 
-Workload Identity Federation (ADR-0005) binds `catvox-ci-sa` to the `IvanBoyko/catvox` GitHub repository. Keeping the CI SA separate means the WIF trust boundary is isolated to infrastructure operations, not production data access.
+Workload Identity Federation (ADR-0005) binds `catvox-ci-sa` to the `kathelix/catvox` GitHub repository. Keeping the CI SA separate means the WIF trust boundary is isolated to infrastructure operations, not production data access.
 
 ## Consequences
 
