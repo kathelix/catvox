@@ -1,5 +1,10 @@
 # CatVox MVP Early User Test Plan
 
+**Version:** 1.0
+**Last updated:** 2026-04-27
+
+Increment this version when the user-test procedure, storage workflow, review workflow, or success criteria change.
+
 ## 1. Purpose
 
 This session is a lightweight early user test for the CatVox MVP.
@@ -27,7 +32,7 @@ The facilitator:
 4. remains silent during the test unless a technical issue makes the test impossible to continue;
 5. asks the 3 post-test questions;
 6. records brief facilitator observations in the same recording; and
-7. later reviews the recording with Gemini.
+7. later reviews the YouTube-hosted recording with Gemini.
 
 ### 2.2 Test user
 
@@ -50,7 +55,7 @@ The facilitator will:
 4. prepare a quiet environment so spoken comments are clearly captured; and
 5. ensure screen recording is available on the device;
 6. enable microphone recording for the screen recording;
-7. make sure the user knows that the screen and all spoken comments will be recorded for product learning.
+7. make sure the user knows that the screen and all spoken comments will be recorded for product learning and uploaded as a Public YouTube video for later review.
 
 ---
 
@@ -58,7 +63,7 @@ The facilitator will:
 
 The facilitator will say the following word for word before starting:
 
-> Thanks for trying this. This is an early version of a new app, and I'd like you to use it as naturally as possible. Please imagine you've just opened it because you want to understand what your cat is trying to communicate. As you go, please say out loud what you expect, what you notice, and anything that feels confusing, frustrating, or surprisingly good. I'll stay quiet and won't guide you, because I'm testing the app, not you. I'm going to record the screen and your voice comments so I can review the session afterwards.
+> Thanks for trying this. This is an early version of a new app, and I'd like you to use it as naturally as possible. Please imagine you've just opened it because you want to understand what your cat is trying to communicate. As you go, please say out loud what you expect, what you notice, and anything that feels confusing, frustrating, or surprisingly good. I'll stay quiet and won't guide you, because I'm testing the app, not you. I'm going to record the screen and your voice comments, then upload the recording as a Public YouTube video so I can review the session afterwards.
 
 ---
 
@@ -126,7 +131,9 @@ The facilitator will:
 1. stop the recording only after the user answers and facilitator observations are spoken;
 2. save the screen recording;
 3. use a consistent file name; and
-4. store it in a consistent location for later review.
+4. store it in a consistent location for later review;
+5. upload the recording to the designated YouTube archive as a Public video; and
+6. record the YouTube URL for later Gemini review and research notes.
 
 Suggested naming format:
 
@@ -135,6 +142,10 @@ Suggested naming format:
 Example:
 
 `catvox_test_2026-04-24_user01.MP4`
+
+The YouTube title should use the same session identifier without the file extension:
+
+`catvox_test_YYYY-MM-DD_userNN`
 
 ---
 
@@ -154,161 +165,58 @@ During the session, the facilitator should pay attention to:
 
 ---
 
-## 7. Gemini review guidance
+## 7. Video storage on YouTube
 
-Attach **both** files to Gemini:
+User-test screen recordings are stored in YouTube after each session.
 
-1. the produced screen recording; and
-2. this `USER_TEST_PLAN.md` file.
+YouTube is used as the working archive for raw session recordings because it provides reliable playback, long-video handling, and easy review links for later analysis.
 
-Use the prompt below.
+The facilitator must:
 
-### 7.1 Gemini prompt to copy and paste
+1. upload the saved screen recording to the designated CatVox user-testing YouTube account;
+2. use the same session identifier in the YouTube title as the local recording file name;
+3. set the video visibility to Public;
+4. store the YouTube URL together with the session notes or generated analysis report;
+5. after the Gemini analysis is complete, set the video visibility to Private;
+6. remove or restrict access to videos if a participant later asks for their session recording to be deleted or no longer used.
 
-```text
-You are analysing an attached screen recording of a CatVox early user test session.
+Suggested YouTube title format:
 
-Also read the attached `USER_TEST_PLAN.md` first and treat it as the authoritative context for this analysis.
-In particular, use these sections as ground truth:
-- Section 2 - Roles
-- Section 5 - Test flow
-- Section 6 - What to observe
-- Section 7 - Gemini review guidance
-- Section 8 - Consistency rules across users
-- Section 9 - Success criteria for this phase
+`catvox_test_YYYY-MM-DD_userNN`
 
-Important instructions:
-
-1. Separate the 2 speakers clearly:
-   - User
-   - Facilitator
-
-2. Both speakers may speak in any language, including English, Russian, or mixed-language speech.
-   - Do not assume the audio is only English.
-   - Preserve original quotes in the original language where possible.
-   - Also provide an English translation for non-English quotes or mixed-language quotes.
-
-3. If speaker identity is uncertain, mark it as `[UNCERTAIN SPEAKER]` instead of guessing.
-
-4. Use the test plan as the source of truth for the session structure and facilitator intent.
-   Do not repeat the plan back to me unless needed for the analysis.
-
-5. Treat facilitator comments separately from user feedback.
-   - The facilitator introduction is context, not product feedback.
-   - Any facilitator observations recorded at the end should be analysed separately from the user's experience.
-
-6. Focus on evidence from:
-   - what happened on screen;
-   - what the user said;
-   - what the facilitator said; and
-   - the relationship between user behaviour and facilitator interpretation.
-
-7. Do not invent quotes, motivations, or conclusions that are not supported by the recording.
-
-Please produce the output in English with the following structure.
-
-## 1. Executive summary
-Provide a short summary covering:
-- whether the user understood what the app is for;
-- the main friction points;
-- the strongest positive signals;
-- whether there is believable repeat-use potential.
-
-## 2. Speaker identification
-Briefly explain how you distinguished:
-- User
-- Facilitator
-- any uncertain segments
-
-## 3. Timecoded timeline
-Create a table with these columns:
-- Time
-- Speaker
-- Original quote
-- English translation
-- What happened on screen
-- Interpretation
-- Labels
-
-Use approximate timestamps if needed.
-
-## 4. User journey reconstruction
-Describe step by step:
-- first action;
-- explored paths;
-- retries or backtracking;
-- where the user seemed confident;
-- where the user seemed lost.
-
-## 5. Top friction points
-Rank the most important product or UX problems.
-For each one include:
-- evidence;
-- timestamp(s);
-- why it matters.
-
-## 6. Top positive signals
-List the strongest moments of:
-- delight;
-- clarity;
-- curiosity;
-- perceived value;
-- emotional connection.
-
-## 7. Answers to the 3 post-test questions
-Extract and summarize the user's answers to the 3 exact questions from the session.
-If an answer is incomplete, indirect, or missing, say so.
-
-## 8. Facilitator-only observations
-Extract only the facilitator's own observations recorded at the end.
-Summarize:
-- first impression;
-- biggest confusion point;
-- strongest positive reaction;
-- whether the facilitator thought the user understood the value;
-- whether the facilitator thought the user would use the app again;
-- any quote worth preserving.
-
-## 9. Comparison: user evidence vs facilitator interpretation
-Compare:
-- what the user actually did and said;
-- what the facilitator believed happened.
-
-Mark clearly:
-- where they align;
-- where the facilitator may have overestimated something;
-- where the facilitator may have underestimated something.
-
-## 10. Product recommendations
-Provide a short ranked list of improvements.
-For each recommendation include:
-- the problem it addresses;
-- evidence from the session;
-- priority: high / medium / low.
-
-## 11. Final verdict
-End with:
-- Product understanding: Clear / Partly clear / Unclear
-- Navigation usability: Smooth / Mixed / Problematic
-- Repeat-use signal: Strong / Weak / None
-- Recommendation: Keep testing as-is / Fix top issues first / Reposition product message
-
-Use these labels where relevant:
-- Expectation
-- Hesitation
-- Confusion
-- Frustration
-- Delight
-- Value signal
-- Abandonment risk
-- Positive usability signal
-- Misunderstanding
-- Facilitator observation
-```
+The local recording file and YouTube title should share the same session identifier.
 
 ---
 
-## 8. Consistency rules across users
+## 8. Gemini review guidance
+
+Use the YouTube-hosted recording as the review source.
+
+To review the session in Gemini:
+
+1. Use the prompt template in `docs/USER_TEST_GEMINI_REVIEW_PROMPT.md`.
+2. Copy the full contents of that file into a new Gemini chat.
+3. Replace `YOUTUBE_URL_OF_THE_VIDEO` inside the prompt with the actual URL of the uploaded video.
+4. Attach this `USER_TEST_PLAN.md` file.
+5. Run the prompt.
+
+The generated analysis must include the versions of both `USER_TEST_PLAN.md` and `USER_TEST_GEMINI_REVIEW_PROMPT.md` that were used.
+
+After Gemini responds, save only the content inside the fenced `markdown` block as a private research artifact. Suggested private filename:
+
+`catvox_test_YYYY-MM-DD_userNN_analysis.md`
+
+After the analysis is saved, set the YouTube video visibility to Private as required in Section 7.
+
+Do not commit raw recordings, transcripts, or generated analysis reports unless a later sanitized summary is intentionally prepared for the repo.
+
+### 8.1 Gemini prompt file
+
+The copy-paste prompt is stored separately in `docs/USER_TEST_GEMINI_REVIEW_PROMPT.md`.
+
+---
+
+## 9. Consistency rules across users
 
 To keep sessions comparable, the facilitator should:
 
@@ -321,7 +229,7 @@ To keep sessions comparable, the facilitator should:
 
 ---
 
-## 9. Success criteria for this phase
+## 10. Success criteria for this phase
 
 This phase is successful if it helps the product team learn:
 
