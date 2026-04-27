@@ -2,11 +2,14 @@
 
 ## Deferred Product Work
 
-### USER_TEST_PLAN.md
+### USER_TEST_PLAN.md - overcome 5 min limit of a consumer Gemini
 Free version of consumer Gemini allows to analyse max 5 minutes video of user testing session.
 We should allow longer sessions.
 We can upgrade to Plus/Pro tiers, or upload videos to YouTube - both options will accept much longer videos.
 Alterntively we can build a testing backend, in a similar way that the app way behaves - upload testing video to GCS and analyse via Gemini/Vertex.
+
+### USER_TEST_PLAN.md - Gemini output as Markdown
+Improve prompt to Gemini to format it's output as a Markdown inside a code-block, to easily copy-paste and save a structured file, for further analysis by tools.
 
 ### Collect feedback from users using app
 Consdier:
