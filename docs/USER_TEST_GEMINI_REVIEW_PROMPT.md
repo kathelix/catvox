@@ -1,4 +1,4 @@
-You are analysing a screen recording of a CatVox early user test session - ......
+You are analysing a screen recording of a CatVox early user test session - YOUTUBE_URL_OF_THE_VIDEO
 
 
 Deliver the entire response exclusively inside a single markdown code block, so it is ready to be copied and saved as a .md file.

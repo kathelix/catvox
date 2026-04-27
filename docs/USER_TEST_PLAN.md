@@ -189,11 +189,11 @@ Use the YouTube-hosted recording as the review source when possible.
 
 Provide Gemini with:
 
-1. the Public YouTube link for the recorded session; and
-2. this `USER_TEST_PLAN.md` file.
-
-Use the prompt in `docs/USER_TEST_GEMINI_REVIEW_PROMPT.md`.
-Copy the full contents of that file into Gemini.
+1. Use the prompt template in `docs/USER_TEST_GEMINI_REVIEW_PROMPT.md`.
+2. Copy the full contents of that file into new Gemini chat.
+3. Replace YOUTUBE_URL_OF_THE_VIDEO inside of the prompt with the actual URL of the uploaded video.
+4. Attached this `USER_TEST_PLAN.md` file.
+5. Run
 
 After Gemini responds, save only the content inside the fenced `markdown` block as a private research artifact. Suggested private filename:
 
