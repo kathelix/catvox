@@ -1,5 +1,10 @@
 # CatVox MVP Early User Test Plan
 
+**Version:** 1.0
+**Last updated:** 2026-04-27
+
+Increment this version when the user-test procedure, storage workflow, review workflow, or success criteria change.
+
 ## 1. Purpose
 
 This session is a lightweight early user test for the CatVox MVP.
@@ -194,6 +199,8 @@ To review the session in Gemini:
 3. Replace `YOUTUBE_URL_OF_THE_VIDEO` inside the prompt with the actual URL of the uploaded video.
 4. Attach this `USER_TEST_PLAN.md` file.
 5. Run the prompt.
+
+The generated analysis must include the versions of both `USER_TEST_PLAN.md` and `USER_TEST_GEMINI_REVIEW_PROMPT.md` that were used.
 
 After Gemini responds, save only the content inside the fenced `markdown` block as a private research artifact. Suggested private filename:
 

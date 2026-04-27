@@ -1,5 +1,8 @@
 # CatVox user test video analysis
 
+**Version:** 1.0
+**Last updated:** 2026-04-27
+
 You are analysing a **screen recording with microphone audio** of a CatVox early user test session.
 The video is available at URL: YOUTUBE_URL_OF_THE_VIDEO
 
@@ -61,6 +64,10 @@ Do not split the work into multiple stages.
 
 11. Provide the entire analysis inside **one single fenced `markdown` code block** and include **no conversational filler outside the code block**.
 
+12. Include the versions of both source documents used for the analysis:
+   - `USER_TEST_PLAN.md`
+   - `USER_TEST_GEMINI_REVIEW_PROMPT.md`
+
 ---
 
 ## What to analyse
@@ -116,6 +123,8 @@ Inside that code block, use the structure below exactly.
 
 Provide:
 
+- **USER_TEST_PLAN.md version:** exact version from the attached test plan
+- **USER_TEST_GEMINI_REVIEW_PROMPT.md version:** exact version from this prompt
 - **Video access:** confirmed / not confirmed
 - **Exact detected duration:** `MM:SS`
 - **Distinct speakers detected:** number
@@ -306,6 +315,8 @@ Provide:
 
 Provide these exact fields:
 
+- `user_test_plan_version:`
+- `gemini_review_prompt_version:`
 - `video_access:`
 - `exact_duration:`
 - `distinct_speakers_detected:`
