@@ -2,7 +2,7 @@
 
 ## Deferred Product Work
 
-### Collect feedback from users using app
+### Collect in-app feedback from users
 Consdier:
 - automatic sending of errors
 - special dialog "Feeddback", with variants 3-5 variants what to priotise in development

@@ -20,7 +20,7 @@ This isn't just a toy - it's a portfolio showcase of Kathelix’s ability to bui
 ## 4. Technical Constraints for the Developer
 * **Backend Proxy:** All AI calls must go through a Firebase Cloud Function. Never call Vertex AI directly from the client to protect API keys.
 * **Lean Infrastructure:** Keep GCP costs low by using **Gemini 3.1 Flash**. Implement auto-deletion (TTL) for uploaded videos in Cloud Storage.
-* **Privacy:** No personal data collection beyond a Firebase UID. Videos are transient and deleted after processing.
+* **Privacy:** No personal data collection beyond a Firebase UID. Production app scan videos are transient and deleted after processing. Moderated user-test recordings are governed separately by `docs/USER_TEST_PLAN.md`.
 
 ## 5. Developer Mindset
 We prioritize **short iteration cycles**. Don't try to build the entire system perfectly in one go. Build the "Result View" with mock data first, then the "Camera Logic," then the "Cloud Connection." Every module should be testable.
