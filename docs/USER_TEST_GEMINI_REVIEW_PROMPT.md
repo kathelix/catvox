@@ -59,7 +59,7 @@ Do **not** restate large parts of the test plan unless necessary for the analysi
 Do not ask follow-up questions.
 Do not split the work into multiple stages.
 
-11. Provide the entire analysis inside **one single markdown code block** and include **no conversational filler outside the code block**.
+11. Provide the entire analysis inside **one single fenced `markdown` code block** and include **no conversational filler outside the code block**.
 
 ---
 
@@ -108,7 +108,7 @@ Use these interaction types where relevant in the timeline:
 
 ## Output requirements
 
-Return the entire result inside **one markdown code block**.
+Return the entire result inside **one fenced `markdown` code block**.
 
 Inside that code block, use the structure below exactly.
 

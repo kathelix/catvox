@@ -50,7 +50,7 @@ The facilitator will:
 4. prepare a quiet environment so spoken comments are clearly captured; and
 5. ensure screen recording is available on the device;
 6. enable microphone recording for the screen recording;
-7. make sure the user knows that the screen and all spoken comments will be recorded for product learning and uploaded as an Public YouTube video for later review.
+7. make sure the user knows that the screen and all spoken comments will be recorded for product learning and uploaded as a Public YouTube video for later review.
 
 ---
 
@@ -58,7 +58,7 @@ The facilitator will:
 
 The facilitator will say the following word for word before starting:
 
-> Thanks for trying this. This is an early version of a new app, and I'd like you to use it as naturally as possible. Please imagine you've just opened it because you want to understand what your cat is trying to communicate. As you go, please say out loud what you expect, what you notice, and anything that feels confusing, frustrating, or surprisingly good. I'll stay quiet and won't guide you, because I'm testing the app, not you. I'm going to record the screen and your voice comments, then upload the recording as an Public YouTube video so I can review the session afterwards.
+> Thanks for trying this. This is an early version of a new app, and I'd like you to use it as naturally as possible. Please imagine you've just opened it because you want to understand what your cat is trying to communicate. As you go, please say out loud what you expect, what you notice, and anything that feels confusing, frustrating, or surprisingly good. I'll stay quiet and won't guide you, because I'm testing the app, not you. I'm going to record the screen and your voice comments, then upload the recording as a Public YouTube video so I can review the session afterwards.
 
 ---
 
@@ -127,7 +127,7 @@ The facilitator will:
 2. save the screen recording;
 3. use a consistent file name; and
 4. store it in a consistent location for later review;
-5. upload the recording to the designated YouTube archive as an Public video; and
+5. upload the recording to the designated YouTube archive as a Public video; and
 6. record the YouTube URL for later Gemini review and research notes.
 
 Suggested naming format:
@@ -172,7 +172,7 @@ The facilitator must:
 2. use the same session identifier in the YouTube title as the local recording file name;
 3. set the video visibility to Public;
 4. store the YouTube URL together with the session notes or generated analysis report;
-5. after the Gemini analyses set the video visibility to Private;
+5. after the Gemini analysis is complete, set the video visibility to Private;
 6. remove or restrict access to videos if a participant later asks for their session recording to be deleted or no longer used.
 
 Suggested YouTube title format:
@@ -185,19 +185,21 @@ The local recording file and YouTube title should share the same session identif
 
 ## 8. Gemini review guidance
 
-Use the YouTube-hosted recording as the review source when possible.
+Use the YouTube-hosted recording as the review source.
 
-Provide Gemini with:
+To review the session in Gemini:
 
 1. Use the prompt template in `docs/USER_TEST_GEMINI_REVIEW_PROMPT.md`.
-2. Copy the full contents of that file into new Gemini chat.
-3. Replace YOUTUBE_URL_OF_THE_VIDEO inside of the prompt with the actual URL of the uploaded video.
-4. Attached this `USER_TEST_PLAN.md` file.
-5. Run
+2. Copy the full contents of that file into a new Gemini chat.
+3. Replace `YOUTUBE_URL_OF_THE_VIDEO` inside the prompt with the actual URL of the uploaded video.
+4. Attach this `USER_TEST_PLAN.md` file.
+5. Run the prompt.
 
 After Gemini responds, save only the content inside the fenced `markdown` block as a private research artifact. Suggested private filename:
 
 `catvox_test_YYYY-MM-DD_userNN_analysis.md`
+
+After the analysis is saved, set the YouTube video visibility to Private as required in Section 7.
 
 Do not commit raw recordings, transcripts, or generated analysis reports unless a later sanitized summary is intentionally prepared for the repo.
 
