@@ -79,9 +79,7 @@ final class CameraService {
         // Simulator has no physical camera; mark ready so controls activate.
         #if targetEnvironment(simulator)
         DispatchQueue.main.async { self.isSessionReady = true }
-        return
-        #endif
-
+        #else
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             guard let self else { return }
             guard granted else {
@@ -98,6 +96,7 @@ final class CameraService {
                 }
             }
         }
+        #endif
     }
 
     private func configureSession() {

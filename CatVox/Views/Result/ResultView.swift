@@ -477,7 +477,9 @@ struct ResultView: View {
     private func handleUploadState(_ state: GCPService.UploadState) {
         switch state {
         case .complete(let analysis):
-            handleCompletedAnalysis(analysis)
+            Task { @MainActor in
+                await handleCompletedAnalysis(analysis)
+            }
 
         case .quotaExceeded:
             quotaStore.markExhausted()
@@ -491,7 +493,8 @@ struct ResultView: View {
         }
     }
 
-    private func handleCompletedAnalysis(_ analysis: CatAnalysis) {
+    @MainActor
+    private func handleCompletedAnalysis(_ analysis: CatAnalysis) async {
         quotaStore.recordScan()
 
         guard let videoURL, let sourceType else {
@@ -504,7 +507,7 @@ struct ResultView: View {
         }
 
         do {
-            let savedScan = try ScanHistoryStore.saveScan(
+            let savedScan = try await ScanHistoryStore.saveScan(
                 from: videoURL,
                 sourceType: sourceType,
                 analysis: analysis,
