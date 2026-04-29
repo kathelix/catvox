@@ -11,6 +11,14 @@ enum ImportedVideoValidationError: LocalizedError {
     case unsupportedFormat
     case importFailed
 
+    static func analyticsReason(for error: Error) -> String {
+        guard let validationError = error as? ImportedVideoValidationError else {
+            return "import_failed"
+        }
+
+        return validationError.analyticsReason
+    }
+
     var errorDescription: String? {
         switch self {
         case .tooLong:
@@ -23,6 +31,21 @@ enum ImportedVideoValidationError: LocalizedError {
             return "This video format isn't supported."
         case .importFailed:
             return "We couldn't import this video. Please try another clip."
+        }
+    }
+
+    private var analyticsReason: String {
+        switch self {
+        case .tooLong:
+            return "too_long"
+        case .tooLarge:
+            return "too_large"
+        case .proResUnsupported:
+            return "prores_unsupported"
+        case .unsupportedFormat:
+            return "unsupported_format"
+        case .importFailed:
+            return "import_failed"
         }
     }
 }

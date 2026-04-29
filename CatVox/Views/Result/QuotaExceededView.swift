@@ -46,6 +46,7 @@ struct QuotaExceededView: View {
             // ── Actions ───────────────────────────────────────────────────
             VStack(spacing: 10) {
                 Button {
+                    AnalyticsService.capture(.upgradeToProTapped)
                     showComingSoon = true
                 } label: {
                     Text("Upgrade to Pro")

@@ -60,10 +60,13 @@ struct HomeView: View {
             titleVisibility: .visible
         ) {
             Button("Record New Video") {
+                AnalyticsService.capture(.scanSourceChosen, properties: ["source": "record"])
                 showRecording = true
             }
 
             Button("Choose from Photos") {
+                AnalyticsService.capture(.scanSourceChosen, properties: ["source": "photos"])
+                AnalyticsService.capture(.photosPickerOpened)
                 showPhotoPicker = true
             }
 
@@ -211,6 +214,7 @@ struct HomeView: View {
                 if quotaStore.scansRemaining > 0 {
                     showSourceChoice = true
                 } else {
+                    AnalyticsService.capture(.quotaCardShown, properties: ["trigger": "home_local_quota"])
                     showQuotaCard = true
                 }
             } label: {
@@ -272,8 +276,10 @@ struct HomeView: View {
     private func deletePendingScan() {
         guard let pendingDeletion else { return }
 
+        let personaType = pendingDeletion.personaType
         do {
             try ScanHistoryStore.deleteScan(pendingDeletion, from: modelContext)
+            AnalyticsService.capture(.scanDeleted, properties: ["persona_type": personaType])
         } catch {
             historyErrorMessage = "We couldn't delete this scan. Please try again."
             showHistoryError = true

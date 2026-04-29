@@ -7,6 +7,7 @@ struct CatVoxApp: App {
     @State private var quotaStore = ScanQuotaStore()
 
     init() {
+        AnalyticsService.configure()
         Self.prepareApplicationSupportDirectory()
     }
 

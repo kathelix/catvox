@@ -24,6 +24,7 @@ struct RecordingView: View {
     @State private var transientStatusMessage: String?
     @State private var hintTask: Task<Void, Never>?
     @State private var handoffToResult = false
+    @State private var hasTrackedCancellation = false
 
     let onUseClip: (URL) -> Void
 
@@ -74,6 +75,7 @@ struct RecordingView: View {
             hintTask?.cancel()
             service.stopSession()
             if !handoffToResult {
+                trackRecordingCancellationIfNeeded()
                 discardRecordedClip()
             }
         }
@@ -81,6 +83,7 @@ struct RecordingView: View {
             switch state {
             case .finished(let url):
                 recordedURL = url
+                AnalyticsService.capture(.recordingFinished)
             case .failed(let msg):
                 errorMessage = msg
                 showError    = true
@@ -177,7 +180,10 @@ struct RecordingView: View {
         switch service.captureState {
 
         case .idle:
-            Button { service.startRecording() } label: {
+            Button {
+                AnalyticsService.capture(.recordingStarted)
+                service.startRecording()
+            } label: {
                 Circle()
                     .fill(CatVoxTheme.brandGradient)
                     .frame(width: 80, height: 80)
@@ -336,12 +342,21 @@ struct RecordingView: View {
 
     private func useRecordedClip() {
         guard let recordedURL else { return }
+        AnalyticsService.capture(
+            .videoValidationPassed,
+            properties: ["source_type": ScanSourceType.recorded.rawValue]
+        )
+        AnalyticsService.capture(
+            .recordingCompleted,
+            properties: ["source_type": ScanSourceType.recorded.rawValue]
+        )
         handoffToResult = true
         onUseClip(recordedURL)
         dismiss()
     }
 
     private func retakeRecording() {
+        AnalyticsService.capture(.recordingRetakeTapped)
         clearTransientStatusMessage()
         discardRecordedClip()
         recordedURL = nil
@@ -351,6 +366,34 @@ struct RecordingView: View {
     private func discardRecordedClip() {
         if let recordedURL {
             try? FileManager.default.removeItem(at: recordedURL)
+        }
+    }
+
+    private func trackRecordingCancellationIfNeeded() {
+        guard !hasTrackedCancellation else { return }
+        hasTrackedCancellation = true
+
+        AnalyticsService.capture(
+            .recordingCancelled,
+            properties: [
+                "capture_state": analyticsCaptureState,
+                "recorded_clip_available": recordedURL != nil,
+            ]
+        )
+    }
+
+    private var analyticsCaptureState: String {
+        switch service.captureState {
+        case .idle:
+            return "idle"
+        case .recording:
+            return "recording"
+        case .finalizing:
+            return "finalizing"
+        case .finished:
+            return "finished"
+        case .failed:
+            return "failed"
         }
     }
 }

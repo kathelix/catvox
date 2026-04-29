@@ -35,26 +35,41 @@ struct HomeVideoPicker: UIViewControllerRepresentable {
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             guard let result = results.first else {
+                AnalyticsService.capture(.photosPickerCancelled)
                 picker.dismiss(animated: true) {
                     self.onFinish(.cancelled)
                 }
                 return
             }
 
+            AnalyticsService.capture(.photosClipSelected)
+
             Task {
                 do {
                     let importedURL = try await ImportedVideoService.importValidatedVideo(from: result)
                     await MainActor.run {
+                        AnalyticsService.capture(
+                            .videoValidationPassed,
+                            properties: ["source_type": ScanSourceType.photos.rawValue]
+                        )
                         picker.dismiss(animated: true) {
                             self.onFinish(.success(importedURL))
                         }
                     }
                 } catch {
+                    let reason = ImportedVideoValidationError.analyticsReason(for: error)
                     let message =
                         (error as? LocalizedError)?.errorDescription ??
                         ImportedVideoValidationError.importFailed.localizedDescription
 
                     await MainActor.run {
+                        AnalyticsService.capture(
+                            .videoValidationFailed,
+                            properties: [
+                                "source_type": ScanSourceType.photos.rawValue,
+                                "validation_failure_reason": reason,
+                            ]
+                        )
                         picker.dismiss(animated: true) {
                             self.onFinish(.failure(message))
                         }
