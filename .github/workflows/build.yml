@@ -59,3 +59,13 @@ jobs:
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
           | xcpretty
+
+      - name: Run iOS Unit Tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -scheme CatVox \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+          | xcpretty

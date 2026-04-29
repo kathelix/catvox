@@ -11,17 +11,22 @@
 		1287A8DCFE6D80256B9611B0 /* MockAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */; };
 		1861803EF64D9F7FE6C77560 /* CatAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */; };
 		18A039960A12961EBFEBC651 /* LoopingVideoBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */; };
+		2052FB6C170E9EEC2531E86A /* CatAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6364ED5AE4CAAE1E2AC30B29 /* CatAnalysisTests.swift */; };
 		2B1DF66382C3129D895D785C /* CatVoxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBC2D72ADC3729A73D65E8D /* CatVoxApp.swift */; };
 		2D40438890094A8E0A0EB71F /* ShareVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */; };
 		31B52FE6FAEC9B396E3D0C27 /* QuotaExceededView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */; };
 		37039B5FADDEA9E57A423699 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F5C098EA923D7B7D2B7746F /* HomeView.swift */; };
 		374FEBF00E6B6956F5361432 /* ScanHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */; };
+		3A76BB65F25DB94D7E779AA1 /* ConfidenceTierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AD2459F0FB2E469B3A8EBF /* ConfidenceTierTests.swift */; };
 		4266499BA9E91B5D6B035BB7 /* ResultVideoBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = C772B5F55DE9DC6D8C628BB8 /* ResultVideoBackdrop.swift */; };
 		44C6BC1CB2E18E7DDD3361F3 /* HomeVideoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EFAA94F5454E9ABF6B9D09 /* HomeVideoPicker.swift */; };
 		46ECBCFF9DD385E7670A980D /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 215145685222056D654FFBD5 /* CameraService.swift */; };
+		4E7FE2E01925797AAEE7E495 /* CatPersonaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6313F1146262336F3B4CE566 /* CatPersonaTests.swift */; };
 		4F25F5EF0770D910A04EE964 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0A06657FF5E304418C27E21 /* Assets.xcassets */; };
 		53EBF6283E37AC40C2FBF31C /* AnimatedVideoBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25B98C7A388BAC230FA34DE /* AnimatedVideoBackground.swift */; };
+		5F6C5D7BE130E488556FC65A /* ConfidenceTier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7288FA38F10CB18B8FAAA8D /* ConfidenceTier.swift */; };
 		61C87E117CBDFD72736557E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08F33CD1AC4F31C7769CE96 /* ContentView.swift */; };
+		63FA374A9BCE02441274BF75 /* SavedScanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C334985AD19C5A97AACCCC01 /* SavedScanTests.swift */; };
 		6902F9587F273B3A3A1CFA3F /* SavedScanRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81F4FC3E926629C4422BFA0 /* SavedScanRow.swift */; };
 		696CA07C08B3CC4EDE48028D /* ScanQuotaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */; };
 		8C2CEB06889AD660A126DB42 /* PersonaBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */; };
@@ -34,12 +39,24 @@
 		B4D5970C08C51D76A7FA3AB4 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F5127E72D22F9078142F6EE /* CameraPreviewView.swift */; };
 		B84CBF26D24790B4B6F348CD /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C7BA98BD11A2006135A1026D /* Preview Assets.xcassets */; };
 		C3ADEFA683DE26DFF3392AD6 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19667502574A1D26D0A51E54 /* RecordingView.swift */; };
+		C93725BB3023F1154E1DCB70 /* ScanQuotaStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8291820F5D680D455B4DB9 /* ScanQuotaStoreTests.swift */; };
 		CC4D468FA76148B25B2DFE40 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C40315F8DBC5B5AD38A13C2 /* Theme.swift */; };
 		ED83E27532C2FF6FCBB3FF6B /* ImportedVideoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */; };
 		F313F83CB35D9EBB47FB6D86 /* GCPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8AF485DF075ADE029435E4 /* GCPService.swift */; };
+		F607B892AD837E4AE7317D50 /* ImportedVideoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0452D678AA7A7829735F30 /* ImportedVideoServiceTests.swift */; };
 		F6CC1D6EFE3B0806EF52737B /* SavedScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0F9D24B635C065A8B16442 /* SavedScan.swift */; };
 		F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D6D24374084C2723FD8F66 /* ResultView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		208BD4D2A34AEF3FDB43A139 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6E889E5E24CD6285788492AD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A7EDDBB8F04B431FAC25DB3C;
+			remoteInfo = CatVox;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0F8AF485DF075ADE029435E4 /* GCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GCPService.swift; sourceTree = "<group>"; };
@@ -52,8 +69,11 @@
 		4C40315F8DBC5B5AD38A13C2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4F5C098EA923D7B7D2B7746F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		54EFAA94F5454E9ABF6B9D09 /* HomeVideoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeVideoPicker.swift; sourceTree = "<group>"; };
+		6313F1146262336F3B4CE566 /* CatPersonaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersonaTests.swift; sourceTree = "<group>"; };
+		6364ED5AE4CAAE1E2AC30B29 /* CatAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatAnalysisTests.swift; sourceTree = "<group>"; };
 		689AC1D0436D57C04DBE7694 /* CatPersona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersona.swift; sourceTree = "<group>"; };
 		6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
+		7656DF1FA69C366617629924 /* CatVoxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CatVoxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7BC4DFCD54831F1AA990A7C3 /* CatVox.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CatVox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7CDA1F15EF954A1E30D11AE3 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanQuotaStore.swift; sourceTree = "<group>"; };
@@ -61,6 +81,8 @@
 		A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryStore.swift; sourceTree = "<group>"; };
 		A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAnalysisService.swift; sourceTree = "<group>"; };
 		A8E77CD777F85F8155EEE27D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AB0452D678AA7A7829735F30 /* ImportedVideoServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedVideoServiceTests.swift; sourceTree = "<group>"; };
+		AE8291820F5D680D455B4DB9 /* ScanQuotaStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanQuotaStoreTests.swift; sourceTree = "<group>"; };
 		B0A06657FF5E304418C27E21 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B25B98C7A388BAC230FA34DE /* AnimatedVideoBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedVideoBackground.swift; sourceTree = "<group>"; };
 		B7C3FCEEFAA51F645F5BECDC /* ThoughtBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThoughtBubbleView.swift; sourceTree = "<group>"; };
@@ -68,10 +90,13 @@
 		B95B88E4B8C3A92CC6B7C716 /* ResultViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultViewModel.swift; sourceTree = "<group>"; };
 		BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaExceededView.swift; sourceTree = "<group>"; };
 		C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedVideoService.swift; sourceTree = "<group>"; };
+		C334985AD19C5A97AACCCC01 /* SavedScanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedScanTests.swift; sourceTree = "<group>"; };
 		C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareVideoRenderer.swift; sourceTree = "<group>"; };
 		C772B5F55DE9DC6D8C628BB8 /* ResultVideoBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultVideoBackdrop.swift; sourceTree = "<group>"; };
 		C7BA98BD11A2006135A1026D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		D7288FA38F10CB18B8FAAA8D /* ConfidenceTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceTier.swift; sourceTree = "<group>"; };
 		D81F4FC3E926629C4422BFA0 /* SavedScanRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedScanRow.swift; sourceTree = "<group>"; };
+		D8AD2459F0FB2E469B3A8EBF /* ConfidenceTierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceTierTests.swift; sourceTree = "<group>"; };
 		DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaBadgeView.swift; sourceTree = "<group>"; };
 		E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatAnalysis.swift; sourceTree = "<group>"; };
 		F08F33CD1AC4F31C7769CE96 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -100,6 +125,7 @@
 			children = (
 				E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */,
 				689AC1D0436D57C04DBE7694 /* CatPersona.swift */,
+				D7288FA38F10CB18B8FAAA8D /* ConfidenceTier.swift */,
 				3F0F9D24B635C065A8B16442 /* SavedScan.swift */,
 				82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */,
 			);
@@ -110,6 +136,7 @@
 			isa = PBXGroup;
 			children = (
 				7BC4DFCD54831F1AA990A7C3 /* CatVox.app */,
+				7656DF1FA69C366617629924 /* CatVoxTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -219,13 +246,45 @@
 			isa = PBXGroup;
 			children = (
 				7999165DC9E8C948CFB7E844 /* CatVox */,
+				FB5B11DC480CF0958CCC390A /* CatVoxTests */,
 				4C9BA6609FEE1ADFF6BA2072 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		FB5B11DC480CF0958CCC390A /* CatVoxTests */ = {
+			isa = PBXGroup;
+			children = (
+				6364ED5AE4CAAE1E2AC30B29 /* CatAnalysisTests.swift */,
+				6313F1146262336F3B4CE566 /* CatPersonaTests.swift */,
+				D8AD2459F0FB2E469B3A8EBF /* ConfidenceTierTests.swift */,
+				AB0452D678AA7A7829735F30 /* ImportedVideoServiceTests.swift */,
+				C334985AD19C5A97AACCCC01 /* SavedScanTests.swift */,
+				AE8291820F5D680D455B4DB9 /* ScanQuotaStoreTests.swift */,
+			);
+			path = CatVoxTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		187F9CB2E713B4E21A252580 /* CatVoxTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EDC099356609B5A9B07E4782 /* Build configuration list for PBXNativeTarget "CatVoxTests" */;
+			buildPhases = (
+				312F9DAED303837443779F98 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B74F893246CCD5B7EFB28EE2 /* PBXTargetDependency */,
+			);
+			name = CatVoxTests;
+			packageProductDependencies = (
+			);
+			productName = CatVoxTests;
+			productReference = 7656DF1FA69C366617629924 /* CatVoxTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		A7EDDBB8F04B431FAC25DB3C /* CatVox */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = EFD8A9F258F409C1D2C31F34 /* Build configuration list for PBXNativeTarget "CatVox" */;
@@ -273,6 +332,7 @@
 			projectRoot = "";
 			targets = (
 				A7EDDBB8F04B431FAC25DB3C /* CatVox */,
+				187F9CB2E713B4E21A252580 /* CatVoxTests */,
 			);
 		};
 /* End PBXProject section */
@@ -291,6 +351,19 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		312F9DAED303837443779F98 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2052FB6C170E9EEC2531E86A /* CatAnalysisTests.swift in Sources */,
+				4E7FE2E01925797AAEE7E495 /* CatPersonaTests.swift in Sources */,
+				3A76BB65F25DB94D7E779AA1 /* ConfidenceTierTests.swift in Sources */,
+				F607B892AD837E4AE7317D50 /* ImportedVideoServiceTests.swift in Sources */,
+				63FA374A9BCE02441274BF75 /* SavedScanTests.swift in Sources */,
+				C93725BB3023F1154E1DCB70 /* ScanQuotaStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A0C9A29FFE1C39B4DAF337E5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -302,6 +375,7 @@
 				1861803EF64D9F7FE6C77560 /* CatAnalysis.swift in Sources */,
 				9CD5CA08C5225D84F30B2646 /* CatPersona.swift in Sources */,
 				2B1DF66382C3129D895D785C /* CatVoxApp.swift in Sources */,
+				5F6C5D7BE130E488556FC65A /* ConfidenceTier.swift in Sources */,
 				61C87E117CBDFD72736557E7 /* ContentView.swift in Sources */,
 				A5C4EECE806C37E8D53F28E0 /* ExpertInsightsDrawer.swift in Sources */,
 				F313F83CB35D9EBB47FB6D86 /* GCPService.swift in Sources */,
@@ -328,6 +402,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B74F893246CCD5B7EFB28EE2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A7EDDBB8F04B431FAC25DB3C /* CatVox */;
+			targetProxy = 208BD4D2A34AEF3FDB43A139 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		01943A8224D832B90D99AFF8 /* Debug */ = {
@@ -491,6 +573,46 @@
 			};
 			name = Release;
 		};
+		787FA0259A039F9EE0D09073 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = 93SH436384;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kathelix.catvox.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CatVox.app/CatVox";
+			};
+			name = Release;
+		};
+		AF6F19E451A988483ACD4579 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = 93SH436384;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kathelix.catvox.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CatVox.app/CatVox";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -499,6 +621,15 @@
 			buildConfigurations = (
 				01943A8224D832B90D99AFF8 /* Debug */,
 				447D3839A7E071606061BC09 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EDC099356609B5A9B07E4782 /* Build configuration list for PBXNativeTarget "CatVoxTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF6F19E451A988483ACD4579 /* Debug */,
+				787FA0259A039F9EE0D09073 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
