@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import PostHog
 
 private struct PendingResultClip: Identifiable {
     let id = UUID()
@@ -61,14 +60,13 @@ struct HomeView: View {
             titleVisibility: .visible
         ) {
             Button("Record New Video") {
-                // PostHog: track scan source chosen
-                PostHogSDK.shared.capture("scan_source_chosen", properties: ["source": "record"])
+                AnalyticsService.capture(.scanSourceChosen, properties: ["source": "record"])
                 showRecording = true
             }
 
             Button("Choose from Photos") {
-                // PostHog: track scan source chosen
-                PostHogSDK.shared.capture("scan_source_chosen", properties: ["source": "photos"])
+                AnalyticsService.capture(.scanSourceChosen, properties: ["source": "photos"])
+                AnalyticsService.capture(.photosPickerOpened)
                 showPhotoPicker = true
             }
 
@@ -216,6 +214,7 @@ struct HomeView: View {
                 if quotaStore.scansRemaining > 0 {
                     showSourceChoice = true
                 } else {
+                    AnalyticsService.capture(.quotaCardShown, properties: ["trigger": "home_local_quota"])
                     showQuotaCard = true
                 }
             } label: {
@@ -280,8 +279,7 @@ struct HomeView: View {
         let personaType = pendingDeletion.personaType
         do {
             try ScanHistoryStore.deleteScan(pendingDeletion, from: modelContext)
-            // PostHog: track scan deletion
-            PostHogSDK.shared.capture("scan_deleted", properties: ["persona_type": personaType])
+            AnalyticsService.capture(.scanDeleted, properties: ["persona_type": personaType])
         } catch {
             historyErrorMessage = "We couldn't delete this scan. Please try again."
             showHistoryError = true

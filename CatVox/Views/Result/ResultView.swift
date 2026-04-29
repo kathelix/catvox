@@ -1,8 +1,8 @@
 import Photos
 import SwiftUI
 import SwiftData
+import UIKit
 import os
-import PostHog
 
 /// The centrepiece of the CatVox experience.
 ///
@@ -28,11 +28,25 @@ struct ResultView: View {
     private enum ShareExportAction {
         case saveToPhotos
         case shareSheet
+
+        var analyticsValue: String {
+            switch self {
+            case .saveToPhotos:
+                return "save_to_photos"
+            case .shareSheet:
+                return "share_sheet"
+            }
+        }
     }
 
     private struct ShareSheetItem: Identifiable {
         let id = UUID()
         let url: URL
+        let scanID: UUID
+    }
+
+    private enum PhotoSaveError: Error {
+        case permissionDenied
     }
 
     @Environment(\.dismiss)        private var dismiss
@@ -166,6 +180,7 @@ struct ResultView: View {
         }
         .alert("Upload Failed", isPresented: $showRetryAlert) {
             Button("Retry") {
+                AnalyticsService.capture(.analysisRetryTapped)
                 if let url = videoURL { gcpService.retry(videoAt: url) }
             }
             Button("Cancel", role: .cancel) { dismissResult() }
@@ -183,7 +198,14 @@ struct ResultView: View {
             Text(exportAlertMessage)
         }
         .sheet(item: $shareSheetItem) { item in
-            ActivityView(activityItems: [item.url])
+            ActivityView(activityItems: [item.url]) { activityType, completed, error in
+                handleShareSheetCompletion(
+                    scanID: item.scanID,
+                    activityType: activityType,
+                    completed: completed,
+                    error: error
+                )
+            }
         }
     }
 
@@ -494,14 +516,13 @@ struct ResultView: View {
 
         case .quotaExceeded:
             quotaStore.markExhausted()
-            // PostHog: track quota exceeded
-            PostHogSDK.shared.capture("quota_exceeded")
+            AnalyticsService.capture(.quotaExceeded)
+            AnalyticsService.capture(.quotaCardShown, properties: ["trigger": "server_quota"])
 
         case .failed(let message):
             failureMessage = message
             showRetryAlert = true
-            // PostHog: track analysis failure
-            PostHogSDK.shared.capture("analysis_failed", properties: ["error_message": message])
+            AnalyticsService.capture(.analysisFailed, properties: ["error_message": message])
 
         default:
             break
@@ -513,8 +534,7 @@ struct ResultView: View {
         quotaStore.recordScan()
 
         guard let videoURL, let sourceType else {
-            // PostHog: track analysis completed (dev-preview path)
-            PostHogSDK.shared.capture("analysis_completed", properties: [
+            AnalyticsService.capture(.analysisCompleted, properties: [
                 "persona_type": analysis.personaType,
                 "primary_emotion": analysis.primaryEmotion,
                 "confidence_score": analysis.confidenceScore,
@@ -539,8 +559,7 @@ struct ResultView: View {
             backgroundAmbientImageURL = ScanHistoryStore.thumbnailURL(for: savedScan)
             backgroundPlaybackMessage = nil
 
-            // PostHog: track analysis completed (normal recording path)
-            PostHogSDK.shared.capture("analysis_completed", properties: [
+            AnalyticsService.capture(.analysisCompleted, properties: [
                 "persona_type": analysis.personaType,
                 "primary_emotion": analysis.primaryEmotion,
                 "confidence_score": analysis.confidenceScore,
@@ -561,14 +580,14 @@ struct ResultView: View {
         guard !isShareExportInFlight else { return }
 
         if let renderedShareVideoURL, FileManager.default.fileExists(atPath: renderedShareVideoURL.path) {
-            performShareAction(action, using: renderedShareVideoURL)
+            performShareAction(action, analysis: analysis, using: renderedShareVideoURL)
             return
         }
 
         if let cachedOutputURL = try? ShareVideoRenderer.existingRenderedVideoURL(for: analysis.id),
            FileManager.default.fileExists(atPath: cachedOutputURL.path) {
             renderedShareVideoURL = cachedOutputURL
-            performShareAction(action, using: cachedOutputURL)
+            performShareAction(action, analysis: analysis, using: cachedOutputURL)
             return
         }
 
@@ -580,6 +599,13 @@ struct ResultView: View {
 
         shareRenderTask?.cancel()
         shareProgressMessage = "Preparing share video..."
+        AnalyticsService.capture(
+            .shareExportStarted,
+            properties: [
+                "action": action.analyticsValue,
+                "scan_id": analysis.id.uuidString,
+            ]
+        )
 
         let request = ShareVideoRenderer.Request(
             scanID: analysis.id,
@@ -595,7 +621,7 @@ struct ResultView: View {
                     renderedShareVideoURL = outputURL
                     shareProgressMessage = nil
                     shareRenderTask = nil
-                    performShareAction(action, using: outputURL)
+                    performShareAction(action, analysis: analysis, using: outputURL)
                 }
             } catch is CancellationError {
                 await MainActor.run {
@@ -605,6 +631,14 @@ struct ResultView: View {
             } catch {
                 shareLogger.error("share render failed scan=\(analysis.id.uuidString, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
                 await MainActor.run {
+                    AnalyticsService.capture(
+                        .shareExportRenderFailed,
+                        properties: [
+                            "action": action.analyticsValue,
+                            "scan_id": analysis.id.uuidString,
+                            "error_type": String(describing: type(of: error)),
+                        ]
+                    )
                     shareProgressMessage = nil
                     shareRenderTask = nil
                     exportAlertMessage = "We couldn't render the share video."
@@ -614,12 +648,14 @@ struct ResultView: View {
         }
     }
 
-    private func performShareAction(_ action: ShareExportAction, using outputURL: URL) {
+    private func performShareAction(_ action: ShareExportAction, analysis: CatAnalysis, using outputURL: URL) {
         switch action {
         case .shareSheet:
-            // PostHog: track scan shared via share sheet
-            PostHogSDK.shared.capture("scan_shared")
-            shareSheetItem = ShareSheetItem(url: outputURL)
+            AnalyticsService.capture(
+                .shareSheetOpened,
+                properties: ["scan_id": analysis.id.uuidString]
+            )
+            shareSheetItem = ShareSheetItem(url: outputURL, scanID: analysis.id)
 
         case .saveToPhotos:
             shareProgressMessage = "Saving to Photos..."
@@ -629,8 +665,10 @@ struct ResultView: View {
                     try await saveRenderedVideoToPhotos(outputURL)
                     try Task.checkCancellation()
                     await MainActor.run {
-                        // PostHog: track scan saved to photos
-                        PostHogSDK.shared.capture("scan_saved_to_photos")
+                        AnalyticsService.capture(
+                            .scanSavedToPhotos,
+                            properties: ["scan_id": analysis.id.uuidString]
+                        )
                         shareProgressMessage = nil
                         photoSaveTask = nil
                         showTransientExportNotice("Saved to Photos")
@@ -643,6 +681,19 @@ struct ResultView: View {
                 } catch {
                     shareLogger.error("save to photos failed url=\(outputURL.path, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
                     await MainActor.run {
+                        if error is PhotoSaveError {
+                            AnalyticsService.capture(
+                                .photosPermissionDenied,
+                                properties: ["scan_id": analysis.id.uuidString]
+                            )
+                        }
+                        AnalyticsService.capture(
+                            .shareSaveFailed,
+                            properties: [
+                                "scan_id": analysis.id.uuidString,
+                                "error_type": String(describing: type(of: error)),
+                            ]
+                        )
                         shareProgressMessage = nil
                         photoSaveTask = nil
                         exportAlertMessage = "We couldn't save the share video to Photos."
@@ -664,7 +715,7 @@ struct ResultView: View {
         }
 
         guard resolvedStatus == .authorized || resolvedStatus == .limited else {
-            throw CocoaError(.userCancelled)
+            throw PhotoSaveError.permissionDenied
         }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -679,6 +730,27 @@ struct ResultView: View {
                     continuation.resume(throwing: CocoaError(.fileWriteUnknown))
                 }
             }
+        }
+    }
+
+    private func handleShareSheetCompletion(
+        scanID: UUID,
+        activityType: UIActivity.ActivityType?,
+        completed: Bool,
+        error: Error?
+    ) {
+        var properties: [String: Any] = [
+            "scan_id": scanID.uuidString,
+            "activity_type": activityType?.rawValue ?? "unknown",
+        ]
+        if let error {
+            properties["error_type"] = String(describing: type(of: error))
+        }
+
+        if completed {
+            AnalyticsService.capture(.scanShared, properties: properties)
+        } else {
+            AnalyticsService.capture(.shareSheetCancelled, properties: properties)
         }
     }
 

@@ -1,6 +1,6 @@
 # High-level Design: CatVox AI
 
-**Version:** 1.7
+**Version:** 1.8
 **Company:** Kathelix Ltd
 **Project Lead:** Ivan Boyko
 **Date:** April 2026
@@ -65,6 +65,7 @@ The MVP also supports on-demand creation of a funny shareable result video deriv
 * **Backend Pattern:** Firebase Cloud Functions (2nd Gen) act as the backend proxy between the iOS client and privileged GCP services.
 * **Prompt Management:** The AI system prompt is maintained as a versioned markdown document in the repository and treated as part of the deployable backend behavior.
 * **Identity Separation:** Runtime cloud execution and automated infrastructure delivery use separate service accounts to reduce blast radius and keep privileged automation isolated from application runtime.
+* **Product Analytics:** MVP product analytics use PostHog to measure scan-funnel health, Photos-import validation, quota pressure, share/export behavior, and upgrade intent. Analytics use the same anonymous per-install UUID as quota enforcement and must not include raw video, AI-generated cat thoughts, file paths, or Photos asset identifiers. See ADR-0011.
 
 ## 5. Trust Boundary
 * The iOS client never calls Vertex AI directly.
@@ -72,6 +73,7 @@ The MVP also supports on-demand creation of a funny shareable result video deriv
 * Firebase App Check is mandatory on backend entry points.
 * Usage policy enforcement is server-side.
 * Secrets and privileged cloud access stay server-side.
+* Product analytics are limited to product-event metadata and anonymous per-install identity.
 * Client-side validation improves UX and is the primary MVP enforcement point for duration/format eligibility, while the backend remains authoritative for server-side guardrails such as quota and upload file size.
 
 ## 6. Infrastructure Model

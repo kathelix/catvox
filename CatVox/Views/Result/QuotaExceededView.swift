@@ -1,5 +1,4 @@
 import SwiftUI
-import PostHog
 
 /// Glassmorphic card shown when the user has exhausted their daily free scan quota (HTTP 429).
 /// Mirrors the visual style of UploadProgressView.
@@ -47,8 +46,7 @@ struct QuotaExceededView: View {
             // ── Actions ───────────────────────────────────────────────────
             VStack(spacing: 10) {
                 Button {
-                    // PostHog: track upgrade to pro intent
-                    PostHogSDK.shared.capture("upgrade_to_pro_tapped")
+                    AnalyticsService.capture(.upgradeToProTapped)
                     showComingSoon = true
                 } label: {
                     Text("Upgrade to Pro")

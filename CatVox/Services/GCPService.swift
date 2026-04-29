@@ -83,11 +83,7 @@ final class GCPService {
     /// Persistent anonymous device identifier used for per-user usage quota enforcement.
     /// Stored in UserDefaults on first launch. Replace with Firebase Auth UID once Auth is added.
     private var userId: String {
-        let key = "catvox.userId"
-        if let existing = UserDefaults.standard.string(forKey: key) { return existing }
-        let fresh = UUID().uuidString
-        UserDefaults.standard.set(fresh, forKey: key)
-        return fresh
+        UserIdentityStore.userID
     }
 
     // MARK: - Public API

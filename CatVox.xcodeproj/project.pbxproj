@@ -11,7 +11,9 @@
 		1287A8DCFE6D80256B9611B0 /* MockAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */; };
 		1861803EF64D9F7FE6C77560 /* CatAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */; };
 		18A039960A12961EBFEBC651 /* LoopingVideoBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */; };
+		19F624038D417F767050CF21 /* UserIdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EA24A52C870000B3D3280E /* UserIdentityStore.swift */; };
 		2052FB6C170E9EEC2531E86A /* CatAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6364ED5AE4CAAE1E2AC30B29 /* CatAnalysisTests.swift */; };
+		281365429F072D278D203C44 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = EC01C7226C91D747F131797E /* PostHog */; };
 		2B1DF66382C3129D895D785C /* CatVoxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBC2D72ADC3729A73D65E8D /* CatVoxApp.swift */; };
 		2D40438890094A8E0A0EB71F /* ShareVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */; };
 		31B52FE6FAEC9B396E3D0C27 /* QuotaExceededView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFD2249D1760A7F8E245935F /* QuotaExceededView.swift */; };
@@ -41,12 +43,12 @@
 		C3ADEFA683DE26DFF3392AD6 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19667502574A1D26D0A51E54 /* RecordingView.swift */; };
 		C93725BB3023F1154E1DCB70 /* ScanQuotaStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8291820F5D680D455B4DB9 /* ScanQuotaStoreTests.swift */; };
 		CC4D468FA76148B25B2DFE40 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C40315F8DBC5B5AD38A13C2 /* Theme.swift */; };
+		E38E18F089FE09158754DE37 /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 481D6275DC1528B2394E82A1 /* AnalyticsService.swift */; };
 		ED83E27532C2FF6FCBB3FF6B /* ImportedVideoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */; };
 		F313F83CB35D9EBB47FB6D86 /* GCPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8AF485DF075ADE029435E4 /* GCPService.swift */; };
 		F607B892AD837E4AE7317D50 /* ImportedVideoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0452D678AA7A7829735F30 /* ImportedVideoServiceTests.swift */; };
 		F6CC1D6EFE3B0806EF52737B /* SavedScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0F9D24B635C065A8B16442 /* SavedScan.swift */; };
 		F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D6D24374084C2723FD8F66 /* ResultView.swift */; };
-		C7938E3E5D7743A8A27A5986 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 469B6AEAC7ED4DAD99217419 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +69,8 @@
 		337DB0A3CC6E2C83B8244190 /* ExpertInsightsDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertInsightsDrawer.swift; sourceTree = "<group>"; };
 		3F0F9D24B635C065A8B16442 /* SavedScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedScan.swift; sourceTree = "<group>"; };
 		431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopingVideoBackground.swift; sourceTree = "<group>"; };
+		481D6275DC1528B2394E82A1 /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
+		48EA24A52C870000B3D3280E /* UserIdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserIdentityStore.swift; sourceTree = "<group>"; };
 		4C40315F8DBC5B5AD38A13C2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4F5C098EA923D7B7D2B7746F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		54EFAA94F5454E9ABF6B9D09 /* HomeVideoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeVideoPicker.swift; sourceTree = "<group>"; };
@@ -103,6 +107,17 @@
 		F08F33CD1AC4F31C7769CE96 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FEBC2D72ADC3729A73D65E8D /* CatVoxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatVoxApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D716E9FE107B3B8F90AAB532 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				281365429F072D278D203C44 /* PostHog in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		226AECDCF7E76CDDBA444650 /* Preview Content */ = {
@@ -196,12 +211,14 @@
 		9E63E0A0F3E948CF3BCDF67F /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				481D6275DC1528B2394E82A1 /* AnalyticsService.swift */,
 				215145685222056D654FFBD5 /* CameraService.swift */,
 				0F8AF485DF075ADE029435E4 /* GCPService.swift */,
 				C2F3ADCCFC50AD8360715D2E /* ImportedVideoService.swift */,
 				A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */,
 				A6E8BBD7D810A695BAAAB6ED /* ScanHistoryStore.swift */,
 				C5502025B9115BEAD8E634EF /* ShareVideoRenderer.swift */,
+				48EA24A52C870000B3D3280E /* UserIdentityStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -291,8 +308,8 @@
 			buildConfigurationList = EFD8A9F258F409C1D2C31F34 /* Build configuration list for PBXNativeTarget "CatVox" */;
 			buildPhases = (
 				A0C9A29FFE1C39B4DAF337E5 /* Sources */,
-				F2BFB29F428B47148C7782AA /* Frameworks */,
 				19C03496FEB9054410133BF6 /* Resources */,
+				D716E9FE107B3B8F90AAB532 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -300,7 +317,7 @@
 			);
 			name = CatVox;
 			packageProductDependencies = (
-				469B6AEAC7ED4DAD99217419 /* PostHog */,
+				EC01C7226C91D747F131797E /* PostHog */,
 			);
 			productName = CatVox;
 			productReference = 7BC4DFCD54831F1AA990A7C3 /* CatVox.app */;
@@ -329,12 +346,12 @@
 			);
 			mainGroup = E28E5EAA1288431A8FBB6B6F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6BE6C02BB0C4EA80A4B9F0EB /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C9BA6609FEE1ADFF6BA2072 /* Products */;
 			projectDirPath = "";
-			packageReferences = (
-				FF2B5400EE7D4DC6AED95012 /* XCRemoteSwiftPackageReference "posthog-ios" */,
-			);
 			projectRoot = "";
 			targets = (
 				A7EDDBB8F04B431FAC25DB3C /* CatVox */,
@@ -375,6 +392,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9413B510B33BA0FEA8A3C1EF /* ActivityView.swift in Sources */,
+				E38E18F089FE09158754DE37 /* AnalyticsService.swift in Sources */,
 				53EBF6283E37AC40C2FBF31C /* AnimatedVideoBackground.swift in Sources */,
 				B4D5970C08C51D76A7FA3AB4 /* CameraPreviewView.swift in Sources */,
 				46ECBCFF9DD385E7670A980D /* CameraService.swift in Sources */,
@@ -404,21 +422,11 @@
 				CC4D468FA76148B25B2DFE40 /* Theme.swift in Sources */,
 				96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */,
 				02E96012C9F9B33780525AE7 /* UploadProgressView.swift in Sources */,
+				19F624038D417F767050CF21 /* UserIdentityStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		F2BFB29F428B47148C7782AA /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				C7938E3E5D7743A8A27A5986 /* PostHog in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		B74F893246CCD5B7EFB28EE2 /* PBXTargetDependency */ = {
@@ -497,6 +505,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CATVOX_POSTHOG_HOST = "https://us.i.posthog.com";
+				CATVOX_POSTHOG_PROJECT_TOKEN = phc_ktoFY7ywiGeSCdyLT7msVfWtankAWx8QLLrLerBzmMr8;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_ASSET_PATHS = "\"CatVox/Preview Content\"";
 				DEVELOPMENT_TEAM = 93SH436384;
@@ -574,6 +584,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CATVOX_POSTHOG_HOST = "https://us.i.posthog.com";
+				CATVOX_POSTHOG_PROJECT_TOKEN = phc_ktoFY7ywiGeSCdyLT7msVfWtankAWx8QLLrLerBzmMr8;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_ASSET_PATHS = "\"CatVox/Preview Content\"";
 				DEVELOPMENT_TEAM = 93SH436384;
@@ -632,25 +644,6 @@
 		};
 /* End XCBuildConfiguration section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		FF2B5400EE7D4DC6AED95012 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/PostHog/posthog-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.57.2;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		469B6AEAC7ED4DAD99217419 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FF2B5400EE7D4DC6AED95012 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCConfigurationList section */
 		35CA416E20D77D1A4BC6992A /* Build configuration list for PBXProject "CatVox" */ = {
 			isa = XCConfigurationList;
@@ -680,6 +673,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6BE6C02BB0C4EA80A4B9F0EB /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.57.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EC01C7226C91D747F131797E /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BE6C02BB0C4EA80A4B9F0EB /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6E889E5E24CD6285788492AD /* Project object */;
 }

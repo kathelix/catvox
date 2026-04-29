@@ -1,38 +1,59 @@
 <wizard-report>
-# PostHog post-wizard report
+# PostHog setup report
 
-The wizard has completed a deep integration of PostHog analytics into CatVox (iOS SwiftUI). The PostHog iOS SDK was added as a Swift Package Manager dependency in `CatVox.xcodeproj/project.pbxproj`, a `PostHogEnv` enum was created for safe environment-variable-based configuration, and PostHog is initialised with lifecycle event capture at app startup in `CatVoxApp.swift`. Ten business events covering the full scan lifecycle — from source selection through recording, analysis, sharing, and monetisation intent — were instrumented across five Swift source files. A `PBXFrameworksBuildPhase` was added to the CatVox target so the framework links correctly.
+PostHog analytics are integrated through the repo-owned XcodeGen workflow.
+The SDK package is declared in `project.yml`, app configuration is generated
+into `Info.plist`, and runtime calls go through `AnalyticsService` instead of
+direct `PostHogSDK.shared.capture(...)` calls in views.
 
-| Event | Description | File |
-|-------|-------------|------|
-| `scan_source_chosen` | User taps "Read My Cat" and selects a video source (record or photos). Top of conversion funnel. Properties: `source` | `Views/Home/HomeView.swift` |
-| `recording_started` | User taps the record button in the camera viewfinder. | `Views/Recording/RecordingView.swift` |
-| `recording_completed` | User accepts a recorded clip with "Use This Clip". | `Views/Recording/RecordingView.swift` |
-| `analysis_completed` | GCP pipeline returns a successful result. Properties: `persona_type`, `primary_emotion`, `confidence_score`, `source_type` | `Views/Result/ResultView.swift` |
-| `analysis_failed` | Upload or analysis pipeline failed. Properties: `error_message` | `Views/Result/ResultView.swift` |
-| `quota_exceeded` | Server returned HTTP 429 — daily free scan limit reached. | `Views/Result/ResultView.swift` |
-| `scan_shared` | User opens the iOS share sheet for a scan video. | `Views/Result/ResultView.swift` |
-| `scan_saved_to_photos` | User saves a scan video to Photos successfully. | `Views/Result/ResultView.swift` |
-| `scan_deleted` | User confirms deletion of a scan from history. Properties: `persona_type` | `Views/Home/HomeView.swift` |
-| `upgrade_to_pro_tapped` | User taps "Upgrade to Pro" on the quota-exceeded card. Key monetisation intent signal. | `Views/Result/QuotaExceededView.swift` |
+Analytics identify the user with CatVox's existing anonymous per-install UUID
+from `UserIdentityStore`, matching the identifier used for quota enforcement.
+If the PostHog project token is missing, analytics are disabled without
+crashing the app. Analytics are also disabled during XCTest and SwiftUI previews
+to keep automated verification out of production dashboards.
 
-## Next steps
+## Events
 
-We've built some insights and a dashboard for you to keep an eye on user behaviour, based on the events we just instrumented:
+| Event | Description | Key properties |
+|-------|-------------|----------------|
+| `scan_source_chosen` | User chooses record or Photos from the source sheet. | `source` |
+| `photos_picker_opened` | Photos picker is presented. | - |
+| `photos_picker_cancelled` | Picker is dismissed without a selected video. | - |
+| `photos_clip_selected` | User selects a video in the Photos picker. | - |
+| `video_validation_passed` | Candidate video passes local validation. | `source_type` |
+| `video_validation_failed` | Candidate video fails local validation. | `source_type`, `validation_failure_reason` |
+| `recording_started` | User starts recording in the camera view. | - |
+| `recording_finished` | Recording reaches review state. | - |
+| `recording_retake_tapped` | User discards the recorded clip and returns to camera. | - |
+| `recording_cancelled` | User exits the recording flow without accepting a clip. | `capture_state`, `recorded_clip_available` |
+| `recording_completed` | User accepts a recorded clip with "Use This Clip". | `source_type` |
+| `analysis_completed` | Backend/mock pipeline returns a successful result and the scan is saved. | `persona_type`, `primary_emotion`, `confidence_score`, `source_type` |
+| `analysis_failed` | Upload or analysis pipeline fails. | `error_message` |
+| `analysis_retry_tapped` | User retries after an upload/analysis failure. | - |
+| `quota_exceeded` | Server returns HTTP 429. | - |
+| `quota_card_shown` | Quota card is displayed from local or server quota state. | `trigger` |
+| `share_export_started` | On-device share render starts. | `action`, `scan_id` |
+| `share_export_render_failed` | On-device share render fails. | `action`, `scan_id`, `error_type` |
+| `share_sheet_opened` | System share sheet is presented for a rendered video. | `scan_id` |
+| `scan_shared` | User completes a share-sheet action. | `scan_id`, `activity_type` |
+| `share_sheet_cancelled` | User cancels or exits the share sheet. | `scan_id`, `activity_type` |
+| `scan_saved_to_photos` | Rendered share video is saved to Photos. | `scan_id` |
+| `photos_permission_denied` | Save-to-Photos cannot proceed because add permission is denied. | `scan_id` |
+| `share_save_failed` | Save-to-Photos fails. | `scan_id`, `error_type` |
+| `scan_deleted` | User confirms deletion of a saved scan. | `persona_type` |
+| `upgrade_to_pro_tapped` | User taps the quota-card Pro CTA. | - |
 
-- **Dashboard — Analytics basics**: https://us.posthog.com/project/402530/dashboard/1524032
-- **Scan conversion funnel** (scan_source_chosen → recording_completed → analysis_completed): https://us.posthog.com/project/402530/insights/HpsroXVQ
-- **Daily scan volume** (analyses completed per day): https://us.posthog.com/project/402530/insights/3ZD4bnzS
-- **Top cat personas** (analysis_completed broken down by persona_type): https://us.posthog.com/project/402530/insights/kB5Hjls2
-- **Quota pressure & upgrade intent** (quota_exceeded vs. upgrade_to_pro_tapped): https://us.posthog.com/project/402530/insights/brptiNF5
-- **Scan share actions** (scan_shared vs. scan_saved_to_photos): https://us.posthog.com/project/402530/insights/5dK5T6k9
+## Dashboard Links From Wizard
 
-### Before your first build
+- **Dashboard - Analytics basics**: https://us.posthog.com/project/402530/dashboard/1524032
+- **Scan conversion funnel**: https://us.posthog.com/project/402530/insights/HpsroXVQ
+- **Daily scan volume**: https://us.posthog.com/project/402530/insights/3ZD4bnzS
+- **Top cat personas**: https://us.posthog.com/project/402530/insights/kB5Hjls2
+- **Quota pressure & upgrade intent**: https://us.posthog.com/project/402530/insights/brptiNF5
+- **Scan share actions**: https://us.posthog.com/project/402530/insights/5dK5T6k9
 
-In Xcode, open **Product → Scheme → Edit Scheme → Run → Arguments → Environment Variables** and confirm `POSTHOG_PROJECT_TOKEN` and `POSTHOG_HOST` are present (the wizard already set these in the shared scheme file). Xcode will need to resolve the `posthog-ios` package from SPM on first open — this happens automatically.
-
-### Agent skill
-
-We've left an agent skill folder in your project at `.claude/skills/integration-swift/`. You can use this context for further agent development when using Claude Code. This will help ensure the model provides the most up-to-date approaches for integrating PostHog.
+These dashboard definitions may need to be refreshed because `scan_shared` now
+means a completed share action, while `share_sheet_opened` tracks sheet
+presentation.
 
 </wizard-report>

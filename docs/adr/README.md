@@ -7,6 +7,7 @@ ADRs capture important technical and architectural decisions in a lightweight, v
 ## Purpose
 
 Use ADRs to record decisions such as:
+
 - architecture and infrastructure choices
 - security and identity approaches
 - data storage and lifecycle decisions
@@ -56,6 +57,7 @@ Each ADR should usually contain:
 | 0008 | Load AI System Prompt from Markdown at Build Time | Accepted |
 | 0009 | Render Share Videos On Device | Accepted |
 | 0010 | Separate Vertex Response Schema from System Instruction | Accepted |
+| 0011 | Use PostHog for Product Analytics | Accepted |
 
 ## Workflow
 
