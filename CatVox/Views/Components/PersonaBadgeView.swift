@@ -18,11 +18,7 @@ struct PersonaBadgeView: View {
     // MARK: - Confidence colour
 
     private var confidenceColor: Color {
-        switch confidence {
-        case 0.80...:  return Color(red: 0.22, green: 0.85, blue: 0.50)  // green
-        case 0.50...:  return Color(red: 1.00, green: 0.65, blue: 0.15)  // amber
-        default:       return Color(red: 0.90, green: 0.22, blue: 0.22)  // red
-        }
+        ConfidenceTier.from(score: confidence).color
     }
 
     var body: some View {

@@ -35,6 +35,21 @@ targets:
         NSMicrophoneUsageDescription: "CatVox captures audio to analyse your cat's vocalisations."
         NSPhotoLibraryAddUsageDescription: "CatVox saves rendered share videos to your Photos library when you ask it to."
 
+  CatVoxTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - CatVoxTests
+    dependencies:
+      - target: CatVox
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kathelix.catvox.tests
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   CatVox:
     build:
@@ -44,6 +59,8 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - CatVoxTests
     profile:
       config: Release
     analyze:

@@ -370,6 +370,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 
 * [x] **Asset Integration:** App Icon & Accent Colors implemented.
 * [x] **UI Logic:** Confidence Score color-coding implemented.
+* [x] **Source Unit Test Baseline:** iOS unit-test target covers backend JSON decoding, persona labels, confidence-tier thresholds, local quota state, saved scan reconstruction, and Photos-import validation messaging; CI runs the iOS test suite.
 * [x] **GCP Foundation:** Deploy Terraform plan to provision GCS (with CORS), IAM, Artifact Registry, and Firestore.
 * [x] **Remote Terraform State:** GCS backend configured and local state migrated; state bucket bootstrapped with versioning enabled.
 * [x] **CI/CD Terraform Pipeline:** GitHub Actions workflow live — plan on PR (with PR comment), apply on merge; authenticated via Workload Identity Federation.
