@@ -90,6 +90,7 @@ The MVP also supports on-demand creation of a funny shareable result video deriv
 * No multiple share-video style packs or fixed social-format reframing in MVP.
 * No backend video-duration validation in MVP; duration is enforced client-side, with server-side upload file-size guardrails only.
 * No custom filtered gallery browser in MVP beyond the system video picker flow.
+* No native iPad support in MVP. CatVox should not claim iPad support until iPad-specific orientation, camera preview, adaptive layout, picker, and share flows have been designed and tested on real iPad hardware.
 * User identity for MVP is an anonymous per-install identifier used for quota enforcement; full authenticated user accounts are outside current MVP scope.
 * Older Apple device compatibility is not a design driver for the attestation approach.
 
