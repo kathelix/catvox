@@ -58,16 +58,20 @@ enum ShareVideoRenderer {
         return outputURL
     }
 
+    @MainActor
     static func renderVideo(for request: Request) async throws -> URL {
         try cleanupExpiredArtifacts()
 
         let asset = AVURLAsset(url: request.sourceVideoURL)
-        guard let sourceVideoTrack = asset.tracks(withMediaType: .video).first else {
+        guard let sourceVideoTrack = try await asset.loadTracks(withMediaType: .video).first else {
             logger.error("render aborted: missing video track url=\(request.sourceVideoURL.path, privacy: .public)")
             throw RenderError.missingVideoTrack
         }
 
-        let duration = asset.duration
+        let duration = try await asset.load(.duration)
+        let preferredTransform = try await sourceVideoTrack.load(.preferredTransform)
+        let naturalSize = try await sourceVideoTrack.load(.naturalSize)
+        let nominalFrameRate = try await sourceVideoTrack.load(.nominalFrameRate)
         let composition = AVMutableComposition()
 
         guard let compositionVideoTrack = composition.addMutableTrack(
@@ -82,9 +86,9 @@ enum ShareVideoRenderer {
             of: sourceVideoTrack,
             at: .zero
         )
-        compositionVideoTrack.preferredTransform = sourceVideoTrack.preferredTransform
+        compositionVideoTrack.preferredTransform = preferredTransform
 
-        if let sourceAudioTrack = asset.tracks(withMediaType: .audio).first,
+        if let sourceAudioTrack = try? await asset.loadTracks(withMediaType: .audio).first,
            let compositionAudioTrack = composition.addMutableTrack(
                withMediaType: .audio,
                preferredTrackID: kCMPersistentTrackID_Invalid
@@ -98,35 +102,16 @@ enum ShareVideoRenderer {
 
         let videoComposition = AVMutableVideoComposition(propertiesOf: composition)
         let renderSize = normalizedRenderSize(
-            naturalSize: sourceVideoTrack.naturalSize,
-            preferredTransform: sourceVideoTrack.preferredTransform
+            naturalSize: naturalSize,
+            preferredTransform: preferredTransform
         )
         videoComposition.renderSize = renderSize
-        videoComposition.frameDuration = frameDuration(for: sourceVideoTrack)
+        videoComposition.frameDuration = frameDuration(for: nominalFrameRate)
 
-        let overlayImage = makeOverlayImage(
+        configureAnimationTool(
+            for: videoComposition,
             renderSize: renderSize,
             analysis: request.analysis
-        )
-
-        let parentLayer = CALayer()
-        parentLayer.frame = CGRect(origin: .zero, size: renderSize)
-        parentLayer.isGeometryFlipped = true
-
-        let videoLayer = CALayer()
-        videoLayer.frame = parentLayer.frame
-
-        let overlayLayer = CALayer()
-        overlayLayer.frame = parentLayer.frame
-        overlayLayer.contents = overlayImage.cgImage
-        overlayLayer.contentsGravity = .resize
-
-        parentLayer.addSublayer(videoLayer)
-        parentLayer.addSublayer(overlayLayer)
-
-        videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
-            postProcessingAsVideoLayer: videoLayer,
-            in: parentLayer
         )
 
         let outputDirectory = try scanDirectoryURL(for: request.scanID, createIfMissing: true)
@@ -194,32 +179,61 @@ enum ShareVideoRenderer {
     private static func export(_ session: AVAssetExportSession) async throws {
         try Task.checkCancellation()
 
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                session.exportAsynchronously {
-                    switch session.status {
-                    case .completed:
-                        continuation.resume(returning: ())
-
-                    case .failed:
-                        let message = session.error?.localizedDescription ?? "unknown"
-                        logger.error("render failed: \(message, privacy: .public)")
-                        continuation.resume(throwing: RenderError.exportFailed(message))
-
-                    case .cancelled:
-                        continuation.resume(throwing: CancellationError())
-
-                    default:
-                        let message = session.error?.localizedDescription ?? "unexpected_export_state"
-                        logger.error("render ended unexpectedly status=\(session.status.rawValue) error=\(message, privacy: .public)")
-                        continuation.resume(throwing: RenderError.exportFailed(message))
-                    }
-                }
-            }
+        let box = ExportSessionBox(session)
+        let outcome = await withTaskCancellationHandler {
+            await box.export()
         } onCancel: {
             logger.info("render cancellation requested")
-            session.cancelExport()
+            box.cancel()
         }
+
+        switch outcome {
+        case .completed:
+            return
+
+        case .failed(let message):
+            logger.error("render failed: \(message, privacy: .public)")
+            throw RenderError.exportFailed(message)
+
+        case .cancelled:
+            throw CancellationError()
+
+        case .unexpected(let status, let message):
+            logger.error("render ended unexpectedly status=\(status) error=\(message, privacy: .public)")
+            throw RenderError.exportFailed(message)
+        }
+    }
+
+    @MainActor
+    private static func configureAnimationTool(
+        for videoComposition: AVMutableVideoComposition,
+        renderSize: CGSize,
+        analysis: CatAnalysis
+    ) {
+        let overlayImage = makeOverlayImage(
+            renderSize: renderSize,
+            analysis: analysis
+        )
+
+        let parentLayer = CALayer()
+        parentLayer.frame = CGRect(origin: .zero, size: renderSize)
+        parentLayer.isGeometryFlipped = true
+
+        let videoLayer = CALayer()
+        videoLayer.frame = parentLayer.frame
+
+        let overlayLayer = CALayer()
+        overlayLayer.frame = parentLayer.frame
+        overlayLayer.contents = overlayImage.cgImage
+        overlayLayer.contentsGravity = .resize
+
+        parentLayer.addSublayer(videoLayer)
+        parentLayer.addSublayer(overlayLayer)
+
+        videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
+            postProcessingAsVideoLayer: videoLayer,
+            in: parentLayer
+        )
     }
 
     private static func makeOverlayImage(renderSize: CGSize, analysis: CatAnalysis) -> UIImage {
@@ -565,8 +579,7 @@ enum ShareVideoRenderer {
         }
     }
 
-    private static func frameDuration(for track: AVAssetTrack) -> CMTime {
-        let nominalFrameRate = track.nominalFrameRate
+    private static func frameDuration(for nominalFrameRate: Float) -> CMTime {
         guard nominalFrameRate.isFinite, nominalFrameRate > 0 else {
             return CMTime(value: 1, timescale: 30)
         }
@@ -622,5 +635,50 @@ enum ShareVideoRenderer {
         for item in contents {
             try fileManager.removeItem(at: item)
         }
+    }
+}
+
+private enum ExportSessionOutcome: Sendable {
+    case completed
+    case failed(String)
+    case cancelled
+    case unexpected(Int, String)
+}
+
+private final class ExportSessionBox: @unchecked Sendable {
+    private let session: AVAssetExportSession
+
+    init(_ session: AVAssetExportSession) {
+        self.session = session
+    }
+
+    func export() async -> ExportSessionOutcome {
+        await withCheckedContinuation { continuation in
+            session.exportAsynchronously { [weak self] in
+                guard let self else {
+                    continuation.resume(returning: .failed("export_session_released"))
+                    return
+                }
+
+                let message = self.session.error?.localizedDescription ?? "unknown"
+                switch self.session.status {
+                case .completed:
+                    continuation.resume(returning: .completed)
+
+                case .failed:
+                    continuation.resume(returning: .failed(message))
+
+                case .cancelled:
+                    continuation.resume(returning: .cancelled)
+
+                default:
+                    continuation.resume(returning: .unexpected(self.session.status.rawValue, message))
+                }
+            }
+        }
+    }
+
+    func cancel() {
+        session.cancelExport()
     }
 }

@@ -12,7 +12,7 @@ enum ScanHistoryStore {
         sourceType: ScanSourceType,
         analysis: CatAnalysis,
         in context: ModelContext
-    ) throws -> SavedScan {
+    ) async throws -> SavedScan {
         let scanDirectory = try scanDirectoryURL(for: analysis.id, createIfMissing: true)
         let videoExtension = sourceVideoURL.pathExtension.isEmpty ? "mov" : sourceVideoURL.pathExtension
         let originalVideoURL = scanDirectory
@@ -21,7 +21,7 @@ enum ScanHistoryStore {
         let thumbnailURL = scanDirectory.appendingPathComponent("thumbnail.jpg")
 
         try adoptVideo(at: sourceVideoURL, to: originalVideoURL)
-        try generateThumbnail(for: originalVideoURL, at: thumbnailURL)
+        try await generateThumbnail(for: originalVideoURL, at: thumbnailURL)
 
         let relativeVideoPath = relativePath(for: originalVideoURL)
         let relativeThumbnailPath = relativePath(for: thumbnailURL)
@@ -80,13 +80,14 @@ enum ScanHistoryStore {
         }
     }
 
-    private static func generateThumbnail(for videoURL: URL, at destinationURL: URL) throws {
+    private static func generateThumbnail(for videoURL: URL, at destinationURL: URL) async throws {
         let asset = AVURLAsset(url: videoURL)
         let imageGenerator = AVAssetImageGenerator(asset: asset)
         imageGenerator.appliesPreferredTrackTransform = true
         imageGenerator.maximumSize = CGSize(width: 720, height: 720)
 
-        let durationSeconds = asset.duration.seconds
+        let duration = (try? await asset.load(.duration)) ?? .zero
+        let durationSeconds = duration.seconds
         let preferredTime = durationSeconds.isFinite && durationSeconds > 0
             ? CMTime(seconds: durationSeconds / 2, preferredTimescale: 600)
             : .zero
