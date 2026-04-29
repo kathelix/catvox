@@ -60,6 +60,7 @@ struct ResultView: View {
     @State private var showExportAlert = false
     @State private var shareSheetItem: ShareSheetItem?
     @State private var shareRenderTask: Task<Void, Never>?
+    @State private var photoSaveTask: Task<Void, Never>?
 
     private let shareLogger = Logger(subsystem: "com.kathelix.catvox", category: "ResultShare")
 
@@ -106,6 +107,10 @@ struct ResultView: View {
 
     private var showsCompletedResult: Bool {
         viewModel != nil
+    }
+
+    private var isShareExportInFlight: Bool {
+        shareRenderTask != nil || photoSaveTask != nil || shareProgressMessage != nil
     }
 
     // MARK: - Body
@@ -369,6 +374,7 @@ struct ResultView: View {
 
     private func doneButton(_ vm: ResultViewModel) -> some View {
         Button {
+            guard !isShareExportInFlight else { return }
             dismissResult()
         } label: {
             HStack(spacing: 8) {
@@ -393,6 +399,8 @@ struct ResultView: View {
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
         }
+        .disabled(isShareExportInFlight)
+        .opacity(isShareExportInFlight ? 0.55 : 1)
     }
 
     private func shareActions(_ vm: ResultViewModel) -> some View {
@@ -414,7 +422,7 @@ struct ResultView: View {
                             .strokeBorder(.white.opacity(0.10), lineWidth: 1)
                     }
             }
-            .disabled(shareProgressMessage != nil)
+            .disabled(isShareExportInFlight)
 
             Button {
                 startShareExport(.shareSheet, analysis: vm.analysis)
@@ -429,7 +437,7 @@ struct ResultView: View {
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )
             }
-            .disabled(shareProgressMessage != nil)
+            .disabled(isShareExportInFlight)
         }
     }
 
@@ -467,6 +475,8 @@ struct ResultView: View {
     }
 
     private func dismissResult() {
+        guard !isShareExportInFlight else { return }
+
         if !showsCompletedResult {
             gcpService.reset()
         }
@@ -530,6 +540,8 @@ struct ResultView: View {
     }
 
     private func startShareExport(_ action: ShareExportAction, analysis: CatAnalysis) {
+        guard !isShareExportInFlight else { return }
+
         if let renderedShareVideoURL, FileManager.default.fileExists(atPath: renderedShareVideoURL.path) {
             performShareAction(action, using: renderedShareVideoURL)
             return
@@ -592,17 +604,25 @@ struct ResultView: View {
         case .saveToPhotos:
             shareProgressMessage = "Saving to Photos..."
 
-            Task {
+            photoSaveTask = Task {
                 do {
                     try await saveRenderedVideoToPhotos(outputURL)
+                    try Task.checkCancellation()
                     await MainActor.run {
                         shareProgressMessage = nil
+                        photoSaveTask = nil
                         showTransientExportNotice("Saved to Photos")
+                    }
+                } catch is CancellationError {
+                    await MainActor.run {
+                        shareProgressMessage = nil
+                        photoSaveTask = nil
                     }
                 } catch {
                     shareLogger.error("save to photos failed url=\(outputURL.path, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
                     await MainActor.run {
                         shareProgressMessage = nil
+                        photoSaveTask = nil
                         exportAlertMessage = "We couldn't save the share video to Photos."
                         showExportAlert = true
                     }
