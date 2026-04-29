@@ -20,7 +20,7 @@ struct CatVoxApp: App {
     @State private var quotaStore = ScanQuotaStore()
 
     init() {
-        let config = PostHogConfig(apiKey: PostHogEnv.projectToken.value, host: PostHogEnv.host.value)
+        let config = PostHogConfig(projectToken: PostHogEnv.projectToken.value, host: PostHogEnv.host.value)
         config.captureApplicationLifecycleEvents = true
         PostHogSDK.shared.setup(config)
 
