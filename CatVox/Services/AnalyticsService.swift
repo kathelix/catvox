@@ -50,7 +50,17 @@ enum AnalyticsService {
             projectToken: configuration.projectToken,
             host: configuration.host
         )
-        config.captureApplicationLifecycleEvents = true
+        config.captureApplicationLifecycleEvents = false
+        config.captureScreenViews = false
+        config.captureElementInteractions = false
+        config.rageClickConfig.enabled = false
+        config.enableSwizzling = false
+        config.preloadFeatureFlags = false
+        config.sendFeatureFlagEvent = false
+        config.setDefaultPersonProperties = false
+        config.sessionReplay = false
+        config.surveys = false
+        config.errorTrackingConfig.autoCapture = false
 
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.identify(

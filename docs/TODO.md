@@ -26,12 +26,6 @@ Regression matrix for the eventual feature:
 * Home-source modal positioning after rotation.
 * Upload/progress, Result, history reopen, save-to-Photos, and share-sheet flows.
 
-### Collect in-app feedback from users
-Consdier:
-* automatic sending of errors
-* special dialog "Feeddback", with variants 3-5 variants what to priotise in development
-* anything else?
-
 ### Is Priority PayGo justified?
 Test switching Gemini 2.5 Flash from Standard PayGo tier to Priority PayGo (twice more expensive, but still in Preview not GA) - measure and compare time spent on analysis. Assess importance of faster response for user.
 

@@ -1,4 +1,3 @@
-<wizard-report>
 # PostHog setup report
 
 PostHog analytics are integrated through the repo-owned XcodeGen workflow.
@@ -11,6 +10,11 @@ from `UserIdentityStore`, matching the identifier used for quota enforcement.
 If the PostHog project token is missing, analytics are disabled without
 crashing the app. Analytics are also disabled during XCTest and SwiftUI previews
 to keep automated verification out of production dashboards.
+
+CatVox uses explicit product events only. PostHog automatic lifecycle capture,
+screen-view capture, element autocapture, rage-click capture, surveys, session
+replay, feature-flag preloading, default person properties, and crash autocapture
+are disabled in `AnalyticsService`.
 
 ## Events
 
@@ -56,4 +60,30 @@ These dashboard definitions may need to be refreshed because `scan_shared` now
 means a completed share action, while `share_sheet_opened` tracks sheet
 presentation.
 
-</wizard-report>
+## Dashboard Refresh Notes
+
+Refresh the wizard-created PostHog insights so they match CatVox's final event
+semantics:
+
+1. Open each linked insight from **Dashboard - Analytics basics**.
+2. For share-sheet presentation counts, use `share_sheet_opened`.
+3. For completed share counts, use `scan_shared`.
+4. For save-to-Photos success counts, use `scan_saved_to_photos`.
+5. For failure monitoring, use `share_export_render_failed`,
+   `share_save_failed`, and `photos_permission_denied`.
+6. Save the edited insight and update the dashboard tile title if the event
+   meaning changed.
+
+Suggested MVP dashboard tiles:
+
+- Scan conversion funnel:
+  `scan_source_chosen` -> `video_validation_passed` -> `analysis_completed`.
+- Photos import validation:
+  trend of `video_validation_failed` grouped by `validation_failure_reason`.
+- Share conversion funnel:
+  `share_export_started` -> `share_sheet_opened` -> `scan_shared`.
+- Save-to-Photos conversion:
+  `share_export_started` -> `scan_saved_to_photos`.
+- Quota pressure:
+  trend of `quota_card_shown` grouped by `trigger`, with `upgrade_to_pro_tapped`
+  as the conversion event.
