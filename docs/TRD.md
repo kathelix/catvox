@@ -199,6 +199,7 @@ percentage. See ADR-0010.
 * Share export actions live on the Result screen so the user can act from either a newly completed scan or a reopened saved scan.
 * The app must not block normal result viewing on initial load by eagerly rendering a share export in the background.
 * When the user taps a share-export action, the app should show lightweight in-context progress while rendering is underway.
+* The Result screen must not allow `Done` dismissal while share rendering or save-to-Photos work is in progress.
 * The share overlay should keep the `cat_thought` visually dominant over the persona and emotion labels.
 * The MVP share template should feel visually aligned with the in-app result UI: soft glass surfaces, restrained borders, subtle branding, and no heavy badge framing around secondary metadata.
 * Branding should be present but subtle rather than overpowering the clip content or thought overlay.
