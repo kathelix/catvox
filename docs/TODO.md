@@ -2,6 +2,9 @@
 
 ## Deferred Product Work
 
+### Retrospectively cover source code with unit tests
+Review the codebase and identify the highest-risk and most business-critical flows, and add automated tests for those paths.
+
 ### Native iPad Support
 Treat native iPad support as a dedicated post-MVP feature. The iPhone MVP is effectively portrait-first; matching that on iPad is not just a matter of adding the iPad target family.
 
@@ -25,8 +28,6 @@ Regression matrix for the eventual feature:
 * Imported portrait and landscape videos from Photos.
 * Home-source modal positioning after rotation.
 * Upload/progress, Result, history reopen, save-to-Photos, and share-sheet flows.
-
-### Retrospectively cover source code with unit tests
 
 ### Collect in-app feedback from users
 Consdier:

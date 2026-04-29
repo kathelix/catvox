@@ -414,7 +414,6 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * **Backend Duration Validation:** Add backend validation for uploaded video duration <= 10 seconds before Vertex AI is invoked, rather than relying only on client-side duration checks.
 * **4K Import Strategy Review:** Re-evaluate cost and UX trade-offs of accepting 4K gallery videos, and decide later whether to keep raw upload, cap imported resolution, or introduce client-side normalization.
 * **Failure Reporting UX Review:** Review likely user-visible failure points across the app and design one simple, consistent way for users to report failures without adding bespoke report flows to individual screens. Example failure points should include failure to open a saved video on the Result screen, including the case where the Result screen uses the original local clip as its looping background. The future design should also decide what diagnostic context to capture internally for such failures.
-* **Automated Test Coverage:** Review the codebase and identify the highest-risk and most business-critical flows, then add automated tests for those paths after MVP behavior has stabilized.
 * **Haptic Completion:** Tactile feedback on successful AI interpretation.
 * **Multi-Cat Profiles:** Specific tracking for different pets.
 * **Health Monitoring:** Advanced analysis for subtle pain or distress markers.
