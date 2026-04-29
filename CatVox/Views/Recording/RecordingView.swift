@@ -1,4 +1,5 @@
 import SwiftUI
+import PostHog
 
 /// Camera viewfinder with a 10-second recording countdown.
 ///
@@ -177,7 +178,11 @@ struct RecordingView: View {
         switch service.captureState {
 
         case .idle:
-            Button { service.startRecording() } label: {
+            Button {
+                // PostHog: track recording started
+                PostHogSDK.shared.capture("recording_started")
+                service.startRecording()
+            } label: {
                 Circle()
                     .fill(CatVoxTheme.brandGradient)
                     .frame(width: 80, height: 80)
@@ -336,6 +341,8 @@ struct RecordingView: View {
 
     private func useRecordedClip() {
         guard let recordedURL else { return }
+        // PostHog: track recording completed (clip accepted)
+        PostHogSDK.shared.capture("recording_completed")
         handoffToResult = true
         onUseClip(recordedURL)
         dismiss()

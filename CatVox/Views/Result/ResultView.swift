@@ -2,6 +2,7 @@ import Photos
 import SwiftUI
 import SwiftData
 import os
+import PostHog
 
 /// The centrepiece of the CatVox experience.
 ///
@@ -493,10 +494,14 @@ struct ResultView: View {
 
         case .quotaExceeded:
             quotaStore.markExhausted()
+            // PostHog: track quota exceeded
+            PostHogSDK.shared.capture("quota_exceeded")
 
         case .failed(let message):
             failureMessage = message
             showRetryAlert = true
+            // PostHog: track analysis failure
+            PostHogSDK.shared.capture("analysis_failed", properties: ["error_message": message])
 
         default:
             break
@@ -508,6 +513,12 @@ struct ResultView: View {
         quotaStore.recordScan()
 
         guard let videoURL, let sourceType else {
+            // PostHog: track analysis completed (dev-preview path)
+            PostHogSDK.shared.capture("analysis_completed", properties: [
+                "persona_type": analysis.personaType,
+                "primary_emotion": analysis.primaryEmotion,
+                "confidence_score": analysis.confidenceScore,
+            ])
             let vm = ResultViewModel(analysis: analysis)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
                 viewModel = vm
@@ -528,6 +539,13 @@ struct ResultView: View {
             backgroundAmbientImageURL = ScanHistoryStore.thumbnailURL(for: savedScan)
             backgroundPlaybackMessage = nil
 
+            // PostHog: track analysis completed (normal recording path)
+            PostHogSDK.shared.capture("analysis_completed", properties: [
+                "persona_type": analysis.personaType,
+                "primary_emotion": analysis.primaryEmotion,
+                "confidence_score": analysis.confidenceScore,
+                "source_type": sourceType.rawValue,
+            ])
             let vm = ResultViewModel(analysis: analysis)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
                 viewModel = vm
@@ -599,6 +617,8 @@ struct ResultView: View {
     private func performShareAction(_ action: ShareExportAction, using outputURL: URL) {
         switch action {
         case .shareSheet:
+            // PostHog: track scan shared via share sheet
+            PostHogSDK.shared.capture("scan_shared")
             shareSheetItem = ShareSheetItem(url: outputURL)
 
         case .saveToPhotos:
@@ -609,6 +629,8 @@ struct ResultView: View {
                     try await saveRenderedVideoToPhotos(outputURL)
                     try Task.checkCancellation()
                     await MainActor.run {
+                        // PostHog: track scan saved to photos
+                        PostHogSDK.shared.capture("scan_saved_to_photos")
                         shareProgressMessage = nil
                         photoSaveTask = nil
                         showTransientExportNotice("Saved to Photos")

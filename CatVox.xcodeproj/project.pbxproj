@@ -46,6 +46,7 @@
 		F607B892AD837E4AE7317D50 /* ImportedVideoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0452D678AA7A7829735F30 /* ImportedVideoServiceTests.swift */; };
 		F6CC1D6EFE3B0806EF52737B /* SavedScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0F9D24B635C065A8B16442 /* SavedScan.swift */; };
 		F9CC0F007EC8922439868C9A /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D6D24374084C2723FD8F66 /* ResultView.swift */; };
+		C7938E3E5D7743A8A27A5986 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 469B6AEAC7ED4DAD99217419 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -290,6 +291,7 @@
 			buildConfigurationList = EFD8A9F258F409C1D2C31F34 /* Build configuration list for PBXNativeTarget "CatVox" */;
 			buildPhases = (
 				A0C9A29FFE1C39B4DAF337E5 /* Sources */,
+				F2BFB29F428B47148C7782AA /* Frameworks */,
 				19C03496FEB9054410133BF6 /* Resources */,
 			);
 			buildRules = (
@@ -298,6 +300,7 @@
 			);
 			name = CatVox;
 			packageProductDependencies = (
+				469B6AEAC7ED4DAD99217419 /* PostHog */,
 			);
 			productName = CatVox;
 			productReference = 7BC4DFCD54831F1AA990A7C3 /* CatVox.app */;
@@ -329,6 +332,9 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C9BA6609FEE1ADFF6BA2072 /* Products */;
 			projectDirPath = "";
+			packageReferences = (
+				FF2B5400EE7D4DC6AED95012 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			projectRoot = "";
 			targets = (
 				A7EDDBB8F04B431FAC25DB3C /* CatVox */,
@@ -402,6 +408,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F2BFB29F428B47148C7782AA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C7938E3E5D7743A8A27A5986 /* PostHog in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		B74F893246CCD5B7EFB28EE2 /* PBXTargetDependency */ = {
@@ -614,6 +631,25 @@
 			name = Debug;
 		};
 /* End XCBuildConfiguration section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FF2B5400EE7D4DC6AED95012 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.57.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		469B6AEAC7ED4DAD99217419 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FF2B5400EE7D4DC6AED95012 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCConfigurationList section */
 		35CA416E20D77D1A4BC6992A /* Build configuration list for PBXProject "CatVox" */ = {

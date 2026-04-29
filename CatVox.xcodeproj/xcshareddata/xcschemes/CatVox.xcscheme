@@ -74,6 +74,18 @@
             ReferencedContainer = "container:CatVox.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "POSTHOG_PROJECT_TOKEN"
+            value = "phc_ktoFY7ywiGeSCdyLT7msVfWtankAWx8QLLrLerBzmMr8"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "POSTHOG_HOST"
+            value = "https://us.i.posthog.com"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
       <CommandLineArguments>
       </CommandLineArguments>
    </LaunchAction>
