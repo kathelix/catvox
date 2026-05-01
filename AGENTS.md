@@ -218,8 +218,20 @@ PROJECT_ID=kathelix-catvox-prod ./terraform/bootstrap_wif.sh
 - Before final review or merge, check all PR bot / AI review findings and explicitly triage each one as fix, reject with reasoning, or defer.
 - Treat bot findings touching concurrency, cancellation, state ownership, persistence, navigation, or other direct user-facing behavior as high-signal by default until disproven.
 - Before opening or finalizing a PR, compare the branch against `origin/main` and rebase or merge as needed so PR review and conflict resolution happen before the final merge step.
-- When creating or editing GitHub PR descriptions via `gh pr ...`, prefer plain Markdown with simple shell-safe quoting. Avoid unnecessary escaping of inline code or symbols; if the body is complex, use a file or other safer input method rather than packing heavily escaped Markdown into one shell argument.
 - Use descriptive branch names: `feature/`, `fix/`, `infra/`.
+
+### GitHub PR Publishing Notes
+
+- Prefer the GitHub connector for creating PRs when available, but if it returns `403 Resource not accessible by integration`, do not retry the same connector path. Fall back to the authenticated `gh` CLI and mention the fallback in the final summary.
+- When creating or editing GitHub PR descriptions via `gh pr ...`, prefer plain Markdown with simple shell-safe quoting. Avoid unnecessary escaping of inline code or symbols; if the body is complex, write it to a temporary file and pass it with `--body-file` rather than packing heavily escaped Markdown into one shell argument.
+- When scripting in the default `zsh` shell, avoid reserved or read-only variable names such as `status`. Use names such as `rc` or `exit_code` for command exit codes.
+- For temporary PR body files, prefer:
+  ```bash
+  tmpfile=$(mktemp)
+  trap 'rm -f "$tmpfile"' EXIT
+  # write body to "$tmpfile"
+  gh pr create --body-file "$tmpfile" ...
+  ```
 
 ### Product Feature Workflow
 
@@ -289,6 +301,11 @@ TRD v1.8 — add CI/CD section, fix six audit findings
 Any time you implement something from TRD §8 backlog, mark it `[x]` in TRD immediately — in the same commit as the implementation. The TRD is the source of truth for implementation status.
 
 If a feature that was originally tracked under one broad backlog item becomes several concrete implementation slices, update TRD §8 so the backlog reflects those separate slices explicitly rather than leaving one vague umbrella item.
+
+### Functions Local Validation
+
+- The Firebase Functions runtime is Node.js 22. For local validation, prefer running `functions` commands under Node.js 22 so `npm ci` and `npm run build` match CI and do not emit avoidable engine warnings.
+- If Node.js 22 is unavailable locally, it is acceptable to run the build under the installed Node version, but explicitly report any expected `EBADENGINE` warning as an environment mismatch rather than treating it as a workflow failure.
 
 ### HLD vs TRD
 
