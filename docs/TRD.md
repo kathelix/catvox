@@ -1,9 +1,9 @@
 # Technical Requirements Document: CatVox AI (MVP)
 
-**Version:** 2.8
+**Version:** 2.9
 **Company:** Kathelix Ltd  
 **Project Lead:** Ivan Boyko
-**Date:** April 2026  
+**Date:** May 2026
 **Status:** Infrastructure & Backend Definition
 
 ---
@@ -86,7 +86,7 @@ For MVP, the user can either record a new video in-app or select an existing vid
 Short version:
 You are CatVox AI, a multimodal expert in feline ethology and a sophisticated creative writer. Your task is to analyze short video clips (including audio) to provide professional insights into a cat's emotional state, paired with a witty "inner monologue" translation.
 
-Full prompt: `docs/systemInstruction.md` — this is the single source of truth for the system instruction. The Cloud Function build script copies it into the deployment artifact at build time; editing the file and merging the PR is all that is required to update the live prompt. The machine-enforced JSON output schema is defined separately in `functions/src/gemini.ts` via Vertex `responseSchema`; the prompt should describe behavior, not duplicate the literal schema. (See ADR-0008 and ADR-0010.)
+Full prompt: `docs/systemInstruction.md` — this is the single source of truth for the system instruction. The Cloud Function build script copies it into the deployment artifact at build time; editing the file and merging the PR is all that is required to update the live prompt. The machine-enforced JSON output schema is defined separately in `functions/src/gemini.ts` via the Google Gen AI SDK `responseSchema` for Gemini on Vertex AI; the prompt should describe behavior, not duplicate the literal schema. (See ADR-0008, ADR-0010, and ADR-0012.)
 
 ### 4.2 The 6 Cat Personas
 Select the archetype that best fits the observed behavior:
@@ -109,10 +109,10 @@ The backend must return ONLY a valid JSON object following this structure:
 }
 
 This structure is the human-readable contract. The runtime-enforced schema lives
-in `functions/src/gemini.ts` as Vertex `responseSchema`, with all six fields
+in `functions/src/gemini.ts` as a Google Gen AI SDK `responseSchema`, with all six fields
 required. `confidence_score` should preserve meaningful fractional precision
 (for example `0.99`, not only `0.9`) because the app may render the value as a
-percentage. See ADR-0010.
+percentage. See ADR-0010 and ADR-0012.
 
 ---
 
@@ -223,7 +223,7 @@ percentage. See ADR-0010.
 ### 6.2 Compute & API Orchestration
 * **Environment:** Firebase Cloud Functions (2nd Generation).
 * **Runtime:** Node.js 22 (TypeScript).
-* **Vertex AI Integration:** Call Gemini 2.5 Flash using `fileData` (GCS URI) for multimodal analysis.
+* **Vertex AI Integration:** Call Gemini 2.5 Flash through the Google Gen AI SDK configured for Vertex AI (`vertexai: true`), using `fileData` (GCS URI) for multimodal analysis. See ADR-0012.
 
 ### 6.3 Security & Identity
 * **App Verification:** Firebase App Check mandatory for all backend entry points. App Attest is the production provider for Apple platforms; Debug Provider is used for local development. (See ADR-0002.)
@@ -413,7 +413,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [x] **Backend Proxy:** Firebase Cloud Functions (TypeScript) deployed — `getSignedUploadURL` and `analyseVideo` live in `us-central1`; Firestore usage guard, Vertex AI call, CI deploy pipeline via GitHub Actions.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
 * [x] **Video Upload:** Swift upload of the recorded HEVC file to GCS via signed URL; real pipeline live (`mockMode = false`).
-* [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via `fileData` GCS URI.
+* [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via the Google Gen AI SDK and `fileData` GCS URI.
 * [x] **Quota Exceeded UI:** Dedicated glassmorphic card shown when the daily scan limit is reached (HTTP 429); includes stub "Upgrade to Pro" CTA (shows "Coming soon" alert) and "Maybe Later" dismiss. StoreKit 2 wiring deferred to the Monetization backlog item.
 * [x] **Photos Import:** Add support for selecting an existing video from Photos through the unified scan flow, with local validation for duration, size, and unsupported formats before upload.
 * [x] **Early Stop Recording:** Allow users to stop in-app recording after a 2.0-second minimum threshold using the main capture control.

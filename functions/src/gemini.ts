@@ -1,11 +1,12 @@
 import {
-  VertexAI,
+  GoogleGenAI,
   HarmCategory,
   HarmBlockThreshold,
-  SchemaType,
-  type GenerationConfig,
-  type ResponseSchema,
-} from '@google-cloud/vertexai';
+  Type,
+  type GenerateContentConfig,
+  type Part,
+  type Schema,
+} from '@google/genai';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -35,11 +36,11 @@ const SAFETY_SETTINGS = [
   threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }));
 
-// The machine-enforced output contract lives in code so Vertex can apply it via
-// responseSchema. Field descriptions should stay aligned with TRD §4.3 and the
-// behavioral expectations described in docs/systemInstruction.md.
-export const ANALYSIS_RESPONSE_SCHEMA: ResponseSchema = {
-  type: SchemaType.OBJECT,
+// The machine-enforced output contract lives in code so Gemini on Vertex AI can
+// apply it via responseSchema. Field descriptions should stay aligned with
+// TRD §4.3 and the behavioral expectations described in docs/systemInstruction.md.
+export const ANALYSIS_RESPONSE_SCHEMA: Schema = {
+  type: Type.OBJECT,
   description: 'Structured CatVox multimodal cat behavior analysis result.',
   required: [
     'primary_emotion',
@@ -51,39 +52,39 @@ export const ANALYSIS_RESPONSE_SCHEMA: ResponseSchema = {
   ],
   properties: {
     primary_emotion: {
-      type: SchemaType.STRING,
+      type: Type.STRING,
       description: 'Short label naming the cat\'s main observed emotional state in this clip.',
     },
     confidence_score: {
-      type: SchemaType.NUMBER,
+      type: Type.NUMBER,
       format: 'double',
       description:
         'Confidence score from 0.00 to 1.00 inclusive. Use up to two digits after the decimal point when needed to preserve meaningful precision, for example 0.99.',
     },
     analysis: {
-      type: SchemaType.STRING,
+      type: Type.STRING,
       description:
         'Two to three sentences of expert feline behavior analysis grounded in the observed video and audio.',
     },
     persona_type: {
-      type: SchemaType.STRING,
+      type: Type.STRING,
       description:
         'Exact CatVox persona label that best matches the observed behavior, using the current persona names defined by the system instruction.',
     },
     cat_thought: {
-      type: SchemaType.STRING,
+      type: Type.STRING,
       description:
         'First-person inner monologue written in the voice of the selected persona and grounded in the observed behavior.',
     },
     owner_tip: {
-      type: SchemaType.STRING,
+      type: Type.STRING,
       description:
         'Practical, actionable advice for the owner based on the observed behavior, using a professional tone when wellbeing is a concern.',
     },
   },
 };
 
-export const ANALYSIS_GENERATION_CONFIG: GenerationConfig = {
+export const ANALYSIS_GENERATION_CONFIG: GenerateContentConfig = {
   temperature: 0.7,
   maxOutputTokens: MAX_OUTPUT_TOKENS,
   responseMimeType: 'application/json',
@@ -107,16 +108,15 @@ export async function callGemini(
   gcsUri: string,
   mimeType = 'video/quicktime'
 ): Promise<string> {
-  const vertexAI = new VertexAI({ project: projectId, location: LOCATION });
-
-  const model = vertexAI.getGenerativeModel({
-    model: MODEL,
-    systemInstruction: SYSTEM_INSTRUCTION,
-    generationConfig: ANALYSIS_GENERATION_CONFIG,
-    safetySettings: SAFETY_SETTINGS,
+  const ai = new GoogleGenAI({
+    vertexai: true,
+    project: projectId,
+    location: LOCATION,
+    apiVersion: 'v1',
   });
 
-  const result = await model.generateContent({
+  const response = await ai.models.generateContent({
+    model: MODEL,
     contents: [
       {
         role: 'user',
@@ -131,27 +131,41 @@ export async function callGemini(
         ],
       },
     ],
+    config: {
+      ...ANALYSIS_GENERATION_CONFIG,
+      systemInstruction: SYSTEM_INSTRUCTION,
+      safetySettings: SAFETY_SETTINGS,
+    },
   });
 
-  const candidates = result.response.candidates;
+  const candidates = response.candidates;
   const parts = candidates?.[0]?.content?.parts ?? [];
   const finishReason = candidates?.[0]?.finishReason;
 
   // Gemini 2.5 Flash is a thinking model: parts may include reasoning chunks
-  // flagged with `thought: true`. Skip those and use the first output part.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const outputPart = parts.find((p: any) => !p.thought);
-  const text = outputPart?.text ?? '';
+  // flagged with `thought: true`. The Gen AI SDK text getter already excludes
+  // thought parts and concatenates visible text from the first candidate.
+  const text = response.text ?? '';
 
   if (!text) {
     const summary = JSON.stringify({
       candidateCount: candidates?.length ?? 0,
       finishReason,
       partCount: parts.length,
-      partTypes: parts.map((p: any) => (p.thought ? 'thought' : 'text')),
+      partTypes: parts.map(partTypeLabel),
     });
     throw new Error(`Empty response from Vertex AI — ${summary}`);
   }
 
   return text;
+}
+
+function partTypeLabel(part: Part): string {
+  if (part.thought) return 'thought';
+  if (part.text !== undefined) return 'text';
+  if (part.fileData !== undefined) return 'fileData';
+  if (part.inlineData !== undefined) return 'inlineData';
+  if (part.functionCall !== undefined) return 'functionCall';
+  if (part.functionResponse !== undefined) return 'functionResponse';
+  return 'unknown';
 }

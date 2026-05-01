@@ -58,6 +58,7 @@ Each ADR should usually contain:
 | 0009 | Render Share Videos On Device | Accepted |
 | 0010 | Separate Vertex Response Schema from System Instruction | Accepted |
 | 0011 | Use PostHog for Product Analytics | Accepted |
+| 0012 | Use Google Gen AI SDK for Vertex Gemini Calls | Accepted |
 
 ## Workflow
 
