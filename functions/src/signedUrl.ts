@@ -1,7 +1,11 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'crypto';
-import { checkUsageAvailable, isLimitExceededError } from './usageGuard';
+import {
+  checkUsageAvailable,
+  isLimitExceededError,
+  sendDailyQuotaExceededResponse,
+} from './usageGuard';
 
 const REGION = 'us-central1';
 const URL_TTL_MS = 15 * 60 * 1000; // 15 minutes — enough for any upload
@@ -34,9 +38,7 @@ export const getSignedUploadURL = onRequest(
       await checkUsageAvailable(userId);
     } catch (err: unknown) {
       if (isLimitExceededError(err)) {
-        res.status(429).json({
-          error: 'Daily scan limit reached. Upgrade to Pro for unlimited scans.',
-        });
+        sendDailyQuotaExceededResponse(res, 'getSignedUploadURL');
         return;
       }
       throw err;
