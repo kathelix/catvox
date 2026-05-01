@@ -155,6 +155,7 @@ the failure was downstream (Vertex AI call).
 | `Vertex AI returned invalid JSON: { "primary_emotion": ...` (truncated) | `MAX_OUTPUT_TOKENS` too low — thinking model consumed budget before finishing JSON | Raise `MAX_OUTPUT_TOKENS` in `functions/src/gemini.ts` |
 | `Retrying malformed Vertex AI analysis payload` then `Vertex AI returned malformed analysis payload` | First Gemini response was malformed, retry also failed, and the backend converted the request to a controlled `502` instead of crashing | Inspect `issues`, `attempt`, and `rawResponsePreview` in logs; if frequent, revisit prompt / output constraints or `MAX_OUTPUT_TOKENS` |
 | `Empty response from Vertex AI` | Response had only `thought` parts, no output part | Check `finishReason` in the error summary; may indicate safety block or token exhaustion |
+| `The VertexAI class and all its dependencies are deprecated` | Backend was using the deprecated `@google-cloud/vertexai` generative AI module | Migrate Functions Gemini calls to `@google/genai` configured for Vertex AI; see ADR-0012 |
 | `signBlob` permission denied | Cloud Run running as wrong service account | Verify `serviceAccount:` is set in both function options; redeploy |
 | GCS PUT returns HTTP 403 | `catvox-backend-sa` missing `storage.objectCreator` | Check IAM bindings via `gcloud projects get-iam-policy` |
 | `Daily scan limit reached` (HTTP 429) | Expected — user hit the 5-scan/day cap | Not a bug; visible in app as quota exceeded screen |
