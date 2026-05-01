@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		02E96012C9F9B33780525AE7 /* UploadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2B3D6279B0CBA2AEBDEB41 /* UploadProgressView.swift */; };
+		097DEB2A0F0D8CF7612574CF /* GCPServiceBackendErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C285092936A8E76E9632C6 /* GCPServiceBackendErrorTests.swift */; };
 		1287A8DCFE6D80256B9611B0 /* MockAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8DEBD3D6B9687B0058E599A /* MockAnalysisService.swift */; };
 		1861803EF64D9F7FE6C77560 /* CatAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100F9FEEC3B2CF509B41F20 /* CatAnalysis.swift */; };
 		18A039960A12961EBFEBC651 /* LoopingVideoBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431ED6A02525A346D288F5CA /* LoopingVideoBackground.swift */; };
@@ -76,6 +77,7 @@
 		4C40315F8DBC5B5AD38A13C2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		4F5C098EA923D7B7D2B7746F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		54EFAA94F5454E9ABF6B9D09 /* HomeVideoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeVideoPicker.swift; sourceTree = "<group>"; };
+		60C285092936A8E76E9632C6 /* GCPServiceBackendErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GCPServiceBackendErrorTests.swift; sourceTree = "<group>"; };
 		6313F1146262336F3B4CE566 /* CatPersonaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersonaTests.swift; sourceTree = "<group>"; };
 		6364ED5AE4CAAE1E2AC30B29 /* CatAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatAnalysisTests.swift; sourceTree = "<group>"; };
 		689AC1D0436D57C04DBE7694 /* CatPersona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatPersona.swift; sourceTree = "<group>"; };
@@ -278,6 +280,7 @@
 				6364ED5AE4CAAE1E2AC30B29 /* CatAnalysisTests.swift */,
 				6313F1146262336F3B4CE566 /* CatPersonaTests.swift */,
 				D8AD2459F0FB2E469B3A8EBF /* ConfidenceTierTests.swift */,
+				60C285092936A8E76E9632C6 /* GCPServiceBackendErrorTests.swift */,
 				AB0452D678AA7A7829735F30 /* ImportedVideoServiceTests.swift */,
 				C334985AD19C5A97AACCCC01 /* SavedScanTests.swift */,
 				AE8291820F5D680D455B4DB9 /* ScanQuotaStoreTests.swift */,
@@ -385,6 +388,7 @@
 				2052FB6C170E9EEC2531E86A /* CatAnalysisTests.swift in Sources */,
 				4E7FE2E01925797AAEE7E495 /* CatPersonaTests.swift in Sources */,
 				3A76BB65F25DB94D7E779AA1 /* ConfidenceTierTests.swift in Sources */,
+				097DEB2A0F0D8CF7612574CF /* GCPServiceBackendErrorTests.swift in Sources */,
 				F607B892AD837E4AE7317D50 /* ImportedVideoServiceTests.swift in Sources */,
 				63FA374A9BCE02441274BF75 /* SavedScanTests.swift in Sources */,
 				C93725BB3023F1154E1DCB70 /* ScanQuotaStoreTests.swift in Sources */,

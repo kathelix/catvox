@@ -199,7 +199,9 @@ final class GCPService {
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
-        if http.statusCode == 429 { throw GCPError.quotaExceeded }
+        if let backendError = GCPError.fromBackendResponse(statusCode: http.statusCode, data: data) {
+            throw backendError
+        }
         guard http.statusCode == 200 else {
             let body = String(data: data, encoding: .utf8) ?? "(no body)"
             logger.error("getSignedUploadURL: HTTP \(http.statusCode) — \(body)")
@@ -282,7 +284,9 @@ final class GCPService {
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
-        if http.statusCode == 429 { throw GCPError.quotaExceeded }
+        if let backendError = GCPError.fromBackendResponse(statusCode: http.statusCode, data: data) {
+            throw backendError
+        }
         guard (200...299).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? "(no body)"
             logger.error("analyseVideo: HTTP \(http.statusCode) — \(body)")
@@ -294,8 +298,29 @@ final class GCPService {
 
 // MARK: - Error types
 
-enum GCPError: LocalizedError {
+struct BackendErrorResponse: Decodable, Equatable {
+    let code: String
+    let message: String
+    let limit: Int?
+    let remaining: Int?
+    let resetAt: String?
+}
+
+enum GCPError: LocalizedError, Equatable {
     case quotaExceeded
+
+    private static let dailyScanQuotaExceededCode = "daily_scan_quota_exceeded"
+
+    static func fromBackendResponse(statusCode: Int, data: Data) -> GCPError? {
+        guard statusCode == 429 else { return nil }
+
+        guard let response = try? JSONDecoder().decode(BackendErrorResponse.self, from: data),
+              response.code == dailyScanQuotaExceededCode else {
+            return nil
+        }
+
+        return .quotaExceeded
+    }
 
     var errorDescription: String? {
         "Daily scan limit reached. Come back tomorrow."

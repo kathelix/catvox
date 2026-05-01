@@ -74,6 +74,7 @@ For MVP, the user can either record a new video in-app or select an existing vid
 ### 3.2 Monetization & Sustainability
 * **Credit System:** 5 free scans/day to manage GCP costs.
 * **Quota Burn Rule:** A quota unit is consumed only when analysis completes successfully and a result payload is returned. Failed local validation attempts, rejected selections, and abandoned uploads do not consume quota.
+* **Quota Error Contract:** When the daily scan quota is exhausted, backend entry points must return HTTP `429` with `Retry-After` set to the number of seconds until the next UTC quota reset, and a JSON body with `code: "daily_scan_quota_exceeded"`, a user-readable `message`, `limit: 5`, `remaining: 0`, and `resetAt` as an ISO-8601 UTC timestamp. The iOS client must treat only this machine-readable code as the quota-exceeded state; other `429` causes must fall through to normal failure handling.
 * **Pro Tier (IAP):** One-time in-app purchase for unlimited scans and watermark removal.
 * **Brand Promotion:** Subtle "Powered by Kathelix" watermark on all free-tier exports.
 * **MVP Watermark Rule:** Until StoreKit 2 Pro entitlement logic exists, CatVox should treat exported share videos as free-tier exports and burn in subtle CatVox / Kathelix branding by default.
@@ -251,7 +252,7 @@ percentage. See ADR-0010 and ADR-0012.
 * **Firestore (Usage Guard):**
     * Collection: `usage/{userId}`.
     * Schema: `{ count: integer, lastResetDate: string (YYYY-MM-DD) }`.
-    * **Logic:** Backend increments count; rejects request (429) if limit reached.
+    * **Logic:** Backend increments count; rejects request with the quota error contract (HTTP `429`, `code: "daily_scan_quota_exceeded"`) if limit reached.
 * **userId:** A UUID generated once on first launch and persisted in `UserDefaults` under the key `"catvox.userId"`. Sent by the iOS client with every `analyseVideo` request and reused as the anonymous PostHog analytics identity. Forward-compatible with Firebase Auth — when Auth is introduced, the shared client identity value is replaced with the authenticated UID and the Firestore schema requires no changes. (See ADR-0007 and ADR-0011.)
 * **App-Local Scan Persistence:**
     * Local scan history is stored on-device using SwiftData for metadata persistence.

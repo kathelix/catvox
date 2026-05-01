@@ -158,7 +158,7 @@ the failure was downstream (Vertex AI call).
 | `The VertexAI class and all its dependencies are deprecated` | Backend was using the deprecated `@google-cloud/vertexai` generative AI module | Migrate Functions Gemini calls to `@google/genai` configured for Vertex AI; see ADR-0012 |
 | `signBlob` permission denied | Cloud Run running as wrong service account | Verify `serviceAccount:` is set in both function options; redeploy |
 | GCS PUT returns HTTP 403 | `catvox-backend-sa` missing `storage.objectCreator` | Check IAM bindings via `gcloud projects get-iam-policy` |
-| `Daily scan limit reached` (HTTP 429) | Expected — user hit the 5-scan/day cap | Not a bug; visible in app as quota exceeded screen |
+| `daily_scan_quota_exceeded` (HTTP 429) | Expected — user hit the 5-scan/day cap | Not a bug; visible in app as quota exceeded screen. For alerting, filter by structured log fields such as `jsonPayload.event="quota_exceeded"` and `jsonPayload.quotaType="daily_scan"` rather than by HTTP status alone |
 | `service agents being provisioned` | Vertex AI service agent not yet granted bucket access | Wait and retry; persistent → check `google_storage_bucket_iam_member.vertexai_sa_raw_videos_viewer` in Terraform |
 
 ---

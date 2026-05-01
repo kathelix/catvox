@@ -5,6 +5,7 @@ import {
   checkUsageAvailable,
   incrementUsage,
   isLimitExceededError,
+  sendDailyQuotaExceededResponse,
 } from './usageGuard';
 import { callGemini } from './gemini';
 
@@ -61,9 +62,7 @@ export const analyseVideo = onRequest(
       await checkUsageAvailable(userId);
     } catch (err: unknown) {
       if (isLimitExceededError(err)) {
-        res.status(429).json({
-          error: 'Daily scan limit reached. Upgrade to Pro for unlimited scans.',
-        });
+        sendDailyQuotaExceededResponse(res, 'analyseVideo');
         return;
       }
       throw err;
