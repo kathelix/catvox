@@ -33,12 +33,10 @@ struct HomeVideoPicker: UIViewControllerRepresentable {
             self.onFinish = onFinish
         }
 
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        func picker(_ _: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             guard let result = results.first else {
                 AnalyticsService.capture(.photosPickerCancelled)
-                picker.dismiss(animated: true) {
-                    self.onFinish(.cancelled)
-                }
+                onFinish(.cancelled)
                 return
             }
 
@@ -52,9 +50,7 @@ struct HomeVideoPicker: UIViewControllerRepresentable {
                             .videoValidationPassed,
                             properties: ["source_type": ScanSourceType.photos.rawValue]
                         )
-                        picker.dismiss(animated: true) {
-                            self.onFinish(.success(importedURL))
-                        }
+                        self.onFinish(.success(importedURL))
                     }
                 } catch {
                     let reason = ImportedVideoValidationError.analyticsReason(for: error)
@@ -70,9 +66,7 @@ struct HomeVideoPicker: UIViewControllerRepresentable {
                                 "validation_failure_reason": reason,
                             ]
                         )
-                        picker.dismiss(animated: true) {
-                            self.onFinish(.failure(message))
-                        }
+                        self.onFinish(.failure(message))
                     }
                 }
             }
