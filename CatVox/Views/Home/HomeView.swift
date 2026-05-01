@@ -21,6 +21,7 @@ struct HomeView: View {
     @State private var photoNoticeText  = ""
     @State private var activeResultClip: PendingResultClip?
     @State private var selectedSavedScan: SavedScan?
+    @State private var photoClipToAnalyse: URL?
     @State private var recordedClipToAnalyse: URL?
     @State private var pendingDeletion: SavedScan?
     @State private var historyErrorMessage = ""
@@ -74,18 +75,19 @@ struct HomeView: View {
         } message: {
             Text("Start with a new recording or pick an existing clip.")
         }
-        .sheet(isPresented: $showPhotoPicker) {
+        .sheet(isPresented: $showPhotoPicker, onDismiss: presentPendingPhotoClipIfReady) {
             HomeVideoPicker { outcome in
                 switch outcome {
                 case .cancelled:
-                    break
+                    showPhotoPicker = false
 
                 case .success(let videoURL):
-                    activeResultClip = PendingResultClip(url: videoURL, sourceType: .photos)
+                    queuePhotoClipForAnalysis(videoURL)
 
                 case .failure(let message):
                     photoNoticeText = message
                     showPhotoNotice = true
+                    showPhotoPicker = false
                 }
             }
         }
@@ -97,9 +99,11 @@ struct HomeView: View {
         }
         .fullScreenCover(item: $activeResultClip) { clip in
             ResultView(videoURL: clip.url, sourceType: clip.sourceType)
+                .id(clip.id)
         }
         .fullScreenCover(item: $selectedSavedScan) { savedScan in
             ResultView(savedScan: savedScan)
+                .id(savedScan.id)
         }
         .onChange(of: showRecording) { _, isShowing in
             if !isShowing, let recordedClipToAnalyse {
@@ -260,6 +264,22 @@ struct HomeView: View {
         } else {
             proxy.scrollTo(lastID, anchor: .bottom)
         }
+    }
+
+    private func queuePhotoClipForAnalysis(_ videoURL: URL) {
+        photoClipToAnalyse = videoURL
+
+        if showPhotoPicker {
+            showPhotoPicker = false
+        } else {
+            presentPendingPhotoClipIfReady()
+        }
+    }
+
+    private func presentPendingPhotoClipIfReady() {
+        guard let photoClipToAnalyse else { return }
+        activeResultClip = PendingResultClip(url: photoClipToAnalyse, sourceType: .photos)
+        self.photoClipToAnalyse = nil
     }
 
     private func open(_ scan: SavedScan) {
