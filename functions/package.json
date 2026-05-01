@@ -5,7 +5,10 @@
   "scripts": {
     "build": "mkdir -p assets && cp ../docs/systemInstruction.md assets/systemInstruction.md && tsc",
     "build:watch": "tsc --watch",
-    "test": "npm run build && node --test test/*.test.js",
+    "test": "npm run test:unit",
+    "test:unit": "npm run build && node --test test/*.test.js",
+    "test:integration:quota": "npm run build && node lib/integration/verifyQuotaContract.js",
+    "verify:quota-contract": "npm run test:integration:quota",
     "serve": "npm run build && firebase emulators:start --only functions",
     "predeploy": "npm run build"
   },

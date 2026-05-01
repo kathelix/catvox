@@ -81,6 +81,7 @@ The MVP also supports on-demand creation of a funny shareable result video deriv
 * The infrastructure model is intended to be reproducible and rebuildable.
 * The project uses three distinct CI/CD pipelines: iOS build validation, infrastructure delivery, and backend function delivery.
 * CI/CD authentication uses keyless GitHub Actions federation.
+* Until public launch, the current live GCP/Firebase project is treated operationally as Dev / integration testing. A separate real production environment must be split out before launch. See ADR-0013.
 
 ## 7. MVP Boundaries / Non-goals
 * No direct client-side access to privileged GCP services.

@@ -146,6 +146,27 @@ gcloud storage ls -l gs://catvox-raw-videos-kathelix-catvox-prod/
 If the object is absent, the signed URL upload itself failed. If it is present,
 the failure was downstream (Vertex AI call).
 
+### Step 6 — Verify the daily-quota 429 contract
+
+Use this after deploying Functions changes that affect the quota error contract.
+It writes a temporary `usage/{userId}` document with `count: 5`, calls
+`getSignedUploadURL`, verifies the machine-readable HTTP `429` response, checks
+for the structured `quota_exceeded` log entry, and deletes the temporary
+Firestore document in a `finally` block.
+
+Because it touches live backend data, run it only after explicit approval:
+
+```bash
+npm --prefix functions run test:integration:quota -- --confirm
+```
+
+If Cloud Logging is slow or unavailable and you only need the HTTP response
+contract:
+
+```bash
+npm --prefix functions run test:integration:quota -- --confirm --skip-log
+```
+
 ---
 
 ## 3. Known Error Signatures

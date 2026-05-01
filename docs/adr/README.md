@@ -59,6 +59,7 @@ Each ADR should usually contain:
 | 0010 | Separate Vertex Response Schema from System Instruction | Accepted |
 | 0011 | Use PostHog for Product Analytics | Accepted |
 | 0012 | Use Google Gen AI SDK for Vertex Gemini Calls | Accepted |
+| 0013 | Treat Current GCP Project as Dev Until Production Split | Accepted |
 
 ## Workflow
 

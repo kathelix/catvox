@@ -2,6 +2,19 @@
 
 ## Infrastructure / Runtime Maintenance
 
+### Dev / Production Environment Split Before Launch
+Before public launch, split the current live GCP/Firebase environment from the real production environment. Until that split, treat `kathelix-catvox-prod` operationally as the Dev environment despite the current project name. See ADR-0013.
+
+Subtasks:
+* Decide final environment naming and whether `kathelix-catvox-prod` is kept, renamed by convention only, or replaced during launch cutover.
+* Create separate GCP/Firebase projects for Dev and Prod, with separate Firebase apps, App Check configuration, Firestore databases, GCS buckets, Secret Manager secrets, Artifact Registry repos, and Cloud Functions deployments.
+* Split Terraform state and variables per environment so Dev and Prod can be planned/applied independently.
+* Split GitHub Actions environments and secrets; keep PR and merge-to-main deploys pointed at Dev, and require an explicit protected release path for Prod.
+* Split iOS configuration per environment, including Firebase plist handling, bundle IDs or schemes if needed, App Check providers/debug tokens, and backend endpoint selection.
+* Split analytics configuration so Dev/test traffic cannot pollute production PostHog dashboards.
+* Restrict live integration tests that mutate Firestore to Dev by default; require explicit approval and a separate runbook for any production smoke checks.
+* Define launch cutover and rollback steps, including how to handle any pre-launch Firestore usage data, GCS objects, and deployed function revisions.
+
 ### Firebase Functions Node.js Runtime Review
 Review this around **2026-06-01** before changing the Cloud Functions runtime.
 

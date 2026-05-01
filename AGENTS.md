@@ -101,14 +101,23 @@ The `schemes:` block in `project.yml` is intentional — XcodeGen silently delet
 - The machine is configured to use full Xcode, not Command Line Tools:
   - `xcode-select -p` should be `/Applications/Xcode.app/Contents/Developer`
   - plain `xcodebuild -version` should work without a `DEVELOPER_DIR` override
-- For local build verification, run `xcodebuild` from the repo root (`/Users/Shared/git/github.com/catvox`), not from a subdirectory.
-- Canonical verification command:
+- For local build and test verification, run `xcodebuild` from the repo root (`/Users/Shared/git/github.com/catvox`), not from a subdirectory.
+- Canonical build verification command:
 
 ```bash
 xcodebuild -project CatVox.xcodeproj \
   -scheme CatVox \
   -destination 'generic/platform=iOS Simulator' \
   build CODE_SIGNING_ALLOWED=NO
+```
+
+- Unit tests must run on a concrete simulator device. Xcode cannot run tests on `generic/platform=iOS Simulator`.
+
+```bash
+xcodebuild -project CatVox.xcodeproj \
+  -scheme CatVox \
+  -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+  test CODE_SIGNING_ALLOWED=NO
 ```
 
 - In Codex, simulator builds may fail inside the sandbox because of `CoreSimulatorService` and `~/Library` access. If that happens, rerun the same `xcodebuild` command outside the sandbox instead of changing the build command.
@@ -184,7 +193,10 @@ The WIF pool is locked to `kathelix/catvox` via `attribute-condition` — no oth
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `build.yml` | Every push/PR to `main` | XcodeGen → build for iOS Simulator (no signing) |
+| `build.yml` | Every push/PR to `main` | XcodeGen → build generic iOS Simulator slice → run unit tests on a concrete simulator |
+| `functions.yml` (build) | Push/PR touching `functions/**`, `firebase.json`, `docs/systemInstruction.md`, or workflow | TypeScript compile check + backend unit tests |
+| `functions.yml` (deploy + integration) | Merge to `main` touching Functions inputs | Firebase Functions deploy, then quota-contract integration smoke test against the current Dev backend |
+| `functions.yml` (manual integration) | Manual `workflow_dispatch` | Quota-contract integration smoke test against the currently deployed backend |
 | `terraform.yml` (plan) | PR touching `terraform/**` | fmt-check → init → validate → plan → PR comment |
 | `terraform.yml` (apply) | Merge to `main` touching `terraform/**` | init → apply -auto-approve |
 
@@ -306,6 +318,7 @@ If a feature that was originally tracked under one broad backlog item becomes se
 
 - The Firebase Functions runtime is Node.js 22. For local validation, prefer running `functions` commands under Node.js 22 so `npm ci` and `npm run build` match CI and do not emit avoidable engine warnings.
 - If Node.js 22 is unavailable locally, it is acceptable to run the build under the installed Node version, but explicitly report any expected `EBADENGINE` warning as an environment mismatch rather than treating it as a workflow failure.
+- Backend integration tests that write temporary Firestore documents, such as `npm --prefix functions run test:integration:quota -- --confirm`, must only be run after explicit approval because they touch the live backend data plane.
 
 ### HLD vs TRD
 
