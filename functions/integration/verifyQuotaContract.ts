@@ -1,5 +1,4 @@
-import { initializeApp, deleteApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { Firestore } from '@google-cloud/firestore';
 import { spawnSync } from 'node:child_process';
 
 const DEFAULT_PROJECT_ID = 'kathelix-catvox-prod';
@@ -215,8 +214,8 @@ async function main(): Promise<void> {
   const testUserId = `quota-contract-test-${Date.now()}`;
   const startTime = new Date(Date.now() - 1000);
   const quotaWindow = currentUTCQuotaWindow();
-  const app = initializeApp({ projectId });
-  const doc = getFirestore(app).collection('usage').doc(testUserId);
+  const firestore = new Firestore({ projectId });
+  const doc = firestore.collection('usage').doc(testUserId);
 
   console.log('Project:', projectId);
   console.log('Endpoint:', signedUrlEndpoint);
@@ -240,7 +239,7 @@ async function main(): Promise<void> {
     await doc.delete().catch((err: unknown) => {
       console.error('Failed to delete temporary Firestore doc:', err);
     });
-    await deleteApp(app);
+    await firestore.terminate();
     console.log('Temporary Firestore quota doc deleted');
   }
 }
