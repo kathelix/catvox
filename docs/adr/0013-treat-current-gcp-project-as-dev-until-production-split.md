@@ -89,6 +89,4 @@ non-invasive, and documented in a separate runbook.
 - CI entry points:
   - post-deploy job in `.github/workflows/functions.yml`
 - Local Dev command: `npm --prefix functions run test:integration`
-- Direct quota-contract debugging command:
-  `npm --prefix functions run test:integration:quota -- --confirm`
 - Future environment split is tracked in `docs/TODO.md`.

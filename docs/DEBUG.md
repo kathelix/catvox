@@ -161,18 +161,18 @@ Run the suite with:
 npm --prefix functions run test:integration
 ```
 
-For quota-contract debugging, the lower-level test can still be run directly.
-The `--confirm` flag makes its Dev data-plane write explicit:
+For quota-contract debugging, pass script flags through the suite command. The
+suite already makes its Dev data-plane write explicit:
 
 ```bash
-npm --prefix functions run test:integration:quota -- --confirm
+npm --prefix functions run test:integration
 ```
 
 If Cloud Logging is slow or unavailable and you only need the HTTP response
 contract:
 
 ```bash
-npm --prefix functions run test:integration:quota -- --confirm --skip-log
+npm --prefix functions run test:integration -- --skip-log
 ```
 
 ---
