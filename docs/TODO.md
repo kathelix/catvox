@@ -12,7 +12,7 @@ Subtasks:
 * Split GitHub Actions environments and secrets; keep PR and merge-to-main deploys pointed at Dev, and require an explicit protected release path for Prod.
 * Split iOS configuration per environment, including Firebase plist handling, bundle IDs or schemes if needed, App Check providers/debug tokens, and backend endpoint selection.
 * Split analytics configuration so Dev/test traffic cannot pollute production PostHog dashboards.
-* Restrict live integration tests that mutate Firestore to Dev by default; require explicit approval and a separate runbook for any production smoke checks.
+* Restrict Firestore-mutating integration tests to Dev only; define a separate protected production smoke-test runbook for minimal non-invasive checks after future Prod deployments.
 * Define launch cutover and rollback steps, including how to handle any pre-launch Firestore usage data, GCS objects, and deployed function revisions.
 
 ### Firebase Functions Node.js Runtime Review

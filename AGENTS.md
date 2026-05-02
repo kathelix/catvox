@@ -195,8 +195,8 @@ The WIF pool is locked to `kathelix/catvox` via `attribute-condition` — no oth
 |---|---|---|
 | `build.yml` | Every push/PR to `main` | XcodeGen → build generic iOS Simulator slice → run unit tests on a concrete simulator |
 | `functions.yml` (build) | Push/PR touching `functions/**`, `firebase.json`, `docs/systemInstruction.md`, or workflow | TypeScript compile check + backend unit tests |
-| `functions.yml` (deploy + integration) | Merge to `main` touching Functions inputs | Firebase Functions deploy, then quota-contract integration smoke test against the current Dev backend |
-| `functions.yml` (manual integration) | Manual `workflow_dispatch` | Quota-contract integration smoke test against the currently deployed backend |
+| `functions.yml` (deploy + integration) | Merge to `main` touching Functions inputs | Firebase Functions deploy, then backend integration tests against the current Dev backend |
+| `functions.yml` (manual integration) | Manual `workflow_dispatch` | Backend integration tests against the currently deployed Dev backend |
 | `terraform.yml` (plan) | PR touching `terraform/**` | fmt-check → init → validate → plan → PR comment |
 | `terraform.yml` (apply) | Merge to `main` touching `terraform/**` | init → apply -auto-approve |
 
@@ -318,7 +318,7 @@ If a feature that was originally tracked under one broad backlog item becomes se
 
 - The Firebase Functions runtime is Node.js 22. For local validation, prefer running `functions` commands under Node.js 22 so `npm ci` and `npm run build` match CI and do not emit avoidable engine warnings.
 - If Node.js 22 is unavailable locally, it is acceptable to run the build under the installed Node version, but explicitly report any expected `EBADENGINE` warning as an environment mismatch rather than treating it as a workflow failure.
-- Backend integration tests that write temporary Firestore documents, such as `npm --prefix functions run test:integration:quota -- --confirm`, must only be run after explicit approval because they touch the live backend data plane.
+- Backend integration tests may write temporary Firestore documents and are safe to run against the current Dev backend with `npm --prefix functions run test:integration`. Do not run Firestore-mutating integration tests against a future real Prod environment; future Prod should use only a separate, protected, non-invasive smoke-test runbook.
 
 ### HLD vs TRD
 

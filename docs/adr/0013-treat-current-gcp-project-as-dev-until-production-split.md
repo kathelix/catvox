@@ -33,9 +33,16 @@ environment, despite the project name.
 
 The Functions CI pipeline will keep live backend integration tests out of pull
 requests. Pull requests run TypeScript build and backend unit tests only. After
-a merge-to-main deploy, the pipeline may run narrowly scoped integration smoke
-tests against the currently deployed Dev backend. The same tests may also be
-run manually through `workflow_dispatch`.
+a merge-to-main deploy, the pipeline may run backend integration tests against
+the currently deployed Dev backend. The same tests may also be run manually
+through `workflow_dispatch`.
+
+Terminology is intentionally split:
+
+- **Integration testing** runs against Dev, may write temporary backend data, and
+  must clean up after itself.
+- **Smoke testing** is reserved for future real Prod deployments and must be a
+  small, protected, non-invasive confidence check.
 
 Live integration tests must follow these rules:
 
@@ -47,8 +54,8 @@ Live integration tests must follow these rules:
 
 Before public launch, CatVox must split the real production environment from
 this Dev environment. After that split, Firestore-mutating integration tests
-must run against Dev by default. Any production smoke check must be explicitly
-approved, protected, and documented in a separate runbook.
+must run against Dev only. Any production smoke testing must be protected,
+non-invasive, and documented in a separate runbook.
 
 ## Consequences
 
@@ -59,7 +66,7 @@ approved, protected, and documented in a separate runbook.
 - Keeps PR checks fast and safe by avoiding live backend writes before review
 - Catches post-deploy contract drift in Cloud Functions, Firestore behavior,
   headers, response bodies, and Cloud Logging
-- Establishes the rule that production-like smoke tests must be narrow,
+- Establishes the rule that Dev integration tests must be narrow,
   temporary-data-only, and cleanup-aware
 - Creates a clear pre-launch obligation to separate Dev and Prod before real
   users depend on the system
@@ -77,11 +84,12 @@ approved, protected, and documented in a separate runbook.
 
 ## Implementation Notes
 
-- Current integration baseline: daily quota contract smoke test for
+- Current integration baseline: daily quota contract integration test for
   `getSignedUploadURL`
 - CI entry points:
   - post-deploy job in `.github/workflows/functions.yml`
   - manual `workflow_dispatch` job in `.github/workflows/functions.yml`
-- Local command, only after explicit approval:
+- Local Dev command: `npm --prefix functions run test:integration`
+- Direct quota-contract debugging command:
   `npm --prefix functions run test:integration:quota -- --confirm`
 - Future environment split is tracked in `docs/TODO.md`.

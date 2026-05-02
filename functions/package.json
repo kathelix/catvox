@@ -8,6 +8,7 @@
     "build:watch": "tsc --watch",
     "test": "npm run test:unit",
     "test:unit": "npm run build && node --test test/*.test.js",
+    "test:integration": "npm run test:integration:quota -- --confirm",
     "test:integration:quota": "npm run build:integration && node lib-integration/integration/verifyQuotaContract.js",
     "verify:quota-contract": "npm run test:integration:quota",
     "serve": "npm run build && firebase emulators:start --only functions",

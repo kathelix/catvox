@@ -2,12 +2,6 @@ name: Functions
 
 on:
   workflow_dispatch:
-    inputs:
-      skip_log_verification:
-        description: 'Skip Cloud Logging verification and check only the HTTP contract'
-        required: false
-        type: boolean
-        default: false
   push:
     branches: [main]
     paths:
@@ -34,7 +28,7 @@ permissions:
 jobs:
   # ── Build ────────────────────────────────────────────────────────────────────
   # Runs on every push and PR. Catches TypeScript compile errors and unit-test
-  # regressions early. Live integration tests run only after deploy or manually.
+  # regressions early. Dev integration tests run only after deploy or manually.
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -103,7 +97,7 @@ jobs:
   # Runs only after main deploy. Treats the current live GCP/Firebase project as
   # the Dev environment until a real production split exists.
   integration-after-deploy:
-    name: Integration — Quota Contract
+    name: Integration Tests
     runs-on: ubuntu-latest
     needs: deploy
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -134,15 +128,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify quota contract
+      - name: Run integration tests
         env:
           CATVOX_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: npm run test:integration:quota -- --confirm
+        run: npm run test:integration
 
   # ── Integration: manual ──────────────────────────────────────────────────────
   # Runs on demand against the currently deployed backend.
   integration-manual:
-    name: Integration — Quota Contract (Manual)
+    name: Integration Tests (Manual)
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'workflow_dispatch'
@@ -173,12 +167,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify quota contract
+      - name: Run integration tests
         env:
           CATVOX_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: |
-          args=(--confirm)
-          if [[ '${{ inputs.skip_log_verification }}' == 'true' ]]; then
-            args+=(--skip-log)
-          fi
-          npm run test:integration:quota -- "${args[@]}"
+        run: npm run test:integration

@@ -146,15 +146,23 @@ gcloud storage ls -l gs://catvox-raw-videos-kathelix-catvox-prod/
 If the object is absent, the signed URL upload itself failed. If it is present,
 the failure was downstream (Vertex AI call).
 
-### Step 6 — Verify the daily-quota 429 contract
+### Step 6 — Run Dev backend integration tests
 
-Use this after deploying Functions changes that affect the quota error contract.
-It writes a temporary `usage/{userId}` document with `count: 5`, calls
-`getSignedUploadURL`, verifies the machine-readable HTTP `429` response, checks
-for the structured `quota_exceeded` log entry, and deletes the temporary
-Firestore document in a `finally` block.
+Use this against the current Dev backend after deploying Functions changes. The
+current integration suite includes the daily-quota contract test: it writes a
+temporary `usage/{userId}` document with `count: 5`, calls `getSignedUploadURL`,
+verifies the machine-readable HTTP `429` response, checks for the structured
+`quota_exceeded` log entry, and deletes the temporary Firestore document in a
+`finally` block.
 
-Because it touches live backend data, run it only after explicit approval:
+Run the suite with:
+
+```bash
+npm --prefix functions run test:integration
+```
+
+For quota-contract debugging, the lower-level test can still be run directly.
+The `--confirm` flag makes its Dev data-plane write explicit:
 
 ```bash
 npm --prefix functions run test:integration:quota -- --confirm
