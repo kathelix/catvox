@@ -1,91 +1,93 @@
-# Project Source of Truth - CatVox
+# ChatGPT Project Source of Truth - CatVox
 
-**Version:** 1.2
+Version: 1.3
 
-For architecture, design, and technical planning discussions in this ChatGPT Project:
+## Mandatory rule
 
-## Source of truth
+For every CatVox architecture, product, design, implementation-planning, analytics, testing, or documentation discussion:
 
-Use the GitHub repository below as the canonical source of truth:
+First fetch the latest files from the main branch of the GitHub repository kathelix/catvox.
 
-- Repository: `kathelix/catvox`
+Do NOT rely on:
+- cached files
+- earlier fetched versions
 
-Do not treat uploaded Project Sources as authoritative if they conflict with the current GitHub repo contents.
+The repository changes frequently, often daily. Re-uploading files manually is wasteful and error-prone.
 
+## Repository
+
+Canonical repository: `kathelix/catvox`
+
+Main branch: `main`
+
+Raw GitHub base URL: https://raw.githubusercontent.com/kathelix/catvox/refs/heads/main/
+
+## Mandatory startup fetch
+
+At the start of a relevant CatVox discussion, fetch the latest version of this file first: `docs/ChatGPT_Project_Source_of_Truth.md`
+
+Raw URL: https://raw.githubusercontent.com/kathelix/catvox/refs/heads/main/docs/ChatGPT_Project_Source_of_Truth.md
+
+Then fetch all relevant current files from: `docs/`
+
+At minimum, fetch:
+- docs/HLD.md
+- docs/TRD.md
+- docs/PROMPT.md
+- docs/USER_TEST_PLAN.md
+- docs/adr/README.md
+
+Also fetch all relevant ADR files under `docs/adr/``
+
+## Other sources of information
+
+Treat the following as additional sources of information, less authoritative:
+
+- uploaded Project Sources
+- previous chat context
+- memory
+
+Do not treat these as authoritative if they conflict with the current GitHub repo contents.
 If GitHub content and any older uploaded file differ, prefer the GitHub version.
 
-## Default document scope
+## Source precedence
 
-For architecture and design work, prioritize the `docs/` subtree in the repository.
+Use this order of authority:
 
-Primary files:
-
-- `docs/HLD.md`
-- `docs/TRD.md`
-- `docs/adr/README.md`
-- `docs/adr/*.md`
-
-These files should be treated as the main design corpus for:
-
-- product architecture
-- technical design
-- infrastructure decisions
-- security decisions
-- ADR-driven decision history
-
-## How to use the repo
-
-At the start of any new architecture/design discussion, first consult the relevant files in `docs/` from the GitHub repo if needed.
-
-Prefer:
-
-- `docs/HLD.md` for high-level direction and architectural intent
-- `docs/TRD.md` for detailed technical requirements and implementation constraints
-- `docs/adr/*.md` for specific architectural decisions and rationale
-
-## Scope outside `docs/`
-
-Do not inspect files outside `docs/` by default.
-
-Only look outside `docs/` when:
-
-- the user explicitly asks about a non-`docs` file
-- a design question cannot be answered reliably from `docs/`
-- implementation context is needed to validate whether design docs match repo reality
-
-## ADR workflow expectations
-
-This project uses ADRs as the formal decision log.
-
-When a significant architectural, security, infrastructure, or costly-to-reverse decision is discussed:
-
-- check whether an ADR should exist
-- if missing, recommend creating a new ADR
-- keep HLD/TRD aligned with accepted ADRs
-
-## Conflict resolution
-
-When documents disagree, use this order of precedence:
-
-1. Latest GitHub repo contents
-2. ADRs for historical decision intent
-3. `docs/TRD.md` for detailed current technical design
-4. `docs/HLD.md` for high-level design direction
-5. Any uploaded Project Source copies, if still present
+1. Latest GitHub files from kathelix/catvox on main
+2. ADRs for accepted decision history
+3. docs/TRD.md for detailed technical design
+4. docs/HLD.md for high-level architecture and product direction
+5. Uploaded Project Sources only as bootstrap hints, never as final truth
 
 If there is a real contradiction between current repo documents, explicitly point it out instead of guessing.
 
-## Output expectations
 
-For architectural/design discussions:
+## If GitHub fetch fails
 
-- do not generate code unless explicitly asked
-- prefer reasoning, trade-offs, structure, and exact wording suggestions for docs
-- when relevant, propose updates to:
-  - `docs/HLD.md`
-  - `docs/TRD.md`
-  - `docs/adr/*.md`
+If GitHub access fails, stop and explicitly say:
 
-## Practical intent
+- which file could not be fetched
+- what error occurred, if known
+- whether you are falling back to stale context
 
-This ChatGPT Project should use the live GitHub repo as the working design source, so that future chats do not depend on stale uploaded markdown files.
+Do not silently continue as if the latest files were loaded.
+
+## Scope
+
+By default, only inspect files under: `docs/` from GitHub repo.
+Do not inspect implementation source files unless the user explicitly asks or the design question cannot be answered from `docs/`.
+
+## ADR workflow
+
+For significant architectural, security, infrastructure, data-flow, analytics, or hard-to-reverse product decisions:
+
+- check whether an ADR exists
+- if missing, recommend a new ADR
+- keep HLD/TRD aligned with accepted ADRs
+
+## Working principle
+
+GitHub `docs/` is the architectural source of truth.
+
+Notion, Airtable, PostHog, user-test notes, and chat discussions may contain discovery work, hypotheses, or evidence, but accepted design decisions must eventually be reflected in GitHub docs.
