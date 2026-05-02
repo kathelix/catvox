@@ -1,6 +1,6 @@
 # CatVox user test video analysis
 
-**Version:** 1.1
+**Version:** 1.2
 **Last updated:** 2026-04-27
 
 You are analysing a **screen recording with microphone audio** of a CatVox early user test session.
@@ -125,7 +125,8 @@ Provide:
 
 - **USER_TEST_PLAN.md version:** exact version from the attached test plan
 - **USER_TEST_GEMINI_REVIEW_PROMPT.md version:** exact version from this prompt
-- **URL of the video supplied:** exact YouTube video URL given to you in this prompt
+- **Date / Time:** exact date and time of user testing
+- **Video URL:** exact YouTube video URL given to you in this prompt
 - **Video access:** confirmed / not confirmed
 - **Exact detected duration:** `MM:SS`
 - **Distinct speakers detected:** number
@@ -318,6 +319,8 @@ Provide these exact fields:
 
 - `user_test_plan_version:`
 - `gemini_review_prompt_version:`
+- `date_time:`
+- `video_url:`
 - `video_access:`
 - `exact_duration:`
 - `distinct_speakers_detected:`
