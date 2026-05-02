@@ -11,5 +11,5 @@
     "skipLibCheck": true
   },
   "compileOnSave": true,
-  "include": ["src", "integration"]
+  "include": ["src"]
 }

@@ -4,10 +4,11 @@
   "description": "CatVox AI — Firebase Cloud Functions (2nd Gen)",
   "scripts": {
     "build": "mkdir -p assets && cp ../docs/systemInstruction.md assets/systemInstruction.md && tsc",
+    "build:integration": "tsc -p tsconfig.integration.json",
     "build:watch": "tsc --watch",
     "test": "npm run test:unit",
     "test:unit": "npm run build && node --test test/*.test.js",
-    "test:integration:quota": "npm run build && node lib/integration/verifyQuotaContract.js",
+    "test:integration:quota": "npm run build:integration && node lib-integration/integration/verifyQuotaContract.js",
     "verify:quota-contract": "npm run test:integration:quota",
     "serve": "npm run build && firebase emulators:start --only functions",
     "predeploy": "npm run build"
