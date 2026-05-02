@@ -196,7 +196,6 @@ The WIF pool is locked to `kathelix/catvox` via `attribute-condition` — no oth
 | `build.yml` | Every push/PR to `main` | XcodeGen → build generic iOS Simulator slice → run unit tests on a concrete simulator |
 | `functions.yml` (build) | Push/PR touching `functions/**`, `firebase.json`, `docs/systemInstruction.md`, or workflow | TypeScript compile check + backend unit tests |
 | `functions.yml` (deploy + integration) | Merge to `main` touching Functions inputs | Firebase Functions deploy, then backend integration tests against the current Dev backend |
-| `functions.yml` (manual integration) | Manual `workflow_dispatch` | Backend integration tests against the currently deployed Dev backend |
 | `terraform.yml` (plan) | PR touching `terraform/**` | fmt-check → init → validate → plan → PR comment |
 | `terraform.yml` (apply) | Merge to `main` touching `terraform/**` | init → apply -auto-approve |
 

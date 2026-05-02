@@ -34,8 +34,8 @@ environment, despite the project name.
 The Functions CI pipeline will keep live backend integration tests out of pull
 requests. Pull requests run TypeScript build and backend unit tests only. After
 a merge-to-main deploy, the pipeline may run backend integration tests against
-the currently deployed Dev backend. The same tests may also be run manually
-through `workflow_dispatch`.
+the currently deployed Dev backend. Developers may also run the same tests
+locally against the currently deployed Dev backend.
 
 Terminology is intentionally split:
 
@@ -88,7 +88,6 @@ non-invasive, and documented in a separate runbook.
   `getSignedUploadURL`
 - CI entry points:
   - post-deploy job in `.github/workflows/functions.yml`
-  - manual `workflow_dispatch` job in `.github/workflows/functions.yml`
 - Local Dev command: `npm --prefix functions run test:integration`
 - Direct quota-contract debugging command:
   `npm --prefix functions run test:integration:quota -- --confirm`
