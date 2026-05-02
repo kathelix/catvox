@@ -324,8 +324,8 @@ percentage. See ADR-0010 and ADR-0012.
 ### 7.1 iOS Build Pipeline
 * **Trigger:** Every push and pull request targeting `main`.
 * **Runner:** macOS 15 (Xcode 16, iOS 17+ SDK).
-* **Steps:** Checkout → XcodeGen (regenerate `.xcodeproj` from `project.yml`) → build for generic iOS Simulator slice (`CODE_SIGNING_ALLOWED=NO`).
-* **Purpose:** Catches build breaks and XcodeGen drift on every change. No device signing or provisioning profiles required.
+* **Steps:** Checkout → XcodeGen (regenerate `.xcodeproj` from `project.yml`) → build for generic iOS Simulator slice (`CODE_SIGNING_ALLOWED=NO`) → run unit tests on a concrete simulator device (`platform=iOS Simulator,name=iPhone 16,OS=latest`). Xcode cannot run tests on `generic/platform=iOS Simulator`.
+* **Purpose:** Catches build breaks, XcodeGen drift, and unit-test regressions on every change. No device signing or provisioning profiles required.
 
 ### 7.2 Terraform Infrastructure Pipeline
 * **Trigger:** Push or pull request targeting `main` when files under `terraform/` or the workflow file itself change.
@@ -341,8 +341,10 @@ percentage. See ADR-0010 and ADR-0012.
 ### 7.3 Firebase Cloud Functions Pipeline
 * **Trigger:** Push or pull request targeting `main` when files under `functions/`, `firebase.json`, `docs/systemInstruction.md`, or the workflow file itself change. `docs/systemInstruction.md` is included because it is copied into the deployment artifact at build time — a prompt-only change must trigger a redeploy. (See ADR-0008 and ADR-0010.)
 * **Authentication:** Same WIF setup as the Terraform pipeline — `catvox-ci-sa` via `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT` secrets.
-* **Build job (on PR and push):** `npm ci` → `npm run build` (TypeScript compile check).
+* **Build job (on PR and push):** `npm ci` → `npm run test:unit` (TypeScript compile check plus backend unit tests).
 * **Deploy job (on merge to `main`):** Runs after build passes → `firebase deploy --only functions`.
+* **Integration job (after merge-to-main deploy):** Runs backend integration tests against the currently deployed backend, using the current live GCP/Firebase project as the Dev environment until a separate production environment exists. Integration tests may write temporary Dev data when required and must clean it up. The current suite includes the daily-quota contract test, which creates a temporary `usage/{userId}` document, verifies the machine-readable daily-quota HTTP `429` response and structured Cloud Logging entry, then deletes the temporary document. See ADR-0013.
+* **Local Dev integration command:** Developers can run the same backend integration suite against the currently deployed Dev backend with `npm --prefix functions run test:integration`.
 
 ### 7.4 WIF Bootstrap & GitHub Secrets
 The following one-time manual setup is required before the Terraform pipeline can run. Bootstrap scripts are in `terraform/`:
@@ -412,6 +414,7 @@ After step 1 the GitHub Actions CI pipeline is fully functional — all subseque
 * [ ] **App Check Setup:** Configure App Attest in Apple Developer and Firebase App Check consoles, plus Debug Provider for local development. (See ADR-0002.) When App Check is wired in, one temporary workaround must be reverted:
     1. **`invoker: 'public'` on both Cloud Functions** (`functions/src/signedUrl.ts`, `functions/src/analyse.ts`) — currently allows unauthenticated callers. Replace with App Check token validation in-code: verify the `X-Firebase-AppCheck` header using the Firebase Admin SDK at the top of each handler, before any business logic.
 * [x] **Backend Proxy:** Firebase Cloud Functions (TypeScript) deployed — `getSignedUploadURL` and `analyseVideo` live in `us-central1`; Firestore usage guard, Vertex AI call, CI deploy pipeline via GitHub Actions.
+* [x] **Backend Integration Test Baseline:** TypeScript backend integration suite verifies the live Dev backend daily-quota `429` body, `Retry-After`, and structured Cloud Logging event after merge-to-main deploys or local Dev CLI runs. See ADR-0013.
 * [x] **Video Recording:** Local capture implemented — HEVC codec enforced, resolution hard-capped at 1080p.
 * [x] **Video Upload:** Swift upload of the recorded HEVC file to GCS via signed URL; real pipeline live (`mockMode = false`).
 * [x] **AI Connection:** Cloud Function calls Vertex AI Gemini 2.5 Flash via the Google Gen AI SDK and `fileData` GCS URI.
