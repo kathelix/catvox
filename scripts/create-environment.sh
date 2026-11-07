@@ -17,7 +17,8 @@
 #     CATVOX_ENVIRONMENT_PROTECTED = false;
 #   - an existing terraform/core/env/<env>.tfvars is kept as-is, so a supplied
 #     ALERT_EMAIL or APP_CHECK_DEBUG_TOKEN that differs from it is refused
-#     rather than silently ignored.
+#     rather than silently ignored; the file must be in the plain one-line form
+#     this script writes, so what is checked is what Terraform reads.
 
 set -euo pipefail
 
@@ -86,22 +87,62 @@ quote_tf_string() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-# Raw value of KEY in the existing tfvars file, in the form this script writes
-# it: the text between the quotes (still escaped, so compare it with
-# quote_tf_string output), `null` for a null value, or nothing when the key is
-# absent. A trailing # or // comment is ignored.
-read_tfvars_value() {
-  awk -v key="$1" '
-    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
-      value = $0
-      sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
-      sub(/[[:space:]]+(#|\/\/).*$/, "", value)
-      sub(/[[:space:]]+$/, "", value)
-      if (value ~ /^".*"$/) value = substr(value, 2, length(value) - 2)
-      print value
-      exit
+# Read the existing tfvars file into TFVARS_ALERT_EMAIL and TFVARS_DEBUG_TOKEN:
+# the text between the quotes (still escaped, so compare it with
+# quote_tf_string output), `null` for a null value, or empty when the key is
+# absent. The whole file is parsed, and it must be in the plain form this
+# script writes: blank lines, whole-line # or // comments, and one-line
+# `key = null` or `key = "string"` assignments of app_check_debug_token and
+# alert_email, each at most once and optionally followed by a # or // comment.
+# Anything else — a block comment, a multi-line value, a repeated or unknown
+# key, text after a value — is refused, so a commented-out or shadowed line can
+# never stand in for the assignment Terraform actually reads.
+TFVARS_ALERT_EMAIL=""
+TFVARS_DEBUG_TOKEN=""
+load_tfvars() {
+  local parsed key value
+  if ! parsed="$(awk '
+    function refuse(why) {
+      printf "%s line %d: %s\n", FILENAME, FNR, why > "/dev/stderr"
+      exit 1
     }
-  ' "${TFVARS_FILE}"
+    /^[[:space:]]*$/ || /^[[:space:]]*(#|\/\/)/ { next }
+    {
+      if ($0 !~ /^[[:space:]]*[A-Za-z_][A-Za-z0-9_-]*[[:space:]]*=/) {
+        refuse("not a one-line key = value assignment or a whole-line comment")
+      }
+      key = $0
+      sub(/^[[:space:]]+/, "", key)
+      sub(/[[:space:]]*=.*$/, "", key)
+      if (key != "app_check_debug_token" && key != "alert_email") refuse("unexpected key " key)
+      if (key in seen) refuse(key " is assigned more than once")
+      seen[key] = 1
+      rest = $0
+      sub(/^[^=]*=[[:space:]]*/, "", rest)
+      if (rest ~ /^null[[:space:]]*((#|\/\/).*)?$/) {
+        print key "\tnull"
+        next
+      }
+      if (match(rest, /^"[^"]*"/)) {
+        if (substr(rest, RLENGTH + 1) !~ /^[[:space:]]*((#|\/\/).*)?$/) {
+          refuse("unexpected text after the value of " key)
+        }
+        print key "\t" substr(rest, 2, RLENGTH - 2)
+        next
+      }
+      refuse("the value of " key " is not null or a one-line quoted string")
+    }
+  ' "${TFVARS_FILE}")"; then
+    echo "Refusing: ${TFVARS_FILE} is not in the plain form this script can read safely (see above)." >&2
+    echo "Keep only whole-line comments and one-line app_check_debug_token and alert_email assignments, or delete the file to regenerate it." >&2
+    exit 1
+  fi
+  while IFS=$'\t' read -r key value; do
+    case "${key}" in
+      alert_email) TFVARS_ALERT_EMAIL="${value}" ;;
+      app_check_debug_token) TFVARS_DEBUG_TOKEN="${value}" ;;
+    esac
+  done <<< "${parsed}"
 }
 
 # An App Check debug token lets any client that holds it pass App Check, so only
@@ -238,16 +279,16 @@ if [[ -n "${APP_CHECK_DEBUG_TOKEN}" ]]; then
   refuse_debug_token_unless_mutable "APP_CHECK_DEBUG_TOKEN"
 fi
 if [[ -f "${TFVARS_FILE}" ]]; then
-  if [[ -n "${ALERT_EMAIL}" && "$(quote_tf_string "${ALERT_EMAIL}")" != "$(read_tfvars_value alert_email)" ]]; then
+  load_tfvars
+  if [[ -n "${ALERT_EMAIL}" && "$(quote_tf_string "${ALERT_EMAIL}")" != "${TFVARS_ALERT_EMAIL}" ]]; then
     refuse_tfvars_mismatch ALERT_EMAIL alert_email
   fi
-  if [[ -n "${APP_CHECK_DEBUG_TOKEN}" && "$(quote_tf_string "${APP_CHECK_DEBUG_TOKEN}")" != "$(read_tfvars_value app_check_debug_token)" ]]; then
+  if [[ -n "${APP_CHECK_DEBUG_TOKEN}" && "$(quote_tf_string "${APP_CHECK_DEBUG_TOKEN}")" != "${TFVARS_DEBUG_TOKEN}" ]]; then
     refuse_tfvars_mismatch APP_CHECK_DEBUG_TOKEN app_check_debug_token
   fi
   # The Makefile passes this file to every terraform plan/apply, so a token
   # already in it is registered exactly like a supplied one.
-  existing_debug_token="$(read_tfvars_value app_check_debug_token)"
-  if [[ "${existing_debug_token}" != "null" && -n "${existing_debug_token//[[:space:]]/}" ]]; then
+  if [[ "${TFVARS_DEBUG_TOKEN}" != "null" && -n "${TFVARS_DEBUG_TOKEN//[[:space:]]/}" ]]; then
     refuse_debug_token_unless_mutable "the app_check_debug_token in ${TFVARS_FILE}"
   fi
 else

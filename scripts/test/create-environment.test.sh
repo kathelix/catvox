@@ -105,14 +105,20 @@ reset() {
   rm -rf "$(dirname "$TFVARS")"
 }
 
-# An existing tfvars file (written the way the script writes it), plus a
-# pristine copy to compare against: write_tfvars <alert_email> <token|null>.
+# An existing tfvars file with the given content, plus a pristine copy to
+# compare against.
+write_tfvars_raw() {
+  mkdir -p "$(dirname "$TFVARS")"
+  printf '%s\n' "$1" > "$TFVARS"
+  cp "$TFVARS" "$TFVARS.before"
+}
+
+# An existing tfvars file written the way the script writes it:
+# write_tfvars <alert_email> <token|null>.
 write_tfvars() {
   local token_value="null"
   if [[ "$2" != "null" ]]; then token_value="\"$2\""; fi
-  mkdir -p "$(dirname "$TFVARS")"
-  printf 'app_check_debug_token             = %s\nalert_email           = "%s"\n' "$token_value" "$1" > "$TFVARS"
-  cp "$TFVARS" "$TFVARS.before"
+  write_tfvars_raw "$(printf 'app_check_debug_token             = %s\nalert_email           = "%s"' "$token_value" "$1")"
 }
 
 # Run with a valid baseline — mutable environment, folder parent, billing, alert
@@ -318,5 +324,53 @@ reset false
 if run ALERT_EMAIL=; then fail "C19 expected refusal without ALERT_EMAIL"; fi
 assert_refused_before_cloud C19 "ALERT_EMAIL is required."
 ok "refuses a missing ALERT_EMAIL before any cloud call"
+
+# 20. Regression: a block-commented `null` above an active token must not hide
+# that token. A protected environment used to pass preflight here, and the
+# Makefile would then apply the live token. Refused before any cloud call.
+reset true
+write_tfvars_raw "/*
+app_check_debug_token = null
+*/
+app_check_debug_token = \"${TOKEN}\"
+alert_email = \"alerts@example.com\""
+if run; then fail "C20 expected refusal of a block comment shadowing an active token"; fi
+assert_refused_before_cloud C20 "is not in the plain form this script can read safely"
+grep -qF "line 1: not a one-line key = value assignment" "$OUT" || fail "C20 should name the offending line: $(cat "$OUT")"
+ok "a block comment hiding an active debug token is refused, not read as null"
+
+# 21. Every other form outside the plain one is refused too: a one-line block
+# comment, a repeated key, an unknown key, text after a value, an unquoted value,
+# and a multi-line (heredoc) value.
+reset false
+for bad in \
+  "/* app_check_debug_token = null */
+app_check_debug_token = null
+alert_email = \"alerts@example.com\"" \
+  "alert_email = \"old@example.com\"
+alert_email = \"alerts@example.com\"" \
+  "alert_email = \"alerts@example.com\"
+project_id = \"proj\"" \
+  "alert_email = \"alerts@example.com\" extra" \
+  "alert_email = alerts@example.com" \
+  "alert_email = <<EOT
+alerts@example.com
+EOT"; do
+  write_tfvars_raw "$bad"
+  if run; then fail "C21 expected refusal for tfvars content: $bad"; fi
+  assert_refused_before_cloud C21 "is not in the plain form this script can read safely"
+done
+ok "block comments, repeated or unknown keys, trailing text, and unquoted or multi-line values are refused"
+
+# 22. Positive control: whole-line comments (one of them a commented-out token)
+# and trailing comments are read as comments, on a protected environment.
+reset true
+write_tfvars_raw "# Private values for sbx.
+// app_check_debug_token = \"${TOKEN}\"
+app_check_debug_token = null  # none on a protected tier
+alert_email = \"alerts@example.com\" // on-call"
+run || fail "C22 comments should be accepted: $(cat "$OUT")"
+cmp -s "$TFVARS.before" "$TFVARS" || fail "C22 tfvars changed"
+ok "whole-line and trailing comments are read as comments, not as assignments"
 
 echo "PASS ($pass cases)"
