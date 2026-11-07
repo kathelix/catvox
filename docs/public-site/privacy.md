@@ -19,7 +19,7 @@ CatVox is an iPhone app that reads your cat's mood and behaviour from a short vi
 
 Kathelix Ltd ("Kathelix", "we", "us") makes CatVox and is the controller of the personal data described in this policy. Kathelix Ltd is registered in **[PLACEHOLDER Q2: England and Wales, or Scotland]** with company number **[PLACEHOLDER Q2: company number]**. Our registered office is **[PLACEHOLDER Q2: registered office address]**.
 
-Email us about privacy at **[PLACEHOLDER Q1: privacy contact email address]**.
+Email us about privacy at [catvox@kathelix.com](mailto:catvox@kathelix.com).
 
 **[PLACEHOLDER Q11: if Kathelix appoints an EU representative under Article 27 of the EU GDPR, name them and their contact details here; otherwise delete this line]**
 
@@ -119,7 +119,7 @@ We don't sell or rent your data. We share it only with the service providers bel
 | Google Cloud | Runs our servers, stores clips and usage records, analyses clips with its Gemini AI models, and keeps our server logs | Clips, install ID, usage record, IP address and logs | United States; server logs on Google's global infrastructure |
 | Firebase App Check (Google) | Confirms that requests come from a genuine copy of CatVox | The App Attest proof, which it checks but doesn't keep, and short-lived tokens | Google's global infrastructure |
 | PostHog | Product analytics | Analytics events, install ID, device details and IP address | United States |
-| Google Workspace | Our email, if you contact us | Your email address and messages | **[PLACEHOLDER Q1: confirm the support address is a Kathelix Google Workspace mailbox]** |
+| Google Workspace | Our email, if you contact us | Your email address and messages | Google's global infrastructure |
 
 We may also disclose data if the law requires it, or to protect the rights, safety or property of CatVox users, Kathelix or others. If Kathelix's business is sold or reorganised, your data would move with it and stay protected by this policy.
 
@@ -127,7 +127,7 @@ Apple distributes CatVox through the App Store and provides App Attest. If you'v
 
 ## International transfers
 
-Kathelix is based in the United Kingdom, but CatVox's service providers process data in the United States. Google Cloud runs our servers and clip storage in its `us-central1` region (Iowa), analyses clips in the United States **[PLACEHOLDER Q13: true only while the Gemini upgrade (plan item P11) uses a US location, such as `us-central1` or the `us` multi-region; Google's `global` endpoint can process requests anywhere]**, and keeps usage records in its `nam5` multi-region in the United States. PostHog's US Cloud hosts our analytics. Some supporting services, such as Firebase App Check and our server logs, run on Google's global infrastructure and may process data in other countries.
+Kathelix is based in the United Kingdom, but CatVox's service providers process data in the United States. Google Cloud runs our servers and clip storage in its `us-central1` region (Iowa), analyses clips in the United States **[PLACEHOLDER Q13: true only while the Gemini upgrade (plan item P11) uses a US location, such as `us-central1` or the `us` multi-region; Google's `global` endpoint can process requests anywhere]**, and keeps usage records in its `nam5` multi-region in the United States. PostHog's US Cloud hosts our analytics. Some supporting services, such as Firebase App Check, our server logs and our email, run on Google's global infrastructure and may process data in other countries.
 
 When UK or EU data protection law applies to these transfers, they're protected by the EU–US Data Privacy Framework and its UK Extension, under which Google and PostHog are both certified, and by the Standard Contractual Clauses in their data processing terms. **[PLACEHOLDER Q11: true for PostHog only once its data processing agreement has been generated and countersigned in the PostHog app; Google's terms apply automatically.]** Contact us if you'd like more detail.
 
@@ -154,7 +154,7 @@ If you're in the UK or the European Economic Area, you have the right to:
 - **move** it to another service, where that applies;
 - **withdraw your consent** at any time, where we rely on consent.
 
-To use any of these rights, email **[PLACEHOLDER Q1: privacy contact email address]**. We'll reply within one month, free of charge.
+To use any of these rights, email [catvox@kathelix.com](mailto:catvox@kathelix.com). We'll reply within one month, free of charge.
 
 **We need your install ID to find your data.** CatVox doesn't know who you are, so the only way we can match data on our servers to you is your install ID. You can see and copy it in **[PLACEHOLDER Q7: e.g. CatVox → About (plan item P25)]**. Please include it in your email. We won't ask for more information than we need to find your data.
 
@@ -199,4 +199,4 @@ This website is hosted on GitHub Pages. GitHub logs visitors' IP addresses for s
 ## Contact us
 
 - **Company:** Kathelix Ltd, **[PLACEHOLDER Q2: registered office address]**
-- **Email:** **[PLACEHOLDER Q1: privacy contact email address]**
+- **Email:** [catvox@kathelix.com](mailto:catvox@kathelix.com)

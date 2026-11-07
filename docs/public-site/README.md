@@ -16,6 +16,7 @@ Each open item in the drafts is marked `[PLACEHOLDER Qn: …]` or `[PLACEHOLDER 
 
 - [ ] Every placeholder is resolved (`git grep -n PLACEHOLDER -- docs/public-site` returns nothing) and the draft notices are removed.
 - [ ] The one-time hosting setup below is done, and the final URLs are entered in App Store Connect and in the app's About screen (P25).
+- [ ] `catvox@kathelix.com`, the contact address on both pages, exists in Kathelix's Google Workspace (as a mailbox, alias or group) and is read regularly.
 - [ ] Everything the policy promises exists in the build that ships:
   - the analytics opt-out and the pre-upload consent screen (P26);
   - the install ID, shown and copyable in the About screen (P25);

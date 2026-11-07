@@ -6,7 +6,7 @@ Need help with CatVox, or want to tell us about a result that seemed wrong or in
 
 ## Contact us
 
-Email **[PLACEHOLDER Q1: support email address]**. We aim to reply within **[PLACEHOLDER Q10: reply time, e.g. two working days]**.
+Email [catvox@kathelix.com](mailto:catvox@kathelix.com). We aim to reply within **[PLACEHOLDER Q10: reply time, e.g. two working days]**.
 
 It helps if you include:
 
