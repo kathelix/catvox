@@ -72,7 +72,7 @@ For MVP, the user can either record a new video in-app or select an existing vid
 * **Export Failure Handling:** If rendering or export fails, the app must show a minimal user-facing error and log internal diagnostics for developer investigation.
 
 ### 3.2 Monetization & Sustainability
-* **Credit System:** 5 free scans/day to manage GCP costs.
+* **Credit System:** 5 free scans/day to manage GCP costs. The quota day is the UTC calendar day, so usage resets at 00:00 UTC for every user, whatever the device's time zone. The iOS app's local mirror of the count (the Home screen countdown and the **Read My Cat** gate) must use the same UTC day and pick up the reset without an app relaunch; the backend remains the enforcement authority.
 * **Quota Burn Rule:** The backend reserves a quota slot in Firestore after uploaded-object validation succeeds and before invoking Vertex AI. The reservation is converted into a consumed quota unit only when analysis completes successfully and a valid result payload is returned. Failed local validation attempts, rejected selections, abandoned uploads, and analysis failures before a valid result payload do not consume quota. Abandoned in-flight reservations expire automatically. See ADR-0015.
 * **Quota Error Contract:** When the daily scan quota is exhausted, backend entry points must return HTTP `429` with `Retry-After` set to the number of seconds until the next UTC quota reset, and a JSON body with `code: "daily_scan_quota_exceeded"`, a user-readable `message`, `limit: 5`, `remaining: 0`, and `resetAt` as an ISO-8601 UTC timestamp. The iOS client must treat only this machine-readable code as the quota-exceeded state; other `429` causes must fall through to normal failure handling.
 * **Pro Tier (IAP):** One-time in-app purchase for unlimited scans and watermark removal.
@@ -252,7 +252,7 @@ percentage. See ADR-0010 and ADR-0012.
     * **Vertex AI service agent** (`service-{PROJECT_NUMBER}@gcp-sa-aiplatform.iam.gserviceaccount.com`) requires `roles/storage.objectViewer` on this bucket so that Vertex AI can fetch the video via the `fileData` GCS URI. This binding is managed by Terraform (`google_storage_bucket_iam_member.vertexai_sa_raw_videos_viewer`).
 * **Firestore (Usage Guard):**
     * Collection: `usage/{userId}`.
-    * Schema: `{ count: integer, lastResetDate: string (YYYY-MM-DD), reservations: map }`.
+    * Schema: `{ count: integer, lastResetDate: string (YYYY-MM-DD, UTC day), reservations: map }`.
     * Reservation map shape:
       ```ts
       reservations: {
