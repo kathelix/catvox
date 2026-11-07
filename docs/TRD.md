@@ -443,8 +443,8 @@ GitHub Actions may call Makefile targets for the command body, but workflow YAML
 
 ### 8.1 iOS Build Pipeline
 * **Trigger:** Pushes and pull requests targeting `main` when iOS-relevant source, project, config, scripts, Makefile, or workflow files change. Manual `workflow_dispatch` runs always execute the iOS build path.
-* **Runner:** macOS 15 (Xcode 16, iOS 17+ SDK).
-* **Steps:** Checkout → install XcodeGen / `xcpretty` → `make ios-generate` → validate Dev Firebase config → structurally validate Prod config → `make ios-build-only` for the generic iOS Simulator slice (`CODE_SIGNING_ALLOWED=NO`) → `make ios-test-only` on a concrete simulator device (`platform=iOS Simulator,name=iPhone 16,OS=latest`). Xcode cannot run tests on `generic/platform=iOS Simulator`.
+* **Runner:** `macos-26` (Apple silicon) with Xcode pinned to 26.6 (iOS 26.5 SDK) through `DEVELOPER_DIR`. Apple requires Xcode 26 or later for App Store uploads; the app's deployment target stays iOS 17.0.
+* **Steps:** Checkout → install the pinned XcodeGen (checksum-verified GitHub release) and `xcpretty` → `make ios-generate` → fail if the regenerated output differs from the committed project → validate Dev Firebase config → structurally validate Prod config → `make ios-build-only` for the generic iOS Simulator slice (`CODE_SIGNING_ALLOWED=NO`) → `make ios-test-only` on a concrete simulator device (`platform=iOS Simulator,name=iPhone 17,OS=26.5`, passed on the make command line because the Makefile default `iPhone 16` is not on the runner image) → fail if SwiftPM rewrote the committed `Package.resolved`. Xcode cannot run tests on `generic/platform=iOS Simulator`.
 * **Purpose:** Catches build breaks, XcodeGen drift, and unit-test regressions on iOS-relevant changes without spending macOS CI time on docs-only edits. No device signing or provisioning profiles required.
 
 ### 8.1.1 iOS UI Test Pipeline
