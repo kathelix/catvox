@@ -1,0 +1,109 @@
+name: Pages
+
+# Publishes CatVox's public pages (privacy policy, support page and a small
+# landing page) from docs/public-site/ to GitHub Pages. See ADR-0031.
+#
+# Publishing is gated. While any published page still contains a PLACEHOLDER
+# marker or its "Draft for review" notice, the check job reports not-ready and
+# the build and deploy jobs are skipped, so merging drafts never puts them live.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/public-site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check the pages are ready to publish
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Look for placeholders and draft notices
+        id: ready
+        shell: bash
+        run: |
+          set +e
+          grep -n -E 'PLACEHOLDER|Draft for review' \
+            docs/public-site/index.md \
+            docs/public-site/privacy.md \
+            docs/public-site/support.md
+          rc=$?
+          set -e
+          case "$rc" in
+            0)
+              echo "ready=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::Not publishing: the lines above still contain placeholders or draft notices."
+              ;;
+            1)
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Could not check the pages (grep exit code $rc)."
+              exit "$rc"
+              ;;
+          esac
+
+  build:
+    name: Build the site
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      # Publish an explicit allowlist, so the folder's internal README (and
+      # anything added there later) never goes live by accident.
+      - name: Stage only the public pages
+        shell: bash
+        run: |
+          mkdir -p _public_site
+          cp docs/public-site/_config.yml \
+            docs/public-site/index.md \
+            docs/public-site/privacy.md \
+            docs/public-site/support.md \
+            _public_site/
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./_public_site
+          destination: ./_site
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

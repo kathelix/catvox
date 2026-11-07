@@ -1,9 +1,10 @@
 # CatVox public pages
 
-This folder is the source for CatVox's two public web pages:
+This folder is the source for CatVox's public web pages:
 
 - [privacy.md](privacy.md): the privacy policy (App Store audit item B1);
-- [support.md](support.md): the support page (audit item B2).
+- [support.md](support.md): the support page (audit item B2);
+- [index.md](index.md): a short landing page linking to both, plus `_config.yml` for the Jekyll build.
 
 App Store Connect needs both URLs before CatVox can be submitted. The policy must also be linked from inside the app, from the About screen (plan item P25). See [APP_STORE_COMPLIANCE_GAP_AUDIT.md](../APP_STORE_COMPLIANCE_GAP_AUDIT.md).
 
@@ -14,7 +15,7 @@ Each open item in the drafts is marked `[PLACEHOLDER Qn: …]` or `[PLACEHOLDER 
 ## Before publishing
 
 - [ ] Every placeholder is resolved (`git grep -n PLACEHOLDER -- docs/public-site` returns nothing) and the draft notices are removed.
-- [ ] Hosting is chosen, and the final URLs are recorded here, in App Store Connect and in the app's About screen (P25). The in-app link ships inside the binary, so the URL must be one Kathelix controls and never needs to change.
+- [ ] The one-time hosting setup below is done, and the final URLs are entered in App Store Connect and in the app's About screen (P25).
 - [ ] Everything the policy promises exists in the build that ships:
   - the analytics opt-out and the pre-upload consent screen (P26);
   - the install ID, shown and copyable in the About screen (P25);
@@ -43,7 +44,32 @@ Each fact in the policy comes from a file or setting below. Changing one means c
 | PostHog IP and GeoIP handling, event retention | PostHog project and plan settings; `terraform/posthog/main.tf` |
 | Scan history and deletion | `CatVox/Services/ScanHistoryStore.swift` |
 | App permissions | `project.yml` (`NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, `NSPhotoLibraryAddUsageDescription`) |
+| "This website" section | `.github/workflows/pages.yml` and ADR-0031 (GitHub Pages hosting) |
 
 ## Hosting
 
-Not decided yet. The pages must live outside Google Cloud, so they stay up even if CatVox's cloud billing lapses again. The options and the recommendation are in the pull request that added this folder. Record the decision here once it's made.
+**Decided on 2026-11-07:** the pages are hosted on GitHub Pages from this repository, served at `https://catvox.kathelix.com` ([ADR-0031](../adr/0031-host-public-pages-on-github-pages.md)). They stay outside Google Cloud, so they keep working if CatVox's cloud billing lapses. The custom domain keeps the URL stable whatever the host, which matters because the in-app link ships inside the binary.
+
+Once live, the URLs are:
+
+- Privacy policy: `https://catvox.kathelix.com/privacy`
+- Support: `https://catvox.kathelix.com/support`
+
+### How publishing works
+
+`.github/workflows/pages.yml` runs on every push to `main` that touches this folder, and on demand from the Actions tab.
+
+1. It first checks `index.md`, `privacy.md` and `support.md` for `PLACEHOLDER` markers and "Draft for review" notices. While any remain, it stops there, so merging drafts never publishes them.
+2. Once they're gone, it copies those three pages and `_config.yml`, and only those, builds them with Jekyll and deploys them.
+
+The merge that removes the last placeholder is therefore the sign-off that puts the pages live.
+
+### One-time setup (Ivan: repository and DNS settings)
+
+1. **Verify the domain.** Verify `kathelix.com` for GitHub Pages in the `kathelix` organisation's settings, by adding the TXT record GitHub asks for at name.com. Do this first: it stops anyone else claiming the subdomain.
+2. **Add the DNS record.** At name.com, add a CNAME record for `catvox` pointing to `kathelix.github.io`.
+3. **Set up Pages in this repository.** In Settings → Pages:
+   - set the source to **GitHub Actions**;
+   - set the custom domain to `catvox.kathelix.com`;
+   - tick **Enforce HTTPS** once GitHub has issued the certificate.
+4. **Publish.** Merge the change that resolves the last placeholder. The workflow then publishes, and you can re-run it by hand from the Actions tab.

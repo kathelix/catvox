@@ -190,11 +190,11 @@ No system is perfectly secure. If a personal data breach is likely to put your r
 
 ## Changes to this policy
 
-We'll update this policy when CatVox changes how it handles data, and change the date at the top. If a change is significant, for example if CatVox starts collecting a new kind of data or uses a new service provider, we'll tell you before it takes effect, in the app or on this page, and ask for your consent again where the law requires it. **[PLACEHOLDER Q3: link to earlier versions, which depends on where these pages are hosted]**
+We'll update this policy when CatVox changes how it handles data, and change the date at the top. If a change is significant, for example if CatVox starts collecting a new kind of data or uses a new service provider, we'll tell you before it takes effect, in the app or on this page, and ask for your consent again where the law requires it. Earlier versions of this policy are in its [public change history](https://github.com/kathelix/catvox/commits/main/docs/public-site/privacy.md).
 
 ## About this website
 
-**[PLACEHOLDER Q3: depends on hosting. For GitHub Pages, for example: "This website is hosted on GitHub Pages. GitHub logs visitors' IP addresses for security purposes, as its own privacy statement explains. These pages use no cookies or analytics of their own."]**
+This website is hosted on GitHub Pages. GitHub logs visitors' IP addresses for security purposes, as [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) explains. These pages use no cookies or analytics of their own.
 
 ## Contact us
 

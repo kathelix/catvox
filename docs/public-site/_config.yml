@@ -1,0 +1,5 @@
+# Jekyll settings for the public CatVox pages, built by .github/workflows/pages.yml.
+# Only index.md, privacy.md, support.md and this file are published; the
+# workflow stages that allowlist, so README.md in this folder is never built.
+title: CatVox
+description: Privacy policy and support for CatVox, the iPhone app by Kathelix Ltd.

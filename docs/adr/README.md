@@ -75,6 +75,7 @@ Each ADR should usually contain:
 | 0026 | Classify Environments by Security Tier in Config | Accepted |
 | 0027 | Place Each Terraform Root in Its Own Subdirectory | Accepted |
 | 0028 | Extract ai-loop to a Standalone Repository Consumed as a Submodule | Accepted |
+| 0031 | Host CatVox's Public Pages on GitHub Pages | Accepted |
 
 ## Workflow
 
