@@ -35,12 +35,16 @@ cannot create the WIF pool it authenticates through (ADR-0024).
 ## Decision
 
 1. **The operator deploys Functions once from the workstation while creating
-   any new environment.** This happens in `make environment-create` with
-   `RUN_FUNCTIONS_DEPLOY=1`, in the same session as the first Terraform apply.
-2. **The operator then writes the complete config before opening the switch
-   PR**, using `make environment-write-config PHASE=all` and the plist export.
-   The switch PR is fully live when opened: there are no placeholders, its
-   Terraform and PostHog plans show no changes, and smoke checks pass.
+   any new environment.** It runs `make functions-deploy` after the first
+   Terraform apply, the identity config and the PostHog provisioning, all in
+   the same operator session. A single `make environment-create` run cannot do
+   this for a brand-new environment: right after the apply, its plist export
+   validates against the xcconfig, which still holds `replace-with-*` identity
+   values, so the run stops there.
+2. **The operator then writes the backend hosts before opening the switch
+   PR**, using `make environment-write-config PHASE=hosts`. The switch PR is
+   then fully live when opened: there are no placeholders, its Terraform and
+   PostHog plans show no changes, and smoke checks pass.
 3. **After the switch PR merges, CI owns every deploy.** For a protected
    environment, the approval-gated deploy job redeploys the same code through
    the protected path. That approval is the hand-over.

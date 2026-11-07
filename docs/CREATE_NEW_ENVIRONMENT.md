@@ -141,7 +141,7 @@ Pick explicit values before running the script:
 | `CATVOX_FIREBASE_APPLE_TEAM_ID` | `QYT76L5836` | Yes |
 | `CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM` | `true` at bootstrap | Yes. Use lowercase `true` or `false` only. |
 | `APP_CHECK_DEBUG_TOKEN` | UUID4 token | Optional, mutable environments only. Presence registers the token. Refused unless `config/environments/<env>.xcconfig` exists and sets `CATVOX_ENVIRONMENT_PROTECTED = false`. |
-| `ALERT_EMAIL` | alert recipient | Required when the ignored tfvars file does not exist. If it exists, a supplied `ALERT_EMAIL` or `APP_CHECK_DEBUG_TOKEN` must match it. Otherwise unset the variable, or edit or delete the file. |
+| `ALERT_EMAIL` | alert recipient | Required when the ignored tfvars file does not exist. If it exists, a supplied `ALERT_EMAIL` or `APP_CHECK_DEBUG_TOKEN` must match it. Otherwise unset the variable, or edit or delete the file. The file must stay in the plain one-line form, with no block comments and no repeated keys. |
 | `RUN_TERRAFORM_APPLY` | `0` or `1` | Yes. Set to `1` to apply Terraform; `0` runs only the safe preview phases. |
 | `RUN_POSTHOG_TERRAFORM_APPLY` | `0` or `1` | Yes. Set to `1` to provision the environment's PostHog project/dashboard and write PostHog values into xcconfig. |
 | `RUN_FUNCTIONS_DEPLOY` | `0` or `1` | Yes. Set to `1` to deploy Cloud Functions; `0` skips the deploy. |
@@ -176,6 +176,17 @@ make environment-create
 
 If you are bootstrapping an environment that allows mutable integration tests,
 pass `APP_CHECK_DEBUG_TOKEN=<your-uuid4>`.
+
+On a **brand-new environment**, a single run cannot finish all three phases.
+Right after the Terraform apply, the plist export validates against the
+xcconfig, which still holds `replace-with-*` identity values, so the run stops
+there.
+
+1. Run it with `RUN_POSTHOG_TERRAFORM_APPLY=0` and `RUN_FUNCTIONS_DEPLOY=0`.
+2. Then continue with steps 2–4 of the Operator Checklist below: identity
+   config, PostHog, and the first Functions deploy.
+
+The order is the same for both tiers.
 
 The script:
 
@@ -466,6 +477,13 @@ the order to run them in. Every step is operator-run — they need GCP-admin
 credentials, repo-admin rights, and the environment's secret values, so they are
 not part of any PR diff or CI job.
 
+A brand-new **mutable** environment follows the same order. The differences:
+
+- the mutable values in its xcconfig;
+- an optional App Check debug token;
+- no reviewers;
+- `make functions-integration` after the deploy in step 4.
+
 Set these once for the session (substitute your environment's name and project):
 
 ```bash
@@ -473,28 +491,23 @@ export ENV=<protected-env>
 export PROJECT_ID=<protected-project-id>
 ```
 
-**1 · First Terraform apply, first Functions deploy and PostHog provision —
-operator-local (O1).** Run this locally with GCP-admin credentials.
+**1 · First Terraform apply — operator-local (O1).** Run this locally with
+GCP-admin credentials.
 
-- **Terraform:** the apply creates the WIF pool and `catvox-ci-sa` that CI
+- **What the apply creates:** the WIF pool and `catvox-ci-sa` that CI
   authenticates as. For a preserved project, it first imports the existing
-  Firebase app and Firestore. CI cannot do this, because the CI service account
-  has no `workloadIdentityPoolAdmin` (see `docs/CI_BOOTSTRAP.md`).
-- **PostHog:** with `RUN_POSTHOG_TERRAFORM_APPLY=1`, the same command:
-  1. prompts silently for the environment's PostHog API key, unless it is
-     exported;
-  2. configures or verifies the GitHub Environment;
-  3. stores `POSTHOG_API_KEY` there for CI;
-  4. applies `terraform/posthog`;
-  5. writes the public PostHog project ID and token into the xcconfig.
-- **Functions:** this is the environment's one and only operator-local deploy
-  (ADR-0030). Its backend hosts go into the environment's config PR, because the
-  release-safety check rejects placeholder hosts in a protected config. Every
-  later deploy goes through the protected CI path (step 6).
+  Firebase app and Firestore.
+- **Why not CI:** the CI service account has no `workloadIdentityPoolAdmin`
+  (see `docs/CI_BOOTSTRAP.md`).
+- **Leave PostHog and Functions off** here; steps 3 and 4 do them.
+- **The run is expected to stop** right after the apply on a brand-new
+  environment. The plist export validates the new plist against the xcconfig,
+  which still holds `replace-with-*` identity values. By then the plist file is
+  already written.
 
 ```bash
-# Authenticate as the project's GCP admin first:
-#   gcloud auth login && gcloud auth application-default login
+# Authenticate as the organization's GCP admin first (Organization
+# Prerequisites → Operator workstation).
 CATVOX_ENVIRONMENT="$ENV" \
 CATVOX_PROJECT_ID="$PROJECT_ID" \
 PROJECT_DISPLAY_NAME="Kathelix CatVox <Env>" \
@@ -511,84 +524,100 @@ CATVOX_FIREBASE_APPLE_TEAM_ID=QYT76L5836 \
 CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true \
 ALERT_EMAIL=<alerts@example.com> \
 RUN_TERRAFORM_APPLY=1 \
-RUN_POSTHOG_TERRAFORM_APPLY=1 \
-RUN_FUNCTIONS_DEPLOY=1 \
-GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko \
+RUN_POSTHOG_TERRAFORM_APPLY=0 \
+RUN_FUNCTIONS_DEPLOY=0 \
 make environment-create
 ```
 
-**2 · Fill the committed config from Terraform, the plist and the deploy
-(O4).** The values only exist after step 1:
+**2 · Fill the identity config and validate the plist (O4).** These values only
+exist after step 1's apply:
 
 - the app's `GOOGLE_APP_ID` and `API_KEY`;
-- the CI service account and WIF provider;
-- the backend hosts.
+- the CI service account and WIF provider.
 
-The API key *value* appears only inside the generated plist; Terraform outputs
+The API key *value* appears only inside the generated plist. Terraform outputs
 the app ID and the key's *ID*, not its value.
 
-1. Export the plist once.
-2. Let `make environment-write-config PHASE=all` read the Terraform outputs, the
-   plist and the deployed Cloud Run services. It writes the identity values and
-   both backend hosts into `config/environments/$ENV.xcconfig`, so nothing is
-   copied by hand. Each value is read through a clean capture, which avoids the
-   trailing-`%` paste trap of `terraform output -raw`.
+1. `make environment-write-config` reads the Terraform outputs and the plist
+   from step 1, and writes these values into `config/environments/$ENV.xcconfig`.
+   Nothing is copied by hand, and each value is read through a clean capture,
+   which avoids the trailing-`%` paste trap of `terraform output -raw`.
+2. With the identity values in place, re-exporting the plist validates.
 
 ```bash
-# Writes the plist; its trailing validation fails while the xcconfig still holds
-# replace-with-… placeholders — expected on a brand-new environment, and the
-# plist file is written before that check runs.
-CATVOX_ENVIRONMENT="$ENV" make terraform-output-firebase-plist || true
-# PHASE=all fills the identity values (CATVOX_GCP_CI_SERVICE_ACCOUNT,
-# CATVOX_GCP_WIF_PROVIDER, CATVOX_FIREBASE_APP_ID, CATVOX_FIREBASE_API_KEY)
-# and the two backend hosts from the step-1 deploy.
-CATVOX_ENVIRONMENT="$ENV" make environment-write-config PHASE=all
+CATVOX_ENVIRONMENT="$ENV" make environment-write-config          # PHASE=identity (default)
+CATVOX_ENVIRONMENT="$ENV" make terraform-output-firebase-plist   # validates now
 ```
 
-It writes the working tree only and never stages or commits. Review the diff,
-confirm no `replace-with-*` value is left, and commit
-`config/environments/$ENV.xcconfig` yourself.
+**3 · Provision PostHog and the GitHub Environment (O1, O2).**
+`make posthog-environment-provision`:
 
-**3 · Validate and commit the Firebase plist (O4).** Re-run the export — with the
-identity values now in the xcconfig it validates — then commit the plist so the
-iOS build for `$ENV` can load it:
+1. prompts silently for the environment's PostHog API key, unless it is
+   exported;
+2. configures or verifies the GitHub Environment from the xcconfig (required
+   reviewers and a `main` branch policy for a protected environment);
+3. stores `POSTHOG_API_KEY` there for CI;
+4. applies `terraform/posthog`;
+5. writes the public PostHog project ID and token into the xcconfig.
 
 ```bash
-CATVOX_ENVIRONMENT="$ENV" make terraform-output-firebase-plist
+CATVOX_ENVIRONMENT="$ENV" GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko make posthog-environment-provision
+```
+
+**4 · First Functions deploy and backend hosts — operator-local (ADR-0030).**
+This is the environment's one and only operator-local deploy.
+
+- Its backend hosts go into the environment's config PR, because the
+  release-safety check rejects placeholder hosts in a protected config.
+- Every later deploy goes through the protected CI path (step 7).
+
+```bash
+CATVOX_ENVIRONMENT="$ENV" make functions-deploy
+CATVOX_ENVIRONMENT="$ENV" make environment-write-config PHASE=hosts
+CATVOX_ENVIRONMENT="$ENV" make ios-validate-release-safety   # no placeholder left
 git add "CatVox/Resources/Firebase/GoogleService-Info-$ENV.plist" "config/environments/$ENV.xcconfig"
 ```
 
-**4 · Verify or configure the GitHub Environment from config (O2).** Repo-admin
-action. If step 1 ran PostHog provisioning, this configuration already happened
-before `POSTHOG_API_KEY` was stored; re-running is idempotent and verifies the
-live environment still matches config. `make configure-github-environment` reads
-`CATVOX_ENVIRONMENT_PROTECTED` and `CATVOX_GCP_WIF_GITHUB_REF` from
-`config/environments/$ENV.xcconfig` and applies the matching protection — a
-**protected** environment gets required reviewers plus a deployment-branch policy
-pinned to the WIF ref's branch; a **mutable** one gets no reviewers and no branch
-restriction. Pass the reviewer(s), required when the environment is protected:
+`make environment-write-config` edits the working tree only and never stages or
+commits, so review the diff before committing. For a mutable environment, run
+`make functions-integration` instead of the release-safety check, and confirm
+no `replace-with-*` value is left in its xcconfig.
+
+**5 · Verify the GitHub Environment from config (O2).** Step 3 already
+configured it. Re-running is idempotent, and it confirms the live environment
+still matches the config.
+
+`make configure-github-environment` reads `CATVOX_ENVIRONMENT_PROTECTED` and
+`CATVOX_GCP_WIF_GITHUB_REF` from `config/environments/$ENV.xcconfig` and
+applies the matching protection:
+
+- a **protected** environment gets required reviewers and a deployment-branch
+  policy pinned to the WIF ref's branch;
+- a **mutable** environment gets no reviewers and no branch restriction.
+
+Pass the reviewers; they are required when the environment is protected:
 
 ```bash
 make configure-github-environment CATVOX_ENVIRONMENT="$ENV" \
   GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko
 ```
 
-For a protected environment (`CATVOX_ENVIRONMENT_PROTECTED=true`,
-`CATVOX_GCP_WIF_GITHUB_REF=refs/heads/main`) this requires the configured
-reviewer's approval and restricts deploys to `main`; for a mutable environment it
-leaves the environment open. Re-running is idempotent. You can also manage it from
-the UI: Settings → Environments → `$ENV`.
+You can also manage it from the UI: Settings → Environments → `$ENV`.
 
-**5 · Set any remaining environment secrets (O3).** You supply the value when
-prompted. Protected environments get **no** App Check debug token. If step 1 ran
-PostHog provisioning, `POSTHOG_API_KEY` is already stored; otherwise run
-`CATVOX_ENVIRONMENT="$ENV" make posthog-environment-provision` now.
+**6 · Set any remaining environment secrets (O3), then open the config PR.**
+You supply the value when prompted.
+
+- Protected environments get **no** App Check debug token.
+- Step 3 already stored `POSTHOG_API_KEY`.
 
 ```bash
 gh secret set TF_VAR_ALERT_EMAIL --env "$ENV" --repo kathelix/catvox
 ```
 
-**6 · Promote to the protected environment.** First run the read-only preflight
+Open a PR with the plist and xcconfig from steps 2–4. Its Terraform and
+PostHog plans should show no changes. Merging it starts step 7.
+
+**7 · Promote to the protected environment.** First run the read-only preflight
 to confirm the prerequisites a first deploy needs — CI-SA roles (incl.
 `roles/cloudfunctions.admin`), WIF scoping, enabled APIs, billing, and the state
 bucket — so they surface now instead of as a mid-deploy failure:
@@ -610,7 +639,7 @@ unifies it:
 
   Approve it from the run page or Settings → Environments to promote. It only
   runs after the mutable deploy and integration tests pass. For a brand-new
-  environment, the first approved run redeploys the code from step 1 through
+  environment, the first approved run redeploys the code from step 4 through
   the protected path; from then on, CI owns every deploy (ADR-0030).
 
 ```bash
@@ -618,8 +647,8 @@ gh workflow run terraform.yml --ref main   # Terraform: manual dispatch, then ap
 # Functions: no command — approve the paused protected-environment deploy job on the next push to main
 ```
 
-**7 · Verify backend hosts + smoke.** Step 2 already wrote the hosts from the
-step-1 deploy, and the CI redeploy updates the same Cloud Run services.
+**8 · Verify backend hosts + smoke.** Step 4 already wrote the hosts from the
+first deploy, and the CI redeploy updates the same Cloud Run services.
 
 1. Re-read the hosts. This must leave `config/environments/$ENV.xcconfig`
    unchanged; if it changes anything, investigate before committing.
