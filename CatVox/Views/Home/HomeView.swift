@@ -11,6 +11,7 @@ struct HomeView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(ScanQuotaStore.self) private var quotaStore
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \SavedScan.createdAt, order: .forward) private var savedScans: [SavedScan]
 
     @State private var showSourceChoice = false
@@ -111,6 +112,12 @@ struct HomeView: View {
             if !isShowing, let recordedClipToAnalyse {
                 activeResultClip = PendingResultClip(url: recordedClipToAnalyse, sourceType: .recorded)
                 self.recordedClipToAnalyse = nil
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // A suspended app can resume after the 00:00 UTC quota reset.
+            if phase == .active {
+                quotaStore.refreshIfNewDay()
             }
         }
         .alert("Photos Import", isPresented: $showPhotoNotice) {
@@ -298,6 +305,7 @@ struct HomeView: View {
     private var ctaSection: some View {
         VStack(spacing: 12) {
             Button {
+                quotaStore.refreshIfNewDay()
                 if quotaStore.scansRemaining > 0 {
                     showSourceChoice = true
                 } else {
