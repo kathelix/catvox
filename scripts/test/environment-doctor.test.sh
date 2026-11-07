@@ -135,6 +135,8 @@ firebase.googleapis.com
 firebaseextensions.googleapis.com
 firebaseappcheck.googleapis.com
 iam.googleapis.com
+iamcredentials.googleapis.com
+sts.googleapis.com
 artifactregistry.googleapis.com
 cloudbilling.googleapis.com
 compute.googleapis.com

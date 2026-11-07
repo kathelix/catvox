@@ -364,7 +364,7 @@ The roster below is the single source of truth for the environments that current
 
 | Environment | Tier | GCP/Firebase project | iOS bundle ID | PostHog project | Firestore App Check | WIF ref scope | iOS app deletion policy | Integration-safe | App Check debug token | GitHub Environment protection | First Terraform apply | Promotion path | Destroy gate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `dev` | mutable | `kathelix-catvox-dev` | `com.kathelix.catvox.dev` | `CatVox Dev` | `UNENFORCED` | empty (any ref) | `DELETE` | listed | allowed | unprotected | via CI once identity exists | automatic on merge to `main` | `CONFIRM=destroy` |
+| `dev` | mutable | `kathelix-catvox-dev-2` | `com.kathelix.catvox.dev` | `CatVox Dev` | `UNENFORCED` | empty (any ref) | `DELETE` | listed | allowed | unprotected | operator-local | automatic on merge to `main` | `CONFIRM=destroy` |
 | `prod` | protected | `kathelix-catvox-prod` | `com.kathelix.catvox` | `CatVox Prod` | `ENFORCED` | `refs/heads/main` | `ABANDON` | excluded | never registered | required reviewers + branch policy | operator-local | manual, approval-gated | `CONFIRM=destroy` + `ALLOW_PROTECTED_DESTROY=<env>` |
 
 Each column is governed by one config key or mechanism. The table below records that key, where it is specified, and whether `scripts/validate-environment-config.mjs` (run as `make ios-validate-env-config-structure`) enforces it for protected environments — `—` marks an identity value that simply differs per environment:
