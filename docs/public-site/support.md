@@ -30,7 +30,7 @@ You need an internet connection to scan.
 
 ### How many free scans do I get?
 
-Five a day. The count starts again at midnight UTC (Coordinated Universal Time). **[PLACEHOLDER N1: the app's own counter resets at local midnight, so this is only true in the app once follow-up N1 is fixed; until then say "The count starts again every day."]** Scans that fail don't count towards the five. The home screen shows how many you have left today.
+Five a day. The count starts again at midnight UTC (Coordinated Universal Time). Scans that fail don't count towards the five. The home screen shows how many you have left today.
 
 ### Is a CatVox result veterinary advice?
 
