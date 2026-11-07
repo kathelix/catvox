@@ -40,6 +40,7 @@
 		6902F9587F273B3A3A1CFA3F /* SavedScanRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81F4FC3E926629C4422BFA0 /* SavedScanRow.swift */; };
 		696CA07C08B3CC4EDE48028D /* ScanQuotaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B4E92B6085484FE9DDDA8B /* ScanQuotaStore.swift */; };
 		8C2CEB06889AD660A126DB42 /* PersonaBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE20F331A3A02FFAF0D011F0 /* PersonaBadgeView.swift */; };
+		91FC6C25360058374E503EA8 /* GoogleService-Info-prod.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1E46557DFCEB8399C204C5C2 /* GoogleService-Info-prod.plist */; };
 		93C8E173BFE2C46040F5EA46 /* ResultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95B88E4B8C3A92CC6B7C716 /* ResultViewModel.swift */; };
 		9413B510B33BA0FEA8A3C1EF /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CDA1F15EF954A1E30D11AE3 /* ActivityView.swift */; };
 		96E2D99555D8C2D479694DEE /* ThoughtBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C3FCEEFAA51F645F5BECDC /* ThoughtBubbleView.swift */; };
@@ -89,6 +90,7 @@
 		13B1A8A31D1EAAB998A22160 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		19667502574A1D26D0A51E54 /* RecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingView.swift; sourceTree = "<group>"; };
 		19AE93315B15E827FC62B553 /* CatVoxLaunchConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatVoxLaunchConfiguration.swift; sourceTree = "<group>"; };
+		1E46557DFCEB8399C204C5C2 /* GoogleService-Info-prod.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-prod.plist"; sourceTree = "<group>"; };
 		2086AF68571F274493E9D93C /* dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = dev.xcconfig; sourceTree = "<group>"; };
 		215145685222056D654FFBD5 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
 		337DB0A3CC6E2C83B8244190 /* ExpertInsightsDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpertInsightsDrawer.swift; sourceTree = "<group>"; };
@@ -306,6 +308,7 @@
 			isa = PBXGroup;
 			children = (
 				0BAECA2F06CA2B535E21A271 /* GoogleService-Info-dev.plist */,
+				1E46557DFCEB8399C204C5C2 /* GoogleService-Info-prod.plist */,
 			);
 			path = Firebase;
 			sourceTree = "<group>";
@@ -477,6 +480,7 @@
 			files = (
 				4F25F5EF0770D910A04EE964 /* Assets.xcassets in Resources */,
 				550769A347491A4E84046589 /* GoogleService-Info-dev.plist in Resources */,
+				91FC6C25360058374E503EA8 /* GoogleService-Info-prod.plist in Resources */,
 				B84CBF26D24790B4B6F348CD /* Preview Assets.xcassets in Resources */,
 				E66C3E964387260252BC45F3 /* PrivacyInfo.xcprivacy in Resources */,
 			);
