@@ -46,6 +46,80 @@ GCP project ID, full CI service account email, full WIF provider resource name,
 GCP/Firebase Terraform inputs, PostHog Terraform identifiers, and app runtime
 values. The Makefile reads this file for local and CI automation. See ADR-0021.
 
+## Organization Prerequisites
+
+This setup happens once per Google Cloud organization, not once per
+environment. See ADR-0029.
+
+1. **Company-owned organization.** Environments live in an organization owned
+   by Kathelix Ltd (a Cloud Identity or Google Workspace domain), never under a
+   personal Google account. New organizations come with Google's
+   secure-by-default organization policies.
+2. **Operator roles.** At the organization level, the operator needs:
+   - Organization Administrator;
+   - Folder Admin;
+   - Organization Policy Administrator;
+   - Essential Contacts Admin;
+   - permission to link projects to the billing account.
+
+   Grant them in the Cloud console under IAM & Admin → IAM, with the
+   organization (not a project) selected.
+3. **Product folder.** Create one folder for CatVox, and create every
+   environment project inside it with `FOLDER_ID`:
+
+   ```bash
+   gcloud resource-manager folders create --display-name=CatVox --organization=<org-id>
+   ```
+
+4. **Folder-scoped sharing exception.** Domain-restricted sharing
+   (`iam.allowedPolicyMemberDomains`) blocks the `allUsers` invoker binding the
+   public Functions need. Override it on the folder only; the organization
+   keeps the restriction. Write this policy file:
+
+   ```yaml
+   name: folders/<folder-id>/policies/iam.allowedPolicyMemberDomains
+   spec:
+     rules:
+     - allowAll: true
+   ```
+
+   Then apply it and confirm the folder's effective policy:
+
+   ```bash
+   gcloud org-policies set-policy <policy-file>.yaml
+   gcloud org-policies describe iam.allowedPolicyMemberDomains --folder=<folder-id> --effective
+   ```
+
+5. **Essential Contacts.** Send organization-level Google notices (billing,
+   suspension, security, product deprecations) to a monitored company mailbox:
+
+   ```bash
+   gcloud essential-contacts create --email=<monitored-address> \
+     --notification-categories=all --language=en-GB --organization=<org-id>
+   ```
+
+6. **Billing.** Use a billing account owned by the company.
+   - A Free Trial account is fine while building.
+   - Upgrade it to paid before a protected environment takes public traffic,
+     and before the trial's end date. When a trial ends, Google stops every
+     resource billed to it.
+7. **Firebase terms.** Open the Firebase console once with the operator
+   account and accept the terms before the first
+   `firebase projects:addfirebase`.
+8. **Operator workstation.** If the workstation also holds other Google
+   identities, keep CatVox's separate:
+   - **gcloud:** use a dedicated configuration, selected per command with
+     `CLOUDSDK_ACTIVE_CONFIG_NAME=<config>`.
+   - **Application Default Credentials:** keep them in a separate file.
+     1. Run `CLOUDSDK_CONFIG=<dir> gcloud auth application-default login`.
+     2. Point Terraform and the Node scripts at it with
+        `GOOGLE_APPLICATION_CREDENTIALS=<dir>/application_default_credentials.json`.
+     3. If a call fails because the credentials have no quota project, set one
+        once the environment's project exists:
+        `CLOUDSDK_CONFIG=<dir> gcloud auth application-default set-quota-project <project-id>`.
+   - **Firebase CLI:** run `firebase login:add <account>`, then
+     `firebase login:use <account>` in the repository folder.
+
 ## Inputs
 
 Pick explicit values before running the script:
@@ -53,10 +127,10 @@ Pick explicit values before running the script:
 | Variable | Example | Required |
 |---|---|---|
 | `CATVOX_ENVIRONMENT` | `<env>` | Yes |
-| `CATVOX_PROJECT_ID` | `kathelix-catvox-<env>` | Yes |
+| `CATVOX_PROJECT_ID` | `kathelix-catvox-<env>` | Yes. Project IDs are permanent: never reuse a deleted project's ID. |
 | `PROJECT_DISPLAY_NAME` | `Kathelix CatVox <Env>` | Yes |
-| `ORGANIZATION_ID` or `FOLDER_ID` | `1032067916665` | Optional, but usually needed for new projects |
-| `BILLING_ACCOUNT_ID` | billing account ID | Optional; if omitted, link billing manually before deploy |
+| `FOLDER_ID` (or `ORGANIZATION_ID`) | `<catvox-folder-id>` | Yes, exactly one, numeric. Use the CatVox folder so its sharing exception applies (see Organization Prerequisites). An existing project must already sit under that parent. |
+| `BILLING_ACCOUNT_ID` | `<billing-account-id>` | Yes. It is linked on every run and must read back as enabled before Firebase or any bucket is created. |
 | `CATVOX_FUNCTION_REGION` | `us-central1` | Yes |
 | `CATVOX_FIRESTORE_LOCATION` | `nam5` | Yes |
 | `CATVOX_TF_STATE_BUCKET` | `catvox-tf-state-kathelix-catvox-<env>` | Yes |
@@ -66,8 +140,8 @@ Pick explicit values before running the script:
 | `CATVOX_FIREBASE_IOS_APP_DELETION_POLICY` | `ABANDON` | Yes. Use `ABANDON` for protected environments; use `DELETE` only for disposable mutable environments. |
 | `CATVOX_FIREBASE_APPLE_TEAM_ID` | `QYT76L5836` | Yes |
 | `CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM` | `true` at bootstrap | Yes. Use lowercase `true` or `false` only. |
-| `APP_CHECK_DEBUG_TOKEN` | UUID4 token | Optional. Presence registers the token. |
-| `ALERT_EMAIL` | alert recipient | Required when the ignored tfvars file does not already exist |
+| `APP_CHECK_DEBUG_TOKEN` | UUID4 token | Optional, mutable environments only. Presence registers the token. Refused unless `config/environments/<env>.xcconfig` exists and sets `CATVOX_ENVIRONMENT_PROTECTED = false`. |
+| `ALERT_EMAIL` | alert recipient | Required when the ignored tfvars file does not exist. If it exists, a supplied `ALERT_EMAIL` or `APP_CHECK_DEBUG_TOKEN` must match it. Otherwise unset the variable, or edit or delete the file. |
 | `RUN_TERRAFORM_APPLY` | `0` or `1` | Yes. Set to `1` to apply Terraform; `0` runs only the safe preview phases. |
 | `RUN_POSTHOG_TERRAFORM_APPLY` | `0` or `1` | Yes. Set to `1` to provision the environment's PostHog project/dashboard and write PostHog values into xcconfig. |
 | `RUN_FUNCTIONS_DEPLOY` | `0` or `1` | Yes. Set to `1` to deploy Cloud Functions; `0` skips the deploy. |
@@ -82,7 +156,7 @@ From the repository root:
 CATVOX_ENVIRONMENT=<env> \
 CATVOX_PROJECT_ID=<project-id> \
 PROJECT_DISPLAY_NAME="Kathelix CatVox <Env>" \
-ORGANIZATION_ID=<org-id> \
+FOLDER_ID=<catvox-folder-id> \
 BILLING_ACCOUNT_ID=<billing-account-id> \
 CATVOX_FUNCTION_REGION=us-central1 \
 CATVOX_FIRESTORE_LOCATION=nam5 \
@@ -106,11 +180,11 @@ pass `APP_CHECK_DEBUG_TOKEN=<your-uuid4>`.
 The script:
 
 1. Creates or verifies the GCP project.
-2. Links billing when `BILLING_ACCOUNT_ID` is provided.
+2. Links billing to `BILLING_ACCOUNT_ID` and checks that it reads back as enabled.
 3. Enables Firebase on the project.
 4. Bootstraps the GCS Terraform state bucket with versioning.
 5. Creates the Cloud Functions Gen 2 source bucket so Terraform can manage its IAM before the first deploy.
-6. Creates secrets-only `terraform/core/env/<env>.tfvars` if it does not already exist.
+6. Creates secrets-only `terraform/core/env/<env>.tfvars` if it does not already exist. An existing file must agree with any supplied `ALERT_EMAIL` or `APP_CHECK_DEBUG_TOKEN`.
 7. Runs Terraform init and plan.
 8. Optionally applies Terraform.
 9. Writes and validates `CatVox/Resources/Firebase/GoogleService-Info-<env>.plist`.
@@ -137,9 +211,15 @@ Two helpers support the steps that follow, both environment-agnostic
   state bucket) and fails fast with a fix hint instead of surfacing them as a
   mid-deploy error.
 - `make environment-write-config` — writes the resolved non-secret values into
-  `config/environments/<env>.xcconfig` from Terraform outputs + the plist
-  (`PHASE=identity`, the default) and the deployed Cloud Run hosts
-  (`PHASE=hosts`). It edits the working tree only; you review and commit.
+  `config/environments/<env>.xcconfig`. It takes them from:
+  - the Terraform outputs and the plist (`PHASE=identity`, the default);
+  - the deployed Cloud Run hosts (`PHASE=hosts`);
+  - all of the above together (`PHASE=all`).
+
+  Before writing anything, it checks that every Terraform root it reads belongs
+  to this environment. The hosts phase fails on a function that is not deployed,
+  unless `ALLOW_MISSING_HOSTS=1`. It edits the working tree only; you review and
+  commit.
 
 ## GitHub Environment Secrets
 
@@ -284,7 +364,9 @@ the iOS client; it is safe to commit, unlike `POSTHOG_API_KEY`.
 After Functions deploy, fill the host-only values in
 `config/environments/<env>.xcconfig`. `CATVOX_ENVIRONMENT=<env> make
 environment-write-config PHASE=hosts` reads the deployed hosts and writes them
-(hostname only) for you; the commands below show the underlying values:
+(hostname only) for you. It fails if either function is not deployed, unless you
+pass `ALLOW_MISSING_HOSTS=1` to skip one deliberately. The commands below show
+the underlying values:
 
 ```bash
 gcloud functions describe getSignedUploadURL \
@@ -388,20 +470,27 @@ Set these once for the session (substitute your environment's name and project):
 
 ```bash
 export ENV=<protected-env>
-export PROJECT_ID=kathelix-catvox-<protected-env>
+export PROJECT_ID=<protected-project-id>
 ```
 
-**1 · First Terraform apply + PostHog provision — operator-local (O1).** Run
-locally with GCP-admin credentials: it creates the WIF pool and `catvox-ci-sa`
-that CI authenticates as, and (for a preserved project) imports the existing
-Firebase app + Firestore before applying. CI cannot do this — the CI SA has no
-`workloadIdentityPoolAdmin` (see `docs/CI_BOOTSTRAP.md`). If
-`RUN_POSTHOG_TERRAFORM_APPLY=1`, the same command prompts silently for the
-environment's PostHog API key (unless exported), configures/verifies the GitHub
-Environment, stores `POSTHOG_API_KEY` there for CI, applies `terraform/posthog`,
-and writes the public PostHog project ID/token into the xcconfig. Functions are
-deliberately not deployed here; protected environments deploy only through the
-protected CI path (step 6).
+**1 · First Terraform apply, first Functions deploy and PostHog provision —
+operator-local (O1).** Run this locally with GCP-admin credentials.
+
+- **Terraform:** the apply creates the WIF pool and `catvox-ci-sa` that CI
+  authenticates as. For a preserved project, it first imports the existing
+  Firebase app and Firestore. CI cannot do this, because the CI service account
+  has no `workloadIdentityPoolAdmin` (see `docs/CI_BOOTSTRAP.md`).
+- **PostHog:** with `RUN_POSTHOG_TERRAFORM_APPLY=1`, the same command:
+  1. prompts silently for the environment's PostHog API key, unless it is
+     exported;
+  2. configures or verifies the GitHub Environment;
+  3. stores `POSTHOG_API_KEY` there for CI;
+  4. applies `terraform/posthog`;
+  5. writes the public PostHog project ID and token into the xcconfig.
+- **Functions:** this is the environment's one and only operator-local deploy
+  (ADR-0030). Its backend hosts go into the environment's config PR, because the
+  release-safety check rejects placeholder hosts in a protected config. Every
+  later deploy goes through the protected CI path (step 6).
 
 ```bash
 # Authenticate as the project's GCP admin first:
@@ -409,6 +498,8 @@ protected CI path (step 6).
 CATVOX_ENVIRONMENT="$ENV" \
 CATVOX_PROJECT_ID="$PROJECT_ID" \
 PROJECT_DISPLAY_NAME="Kathelix CatVox <Env>" \
+FOLDER_ID=<catvox-folder-id> \
+BILLING_ACCOUNT_ID=<billing-account-id> \
 CATVOX_FUNCTION_REGION=us-central1 \
 CATVOX_FIRESTORE_LOCATION=nam5 \
 CATVOX_TF_STATE_BUCKET="catvox-tf-state-$PROJECT_ID" \
@@ -421,34 +512,42 @@ CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true \
 ALERT_EMAIL=<alerts@example.com> \
 RUN_TERRAFORM_APPLY=1 \
 RUN_POSTHOG_TERRAFORM_APPLY=1 \
-RUN_FUNCTIONS_DEPLOY=0 \
+RUN_FUNCTIONS_DEPLOY=1 \
 GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko \
 make environment-create
 ```
 
-**2 · Fill the committed identity config from Terraform + the plist (O4).** The
-app's `GOOGLE_APP_ID`/`API_KEY` and the CI-SA / WIF provider values exist only
-after step 1's apply, and the API key *value* is exposed only inside the
-generated plist (Terraform outputs the app id and the key *id*, not the key
-value). Export the plist once, then let `make environment-write-config` read the
-Terraform outputs + the plist and write the four identity values into
-`config/environments/$ENV.xcconfig` for you — no hand-copying, and immune to the
-`terraform output -raw` trailing-`%` paste trap (it reads each value through a
-clean capture):
+**2 · Fill the committed config from Terraform, the plist and the deploy
+(O4).** The values only exist after step 1:
+
+- the app's `GOOGLE_APP_ID` and `API_KEY`;
+- the CI service account and WIF provider;
+- the backend hosts.
+
+The API key *value* appears only inside the generated plist; Terraform outputs
+the app ID and the key's *ID*, not its value.
+
+1. Export the plist once.
+2. Let `make environment-write-config PHASE=all` read the Terraform outputs, the
+   plist and the deployed Cloud Run services. It writes the identity values and
+   both backend hosts into `config/environments/$ENV.xcconfig`, so nothing is
+   copied by hand. Each value is read through a clean capture, which avoids the
+   trailing-`%` paste trap of `terraform output -raw`.
 
 ```bash
 # Writes the plist; its trailing validation fails while the xcconfig still holds
 # replace-with-… placeholders — expected on a brand-new environment, and the
 # plist file is written before that check runs.
 CATVOX_ENVIRONMENT="$ENV" make terraform-output-firebase-plist || true
-# PHASE defaults to identity: fills CATVOX_GCP_CI_SERVICE_ACCOUNT,
-# CATVOX_GCP_WIF_PROVIDER, CATVOX_FIREBASE_APP_ID, CATVOX_FIREBASE_API_KEY.
-CATVOX_ENVIRONMENT="$ENV" make environment-write-config
+# PHASE=all fills the identity values (CATVOX_GCP_CI_SERVICE_ACCOUNT,
+# CATVOX_GCP_WIF_PROVIDER, CATVOX_FIREBASE_APP_ID, CATVOX_FIREBASE_API_KEY)
+# and the two backend hosts from the step-1 deploy.
+CATVOX_ENVIRONMENT="$ENV" make environment-write-config PHASE=all
 ```
 
-It writes the working tree only and never stages or commits — review the diff and
-commit `config/environments/$ENV.xcconfig` yourself. The two Cloud Run host
-placeholders are filled after the deploy, in step 7.
+It writes the working tree only and never stages or commits. Review the diff,
+confirm no `replace-with-*` value is left, and commit
+`config/environments/$ENV.xcconfig` yourself.
 
 **3 · Validate and commit the Firebase plist (O4).** Re-run the export — with the
 identity values now in the xcconfig it validates — then commit the plist so the
@@ -503,30 +602,37 @@ unifies it:
 
 - **Terraform (apply infra first):** a manual dispatch from `main`, approved on the
   `$ENV` Environment — `gh workflow run terraform.yml --ref main`.
-- **Functions:** automatic in the push pipeline. On merge to `main` it deploys to
-  the mutable environment, runs its integration suite, then **pauses the
-  protected-environment deploy job for your approval** on the `$ENV` Environment;
-  approve it (the run page, or Settings → Environments) to promote. It only runs
-  after the mutable deploy + integration pass.
+- **Functions:** automatic in the push pipeline. On merge to `main` it:
+  1. deploys to the mutable environment;
+  2. runs that environment's integration suite;
+  3. **pauses the protected-environment deploy job for your approval** on the
+     `$ENV` Environment.
+
+  Approve it from the run page or Settings → Environments to promote. It only
+  runs after the mutable deploy and integration tests pass. For a brand-new
+  environment, the first approved run redeploys the code from step 1 through
+  the protected path; from then on, CI owns every deploy (ADR-0030).
 
 ```bash
 gh workflow run terraform.yml --ref main   # Terraform: manual dispatch, then approve
 # Functions: no command — approve the paused protected-environment deploy job on the next push to main
 ```
 
-**7 · Fill backend host config + verify.** After the deploy, fill the two Cloud
-Run host keys from the deployed functions, then run the non-invasive smoke and
-follow `docs/SMOKE_CHECKLIST.md`. Never run Firestore-mutating integration tests
-against a protected environment.
+**7 · Verify backend hosts + smoke.** Step 2 already wrote the hosts from the
+step-1 deploy, and the CI redeploy updates the same Cloud Run services.
+
+1. Re-read the hosts. This must leave `config/environments/$ENV.xcconfig`
+   unchanged; if it changes anything, investigate before committing.
+2. Run the non-invasive smoke check and follow `docs/SMOKE_CHECKLIST.md`.
+
+Never run Firestore-mutating integration tests against a protected environment.
 
 ```bash
-# Reads the deployed getSignedUploadURL / analyseVideo hosts and writes
-# CATVOX_SIGNED_UPLOAD_URL_HOST / CATVOX_ANALYSE_VIDEO_HOST (hostname only).
+# Reads the deployed getSignedUploadURL / analyseVideo hosts; expect no diff.
 CATVOX_ENVIRONMENT="$ENV" make environment-write-config PHASE=hosts
+git diff --exit-code -- "config/environments/$ENV.xcconfig"
 CATVOX_ENVIRONMENT="$ENV" make smoke
 ```
-
-Review and commit the host changes (working tree only, as in step 2).
 
 Once verified, `docs/CUTOVER_AND_ROLLBACK.md` covers the pre-launch cutover
 checklist for taking the environment live.

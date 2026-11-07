@@ -360,9 +360,11 @@ additionally pins `assertion.ref` to `refs/heads/main` via
   `environment:` — a job without it is denied at token exchange.
 - Prod has no automatic per-PR `terraform plan`; the Prod plan/apply path is
   manual and environment-gated (protected `prod` Environment on `main`).
-- The first Prod `terraform apply` is operator-local (it creates the WIF pool and
-  `catvox-ci-sa`); every later apply and all Functions deploys go through the
-  protected CI path.
+- A new environment's first `terraform apply` and first Functions deploy are
+  operator-local. The apply creates the WIF pool and `catvox-ci-sa`, and the
+  deploy produces the backend hosts its config PR must carry (ADR-0030). For a
+  protected environment, every later apply and all Functions deploys go
+  through the protected CI path.
 - `catvox-ci-sa` holds `editor` + `projectIamAdmin` + `serviceAccountAdmin` +
   `secretAccessor`, but NOT `workloadIdentityPoolAdmin` — it can refresh the WIF
   pool/provider but not update them. Apply any change to the WIF pool, provider,
