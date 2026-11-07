@@ -161,7 +161,8 @@ assert_core_backend() {
     echo "ERROR: terraform/core is initialised against state bucket '${actual}', but ${ENVIRONMENT} uses '${expected}' (${ENV_CONFIG})." >&2
     echo "Its outputs belong to another environment. Run 'make terraform-init CATVOX_ENVIRONMENT=${ENVIRONMENT}', then re-run." >&2
     if [[ -n "${CATVOX_TF_STATE_BUCKET:-}" && "${CATVOX_TF_STATE_BUCKET}" != "$expected" ]]; then
-      echo "CATVOX_TF_STATE_BUCKET=${CATVOX_TF_STATE_BUCKET} is set in your shell and overrides the xcconfig in make; unset it first." >&2
+      echo "CATVOX_TF_STATE_BUCKET=${CATVOX_TF_STATE_BUCKET} is set in your environment and overrides the xcconfig in make." >&2
+      echo "If that is ${ENVIRONMENT}'s bucket, update CATVOX_TF_STATE_BUCKET in ${ENV_CONFIG} first; otherwise unset it." >&2
     fi
     exit 1
   fi

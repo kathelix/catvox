@@ -239,6 +239,12 @@ if run identity MOCK_STATE_BUCKET=catvox-tf-state-other >/dev/null 2>"$SANDBOX/e
   fail "S12 expected refusal when terraform/core belongs to another environment"
 fi
 assert_refused_untouched S12 "terraform/core is initialised against state bucket 'catvox-tf-state-other', but sbx uses 'catvox-tf-state-proj'"
+# With the other bucket exported (as during a project move, before the xcconfig
+# is updated), the refusal says which of the two to fix.
+if run identity MOCK_STATE_BUCKET=catvox-tf-state-other CATVOX_TF_STATE_BUCKET=catvox-tf-state-other >/dev/null 2>"$SANDBOX/err"; then
+  fail "S12 expected refusal with a conflicting CATVOX_TF_STATE_BUCKET export"
+fi
+assert_refused_untouched S12 "If that is sbx's bucket, update CATVOX_TF_STATE_BUCKET in ${CFG} first; otherwise unset it."
 ok "identity refuses a terraform/core backend that belongs to another environment"
 
 # 13. The xcconfig names no state bucket -> refuse (nothing to check against).
