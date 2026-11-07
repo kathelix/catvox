@@ -61,6 +61,8 @@ privacy manifest.
 
 ## Public Privacy Policy Points
 
+The draft public policy itself is [public-site/privacy.md](public-site/privacy.md), with the support page and a pre-publication checklist in the same folder. Keep it in step with this file and with `CatVox/PrivacyInfo.xcprivacy`.
+
 The public privacy policy should state, in plain user-facing language:
 
 - CatVox uploads selected or recorded cat video clips, including any audio in
