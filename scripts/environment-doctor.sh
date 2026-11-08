@@ -17,8 +17,10 @@
 #     roles/iam.workloadIdentityUser impersonation binding for this env
 #   - the Cloud Functions Gen2 build SA (compute default SA) holds its build
 #     grants: artifactregistry.writer, logging.logWriter, actAs on the backend SA
-#     (plus WARN-only storage.objectAdmin on the gcf-v2-sources bucket)
-#   - (WARN-only) the Functions Artifact Registry cleanup policy
+#     (plus WARN-only storage.objectAdmin on the gcf-v2-sources bucket, read
+#     from the bucket's IAM policy as JSON; a failed read gets its own WARN)
+#   - (WARN-only) the cleanup policy on gcf-artifacts, the Artifact Registry
+#     repository the Functions builds push to
 #   - the Terraform state bucket is reachable
 #
 # Exit non-zero if any check FAILs; WARNs do not fail the run.
@@ -34,6 +36,9 @@ STATE_BUCKET="${CATVOX_TF_STATE_BUCKET:-catvox-tf-state-${PROJECT_ID}}"
 WIF_PROVIDER_RESOURCE="${CATVOX_GCP_WIF_PROVIDER:-}"
 
 command -v gcloud >/dev/null 2>&1 || { echo "Missing required tool: gcloud" >&2; exit 1; }
+# node parses the bucket IAM policy JSON (check 4d); `make doctor` already
+# lists it as a core prerequisite.
+command -v node >/dev/null 2>&1 || { echo "Missing required tool: node" >&2; exit 1; }
 
 # Roles catvox-ci-sa must hold (keep in sync with terraform/core/iam.tf).
 # cloudfunctions.admin is the one roles/editor excludes (it grants
@@ -90,6 +95,48 @@ warns=0
 pass() { printf '  PASS: %s\n' "$*"; }
 warn() { printf '  WARN: %s\n' "$*" >&2; warns=$((warns + 1)); }
 fail() { printf '  FAIL: %s\n' "$*" >&2; problems=$((problems + 1)); }
+
+# Run a read-only gcloud command with its stdout in CAPTURED_OUT and the first
+# line of its stderr in CAPTURED_ERR; return gcloud's exit status. Capturing
+# first means no pipe for gcloud to die on, and keeps its error to report.
+CAPTURED_OUT=""
+CAPTURED_ERR=""
+capture_gcloud() {
+  local err_file rc=0
+  CAPTURED_OUT=""
+  CAPTURED_ERR=""
+  if ! err_file="$(mktemp "${TMPDIR:-/tmp}/catvox-doctor.XXXXXX")"; then
+    CAPTURED_ERR="could not create a temporary file for gcloud's error output"
+    return 1
+  fi
+  CAPTURED_OUT="$(gcloud "$@" 2>"$err_file")" || rc=$?
+  CAPTURED_ERR="$(sed -n '/[^[:space:]]/{p;q;}' "$err_file")"
+  rm -f "$err_file"
+  return "$rc"
+}
+
+# Read an IAM policy as JSON on stdin and answer whether it binds role $1 to
+# member $2: exit 0 if it does, 20 if it does not. Any other exit status (input
+# that is not a policy, or node itself failing) means the answer is unknown, so
+# it can never read as a missing grant.
+policy_binds() {
+  node -e '
+    const [role, member] = process.argv.slice(1);
+    let policy;
+    try {
+      policy = JSON.parse(require("fs").readFileSync(0, "utf8"));
+    } catch {
+      process.exit(2);
+    }
+    if (policy === null || typeof policy !== "object" || Array.isArray(policy)) process.exit(2);
+    const bindings = policy.bindings === undefined ? [] : policy.bindings;
+    if (!Array.isArray(bindings)) process.exit(2);
+    const bound = bindings.some((b) =>
+      b !== null && typeof b === "object" && b.role === role &&
+      Array.isArray(b.members) && b.members.includes(member));
+    process.exit(bound ? 0 : 20);
+  ' "$1" "$2"
+}
 
 echo "environment-doctor: ${ENVIRONMENT} (${PROJECT_ID})"
 echo
@@ -217,36 +264,55 @@ else
   fi
   # The gcf-v2-sources bucket grant is count-gated (CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM)
   # and the bucket may not exist before the first deploy — WARN, never FAIL.
+  # `gcloud storage buckets get-iam-policy` takes no list flags (gcloud 592
+  # rejects --filter), so read the whole policy as JSON and look for the
+  # binding in it. A failed or unreadable read gets its own WARN: it says
+  # nothing about the grant.
   if [[ -n "$REGION" ]]; then
     src_bucket="gcf-v2-sources-${PROJECT_NUMBER}-${REGION}"
     if ! gcloud storage buckets describe "gs://${src_bucket}" --project "$PROJECT_ID" >/dev/null 2>&1; then
       warn "gcf-v2-sources bucket not present yet — created on first deploy"
-    elif gcloud storage buckets get-iam-policy "gs://${src_bucket}" --project "$PROJECT_ID" \
-           --flatten='bindings[].members' \
-           --filter="bindings.role:roles/storage.objectAdmin" \
-           --format='value(bindings.members)' 2>/dev/null | grep -qF "serviceAccount:${COMPUTE_SA}"; then
-      pass "compute SA has storage.objectAdmin on ${src_bucket}"
     else
-      warn "compute SA lacks storage.objectAdmin on ${src_bucket} — Gen2 source fetch may 403 if CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true"
+      src_iam_rc=0
+      capture_gcloud storage buckets get-iam-policy "gs://${src_bucket}" --project "$PROJECT_ID" --format=json || src_iam_rc=$?
+      if [[ "$src_iam_rc" -ne 0 ]]; then
+        warn "could not read the IAM policy of ${src_bucket} (gcloud exited ${src_iam_rc}: ${CAPTURED_ERR:-no error output}) — storage.objectAdmin for the compute SA is unverified"
+      else
+        grant_rc=0
+        policy_binds roles/storage.objectAdmin "serviceAccount:${COMPUTE_SA}" <<< "$CAPTURED_OUT" || grant_rc=$?
+        case "$grant_rc" in
+          0) pass "compute SA has storage.objectAdmin on ${src_bucket}" ;;
+          20) warn "compute SA lacks storage.objectAdmin on ${src_bucket} — Gen2 source fetch may 403 if CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true" ;;
+          *) warn "could not parse the IAM policy gcloud returned for ${src_bucket} (exit ${grant_rc}) — storage.objectAdmin for the compute SA is unverified" ;;
+        esac
+      fi
     fi
   fi
 fi
 
-# 5 — Functions Artifact Registry cleanup policy (informational; set by deploy).
-echo "Artifact Registry (Functions images):"
+# 5 — Functions build-image cleanup policy (informational). Gen2 builds push to
+# gcf-artifacts, the repository Cloud Functions creates on the first deploy, and
+# that is where `make functions-deploy` sets the cleanup policy (firebase
+# functions:artifacts:setpolicy). The Terraform-managed catvox-functions
+# repository receives no images, so checking it could never pass.
+FUNCTIONS_IMAGE_REPO="gcf-artifacts"
+echo "Artifact Registry (${FUNCTIONS_IMAGE_REPO}, the Functions build images):"
 if [[ -z "$REGION" ]]; then
   warn "CATVOX_FUNCTION_REGION unset — skipped Artifact Registry check"
-elif gcloud artifacts repositories describe catvox-functions \
+elif gcloud artifacts repositories describe "$FUNCTIONS_IMAGE_REPO" \
        --location="$REGION" --project "$PROJECT_ID" --format='value(name)' >/dev/null 2>&1; then
-  policy="$(gcloud artifacts repositories describe catvox-functions \
+  policy="$(gcloud artifacts repositories describe "$FUNCTIONS_IMAGE_REPO" \
     --location="$REGION" --project "$PROJECT_ID" --format='value(cleanupPolicies)' 2>/dev/null || true)"
   if [[ -n "$policy" ]]; then
-    pass "Functions artifact repo has a cleanup policy"
+    pass "${FUNCTIONS_IMAGE_REPO} has a cleanup policy"
   else
-    warn "Functions artifact repo has no cleanup policy — 'make functions-deploy' sets it"
+    # The command `make functions-deploy` runs before deploying (keep the two in
+    # step). On a brand-new project that run comes before the repository exists,
+    # so the first deploy leaves the policy unset.
+    warn "${FUNCTIONS_IMAGE_REPO} has no cleanup policy — set it with: firebase functions:artifacts:setpolicy --project ${PROJECT_ID} --location ${REGION} --days 7 --non-interactive --force"
   fi
 else
-  warn "Functions artifact repo not present yet — created on first deploy; 'make functions-deploy' sets the cleanup policy"
+  warn "${FUNCTIONS_IMAGE_REPO} not present yet — the first Functions deploy creates it"
 fi
 
 # 6 — Terraform state bucket reachable.

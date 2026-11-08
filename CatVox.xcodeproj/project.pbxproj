@@ -895,7 +895,7 @@
 			repositoryURL = "https://github.com/PostHog/posthog-ios";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 3.57.2;
+				minimumVersion = 3.93.6;
 			};
 		};
 		D7BA911B6F02A6019FF37084 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -903,7 +903,7 @@
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 12.13.0;
+				minimumVersion = 13.1.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

@@ -24,6 +24,32 @@ make ios-ui-test IOS_UI_TEST_DESTINATION="platform=iOS Simulator,name=iPhone 17,
 Pass the destination on the make command line. The Makefile assigns it with
 `:=`, so an environment-variable prefix is silently ignored.
 
+## Oldest Supported iOS
+
+The Build workflow's `ios-floor` job runs this suite and the unit tests on the
+app's deployment target: iOS 17.0 on an iPhone SE (2nd generation) simulator,
+the smallest screen iOS 17 supports. It runs every Monday on `main` and on
+manual dispatch, not on pull requests. A failed run of either suite there gets
+one retry, because a new simulator can time out before any test runs on a slow
+runner.
+To run it on a branch:
+
+```bash
+gh workflow run build.yml --ref <branch>
+```
+
+To run the suite on iOS 17.0 locally, install the runtime first. It is a
+7.56 GB download, so check free space with `df -h` before you start.
+
+```bash
+xcodebuild -downloadPlatform iOS -buildVersion 21A328
+xcrun simctl create "iPhone SE (2nd generation)" "iPhone SE (2nd generation)" com.apple.CoreSimulator.SimRuntime.iOS-17-0
+make ios-ui-test IOS_UI_TEST_DESTINATION="platform=iOS Simulator,name=iPhone SE (2nd generation),OS=17.0"
+```
+
+Remove the runtime afterwards with `xcrun simctl runtime delete <UUID>`, using
+the UUID that `xcrun simctl runtime list` prints for build 21A328.
+
 ## Launch Arguments
 
 The UI test target launches the app with:
