@@ -44,19 +44,24 @@ Notes:
 The PostHog SDK also ships its own privacy manifest. App Store Connect answers
 must account for both CatVox-owned collection and third-party SDK collection.
 
-The current built app bundle contains privacy manifests from:
+The current built app bundle (PostHog iOS SDK 3.93.6 and Firebase 13.1.1, as
+pinned in `Package.resolved`) contains these privacy manifests:
 
 | Bundle | Manifest reports |
 |---|---|
 | `CatVox.app/PrivacyInfo.xcprivacy` | User ID, product interaction, photos or videos, audio data, UserDefaults, file timestamp API usage |
-| `PostHog_PostHog.bundle/PrivacyInfo.xcprivacy` | Product interaction, other usage data, UserDefaults API usage |
-| `PLCrashReporter_CrashReporter.bundle/PrivacyInfo.xcprivacy` | Crash data and other diagnostic data |
+| `PostHog_PostHog.bundle/PrivacyInfo.xcprivacy` | Product interaction, other usage data, UserDefaults, system boot time, file timestamp API usage |
+| `PostHog_PHPLCrashReporter.bundle/PrivacyInfo.xcprivacy` | Crash data and other diagnostic data |
+| Six `Firebase_*` and `GoogleUtilities_*` bundles | No collected data; some report UserDefaults API usage |
 
-CatVox disables PostHog crash autocapture in `AnalyticsService`, but the
-PostHog Swift package still includes `PLCrashReporter` as a packaged dependency
-and Xcode includes that dependency's privacy manifest in the built bundle. Before
-submission, generate Xcode's privacy report from the archive and make sure App
-Store Connect answers match the final report.
+CatVox disables PostHog crash autocapture in `AnalyticsService`
+(`errorTrackingConfig.autoCapture = false`), so the SDK never installs its
+crash-reporting integration. The PostHog package still builds the crash reporter
+it vendors (its `PHPLCrashReporter` target, a copy of PLCrashReporter), and Xcode
+includes that target's privacy manifest in the built bundle. Before submission,
+generate Xcode's privacy report from the archive and make sure App Store Connect
+answers match the final report. Re-check this table after every PostHog or
+Firebase SDK update, because a new version can change its manifest.
 
 ## Required-Reason APIs
 

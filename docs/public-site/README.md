@@ -44,7 +44,7 @@ Each fact in the policy comes from a file or setting below. Changing one means c
 | Usage record contents, five scans a day, failed scans not counted | `functions/src/usageGuard.ts`, `functions/src/analyse.ts` |
 | Server log contents | `functions/src/analyse.ts`, `functions/src/appCheck.ts`, `functions/src/usageGuard.ts` (logger calls) |
 | Install ID | `CatVox/Services/UserIdentityStore.swift` |
-| Analytics events, their properties and the SDK switches | `CatVox/Services/AnalyticsService.swift` and its call sites, `docs/app-store-privacy.md` |
+| Analytics events, their properties and the SDK switches | `CatVox/Services/AnalyticsService.swift` and its call sites, `docs/app-store-privacy.md`, and the PostHog SDK version in `project.yml`, since a new SDK version can add features that are on by default |
 | PostHog IP and GeoIP handling, event retention | PostHog project and plan settings; `terraform/posthog/main.tf` |
 | Scan history and deletion | `CatVox/Services/ScanHistoryStore.swift` |
 | App permissions | `project.yml` (`NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, `NSPhotoLibraryAddUsageDescription`) |
