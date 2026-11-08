@@ -160,7 +160,7 @@ run() {
     CATVOX_IOS_BUNDLE_ID=com.example.sbx CATVOX_FIREBASE_IOS_APP_DISPLAY_NAME="CatVox Sandbox iOS" \
     CATVOX_FIREBASE_IOS_APP_DELETION_POLICY=DELETE CATVOX_FIREBASE_APPLE_TEAM_ID=TEAM123456 \
     CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true \
-    RUN_TERRAFORM_APPLY=0 RUN_POSTHOG_TERRAFORM_APPLY=0 RUN_FUNCTIONS_DEPLOY=0 \
+    RUN_TERRAFORM_APPLY=0 RUN_POSTHOG_TERRAFORM_APPLY=0 RUN_FUNCTIONS_DEPLOY=0 CREATE_PROJECT=1 \
     FOLDER_ID=1234 BILLING_ACCOUNT_ID=0X0X0X-0X0X0X-0X0X0X ALERT_EMAIL=alerts@example.com \
     "$@" bash "$SCRIPT" >"$OUT" 2>&1 || rc=$?
   # The project lookup's temporary file must not outlive the run, whatever its outcome.
@@ -201,7 +201,7 @@ assert_no_mutation_after() {  # case-id
 # 1. Positive control: mutable environment, folder parent, new project, debug token.
 reset false
 run APP_CHECK_DEBUG_TOKEN="$TOKEN" || fail "C1 valid run should succeed: $(cat "$OUT")"
-grep -qF "GCP project proj was not found (or this account cannot see it); creating it." "$OUT" || fail "C1 gcloud's not-found answer should read as absent: $(cat "$OUT")"
+grep -qF "GCP project proj was not found (or this account cannot see it); creating it, as CREATE_PROJECT=1 asks." "$OUT" || fail "C1 gcloud's not-found answer with CREATE_PROJECT=1 should create the project: $(cat "$OUT")"
 called "gcloud projects create proj --name=CatVox Sandbox --folder=1234" || fail "C1 project not created under the folder: $(cat "$CALLS")"
 not_called "--organization" || fail "C1 must not pass --organization"
 called "gcloud billing projects link proj --billing-account=0X0X0X-0X0X0X-0X0X0X" || fail "C1 billing not linked"
@@ -257,10 +257,12 @@ ok "refuses an existing project under another parent (type or ID), before any mu
 
 # 7. Positive control: existing project under the requested parent.
 reset false
-run MOCK_PROJECT_EXISTS=1 || fail "C7 existing project under the requested folder should proceed: $(cat "$OUT")"
-not_called "gcloud projects create" || fail "C7 must not re-create an existing project"
-called "gcloud billing projects link" || fail "C7 should go on to link billing"
-ok "existing project under the requested folder proceeds without being re-created"
+for create in 1 0; do
+  run MOCK_PROJECT_EXISTS=1 CREATE_PROJECT="$create" || fail "C7 existing project under the requested folder should proceed (CREATE_PROJECT=$create): $(cat "$OUT")"
+  not_called "gcloud projects create" || fail "C7 must not re-create an existing project (CREATE_PROJECT=$create)"
+  called "gcloud billing projects link" || fail "C7 should go on to link billing (CREATE_PROJECT=$create)"
+done
+ok "existing project under the requested folder proceeds without being re-created, whatever CREATE_PROJECT says"
 
 # 8. BILLING_ACCOUNT_ID missing -> refuse.
 reset false
@@ -403,10 +405,11 @@ cmp -s "$TFVARS.before" "$TFVARS" || fail "C22 tfvars changed"
 ok "whole-line and trailing comments are read as comments, not as assignments"
 
 # 23. A project lookup that fails for any reason other than gcloud's "not found
-# or not visible" answer for this project stops the run before any mutation and
-# quotes gcloud's error: expired credentials, invalid credentials, a permission
-# error for this project with another cause, and the "not visible" answer for
-# some other project. Each used to read as a missing project.
+# or not visible" answer for this project stops the run before any mutation,
+# even with CREATE_PROJECT=1 (the baseline), and quotes gcloud's error: expired
+# credentials, invalid credentials, a permission error for this project with
+# another cause, and the "not visible" answer for some other project. Each used
+# to read as a missing project.
 reset false
 for err in expired unauthenticated disabled other-instance; do
   if run MOCK_DESCRIBE_ERROR="$err"; then fail "C23 expected refusal when the project lookup fails ($err)"; fi
@@ -427,5 +430,26 @@ for state in DELETE_REQUESTED ""; do
   not_called "billing projects link" || fail "C24 must not link billing"
 done
 ok "an existing project that is not ACTIVE is refused before any mutation"
+
+# 25. gcloud's "not found, or not visible" answer is inconclusive, so without
+# CREATE_PROJECT=1 the run stops before any change, quoting gcloud's answer and
+# naming the flag, instead of creating a project the operator did not ask for.
+reset false
+if run CREATE_PROJECT=0; then fail "C25 expected refusal to create a project without CREATE_PROJECT=1"; fi
+grep -qF "GCP project proj was not found, or the active gcloud account cannot see it; stopping before any change." "$OUT" || fail "C25 message: $(cat "$OUT")"
+grep -qF "does not have permission to access projects instance [proj] (or it may not exist)" "$OUT" || fail "C25 should quote gcloud's answer: $(cat "$OUT")"
+grep -qF "re-run with CREATE_PROJECT=1 to create it under folder 1234." "$OUT" || fail "C25 should name the flag: $(cat "$OUT")"
+assert_no_mutation_after C25
+not_called "billing projects link" || fail "C25 must not link billing"
+ok "a project gcloud cannot see is not created without CREATE_PROJECT=1, and the run stops before any mutation"
+
+# 26. CREATE_PROJECT is required and must be 0 or 1, like the RUN_* flags:
+# refused before any cloud call.
+reset false
+if run CREATE_PROJECT=; then fail "C26 expected refusal without CREATE_PROJECT"; fi
+assert_refused_before_cloud C26 "CREATE_PROJECT is required."
+if run CREATE_PROJECT=yes; then fail "C26 expected refusal for CREATE_PROJECT=yes"; fi
+assert_refused_before_cloud C26 "CREATE_PROJECT must be 0 or 1."
+ok "a missing or invalid CREATE_PROJECT is refused before any cloud call"
 
 echo "PASS ($pass cases)"
