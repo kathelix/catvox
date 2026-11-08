@@ -225,6 +225,10 @@ The `schemes:` block in `project.yml` is intentional — XcodeGen silently delet
 
 Treat generated `.xcodeproj` and `.xcscheme` diffs as a rendered contract, not meaningless noise. If the rendered project and `project.yml` disagree, fix `project.yml` first, then regenerate.
 
+CI enforces the contract. After `make ios-generate`, the Build workflow fails if any file changed, appeared or disappeared (`git status --porcelain`). That covers the `.xcodeproj`, its schemes and the generated `CatVox/Info.plist`. The same job also fails if the build rewrites the committed `Package.resolved`, so commit the re-resolved file with any package bump.
+
+CI runs the XcodeGen version pinned in `.github/workflows/build.yml` (`XCODEGEN_VERSION`, verified against `XCODEGEN_SHA256`). Regenerate with that same version before committing; check yours with `xcodegen --version`. To move the pin, update both values together: the SHA-256 is the `xcodegen.zip` asset digest from `gh api repos/yonaskolb/XcodeGen/releases/tags/<version>`. Commit any regenerated output in the same PR (PR #167).
+
 Before finalizing any change that touches `project.yml`, generated project files, schemes, signing, or test targets, explicitly inspect the generated diff for semantic drift:
 
 - `LastUpgradeCheck` in `CatVox.xcodeproj/project.pbxproj`
@@ -271,6 +275,10 @@ make ios-build
 ```bash
 make ios-test
 ```
+
+- To pick the simulator, override `IOS_TEST_DESTINATION` / `IOS_UI_TEST_DESTINATION` **on the make command line**: `make ios-test IOS_TEST_DESTINATION="platform=iOS Simulator,name=iPhone 17,OS=26.5"`. The Makefile assigns them with `:=`, so an environment-variable prefix (`IOS_TEST_DESTINATION=… make ios-test`) is silently ignored. CI pins its simulator this way (`IOS_SIMULATOR_DESTINATION` in `build.yml`), because the Makefile default `iPhone 16` is not on the runner image.
+- If an iOS target fails with an `xcpretty` stack trace (`invalid byte sequence in US-ASCII`), the shell has no UTF-8 locale; the build itself may be fine. Agent shells often lack one; GitHub runners set it. Run iOS targets with `LC_ALL=en_US.UTF-8`.
+- Mind the shared Mac's disk. Resolving the Firebase package graph downloads about 1 GB of gRPC/abseil binaries into each DerivedData folder. Check `df -h` before resolving or building, reuse the project's DerivedData, and don't clone extra copies (e.g. `-clonedSourcePackagesDirPath` into a scratch directory). Concurrent sessions filled the disk on 2026-11-07.
 
 - UI tests use a separate native XCUITest target and are intentionally not merged into the unit-test or backend integration suites:
 
