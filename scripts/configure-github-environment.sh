@@ -116,8 +116,18 @@ expected_branch="$(printf '%s' "$branch" | normalize_list)"
 actual_reviewers="$(gh api "repos/${REPO}/environments/${ENVIRONMENT}" \
   --jq '[.protection_rules[]? | select(.type=="required_reviewers") | .reviewers[]?.reviewer.login] | join(",")' \
   | normalize_list)"
-actual_branches="$(gh api "repos/${REPO}/environments/${ENVIRONMENT}/deployment-branch-policies" \
-  --jq '[.branch_policies[]?.name] | join(",")' 2>/dev/null | normalize_list || true)"
+# GitHub answers the branch-policy list with a 404 when the environment has no
+# custom branch policies (deployment_branch_policy is null), and `gh api` prints
+# that error body on stdout even with --jq. So read the list only when custom
+# policies are on, and let a failed read stop the run rather than be parsed as
+# policy names.
+custom_branch_policies="$(gh api "repos/${REPO}/environments/${ENVIRONMENT}" \
+  --jq '.deployment_branch_policy.custom_branch_policies // false')"
+actual_branches=""
+if [[ "$custom_branch_policies" == "true" ]]; then
+  actual_branches="$(gh api "repos/${REPO}/environments/${ENVIRONMENT}/deployment-branch-policies" \
+    --jq '[.branch_policies[]?.name] | join(",")' | normalize_list)"
+fi
 
 problems=0
 if [[ "$actual_reviewers" != "$expected_reviewers" ]]; then

@@ -11,11 +11,11 @@ final class CatVoxAppConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.environmentName, "dev")
         XCTAssertEqual(
             configuration.signedUploadURLEndpoint,
-            URL(string: "https://getsigneduploadurl-o2aj5rh53a-uc.a.run.app")!
+            URL(string: "https://getsigneduploadurl-2orfuuynna-uc.a.run.app")!
         )
         XCTAssertEqual(
             configuration.analyseVideoEndpoint,
-            URL(string: "https://analysevideo-o2aj5rh53a-uc.a.run.app")!
+            URL(string: "https://analysevideo-2orfuuynna-uc.a.run.app")!
         )
         XCTAssertNil(configuration.postHogProjectToken)
         XCTAssertEqual(configuration.postHogHost, URL(string: "https://us.i.posthog.com")!)
