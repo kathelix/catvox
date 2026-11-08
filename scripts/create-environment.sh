@@ -529,7 +529,10 @@ else
 fi
 
 if [[ "${RUN_FUNCTIONS_DEPLOY}" == "1" ]]; then
-  # make functions-deploy sets the Artifact Registry cleanup policy itself.
+  # make functions-deploy sets the Artifact Registry cleanup policy itself,
+  # except in a brand-new project: gcf-artifacts does not exist yet when it
+  # runs, so that first deploy ends non-zero after deploying, and
+  # `make environment-doctor` prints the command that sets the policy.
   make functions-deploy \
     CATVOX_ENVIRONMENT="${ENVIRONMENT}" \
     CATVOX_PROJECT_ID="${PROJECT_ID}"

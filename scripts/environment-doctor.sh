@@ -19,7 +19,8 @@
 #     grants: artifactregistry.writer, logging.logWriter, actAs on the backend SA
 #     (plus WARN-only storage.objectAdmin on the gcf-v2-sources bucket, read
 #     from the bucket's IAM policy as JSON; a failed read gets its own WARN)
-#   - (WARN-only) the Functions Artifact Registry cleanup policy
+#   - (WARN-only) the cleanup policy on gcf-artifacts, the Artifact Registry
+#     repository the Functions builds push to
 #   - the Terraform state bucket is reachable
 #
 # Exit non-zero if any check FAILs; WARNs do not fail the run.
@@ -289,21 +290,29 @@ else
   fi
 fi
 
-# 5 — Functions Artifact Registry cleanup policy (informational; set by deploy).
-echo "Artifact Registry (Functions images):"
+# 5 — Functions build-image cleanup policy (informational). Gen2 builds push to
+# gcf-artifacts, the repository Cloud Functions creates on the first deploy, and
+# that is where `make functions-deploy` sets the cleanup policy (firebase
+# functions:artifacts:setpolicy). The Terraform-managed catvox-functions
+# repository receives no images, so checking it could never pass.
+FUNCTIONS_IMAGE_REPO="gcf-artifacts"
+echo "Artifact Registry (${FUNCTIONS_IMAGE_REPO}, the Functions build images):"
 if [[ -z "$REGION" ]]; then
   warn "CATVOX_FUNCTION_REGION unset — skipped Artifact Registry check"
-elif gcloud artifacts repositories describe catvox-functions \
+elif gcloud artifacts repositories describe "$FUNCTIONS_IMAGE_REPO" \
        --location="$REGION" --project "$PROJECT_ID" --format='value(name)' >/dev/null 2>&1; then
-  policy="$(gcloud artifacts repositories describe catvox-functions \
+  policy="$(gcloud artifacts repositories describe "$FUNCTIONS_IMAGE_REPO" \
     --location="$REGION" --project "$PROJECT_ID" --format='value(cleanupPolicies)' 2>/dev/null || true)"
   if [[ -n "$policy" ]]; then
-    pass "Functions artifact repo has a cleanup policy"
+    pass "${FUNCTIONS_IMAGE_REPO} has a cleanup policy"
   else
-    warn "Functions artifact repo has no cleanup policy — 'make functions-deploy' sets it"
+    # The command `make functions-deploy` runs before deploying (keep the two in
+    # step). On a brand-new project that run comes before the repository exists,
+    # so the first deploy leaves the policy unset.
+    warn "${FUNCTIONS_IMAGE_REPO} has no cleanup policy — set it with: firebase functions:artifacts:setpolicy --project ${PROJECT_ID} --location ${REGION} --days 7 --non-interactive --force"
   fi
 else
-  warn "Functions artifact repo not present yet — created on first deploy; 'make functions-deploy' sets the cleanup policy"
+  warn "${FUNCTIONS_IMAGE_REPO} not present yet — the first Functions deploy creates it"
 fi
 
 # 6 — Terraform state bucket reachable.

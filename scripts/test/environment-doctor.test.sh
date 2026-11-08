@@ -94,11 +94,24 @@ JSON
 roles/logging.logWriter}";;
   *"get-iam-policy"*) printf '%s\n' "${MOCK_ROLES:-}";;
   *"artifacts repositories describe"*)
-     [[ -n "${MOCK_NO_ARTIFACT:-}" ]] && exit 1
+     # As on a deployed project: gcf-artifacts holds the Functions build images
+     # and carries the cleanup policy (MOCK_NO_ARTIFACT removes it,
+     # MOCK_ARTIFACT_POLICY replaces the policy). The Terraform-managed
+     # catvox-functions exists but receives no images and has no policy. Any
+     # other repository is missing (the doctor reads only the exit status).
+     repo="$4"
+     case "$repo" in
+       gcf-artifacts)
+         [[ -n "${MOCK_NO_ARTIFACT:-}" ]] && exit 1
+         policy="${MOCK_ARTIFACT_POLICY-firebase-functions-cleanup}";;
+       catvox-functions) policy="";;
+       *) exit 1;;
+     esac
      case "$args" in
-       *cleanupPolicies*) printf '%s\n' "${MOCK_ARTIFACT_POLICY:-keep-7d}";;
-       *) printf 'projects/proj/locations/us-central1/repositories/catvox-functions\n';;
-     esac;;
+       *cleanupPolicies*) [[ -n "$policy" ]] && printf '%s\n' "$policy";;
+       *) printf 'projects/proj/locations/us-central1/repositories/%s\n' "$repo";;
+     esac
+     exit 0;;
   *"buckets describe"*gcf-v2-sources*) [[ -n "${MOCK_NO_SRCBUCKET:-}" ]] && exit 1; exit 0;;
   *"buckets describe"*) [[ -n "${MOCK_NO_BUCKET:-}" ]] && exit 1; exit 0;;
   *) exit 1;;
@@ -159,6 +172,9 @@ SRC_LACKS="compute SA lacks storage.objectAdmin on gcf-v2-sources-123456-us-cent
 run >"$SANDBOX/out1" 2>&1 || fail "S1 all-good run should pass: $(cat "$SANDBOX/out1")"
 grep -q "environment-doctor passed." "$SANDBOX/out1" || fail "S1 missing pass line"
 grep -qF "$SRC_PASS" "$SANDBOX/out1" || fail "S1 source bucket grant should PASS: $(cat "$SANDBOX/out1")"
+# The cleanup policy is read from gcf-artifacts, where the builds push and the
+# deploy sets it; the old check read catvox-functions, which never has one.
+grep -qF "PASS: gcf-artifacts has a cleanup policy" "$SANDBOX/out1" || fail "S1 gcf-artifacts cleanup policy should PASS: $(cat "$SANDBOX/out1")"
 grep -qF "Summary for sbx: 0 problem(s), 0 warning(s)." "$SANDBOX/out1" || fail "S1 expected no warnings: $(cat "$SANDBOX/out1")"
 ok "all-good environment passes"
 
@@ -187,9 +203,9 @@ if run MOCK_APIS="$APIS_MISSING" >"$SANDBOX/out5" 2>&1; then fail "S5 expected f
 grep -q "disabled APIs" "$SANDBOX/out5" || fail "S5 should report disabled APIs"
 ok "a disabled API fails"
 
-# 6. Artifact repo absent -> WARN only, run still passes.
+# 6. gcf-artifacts absent (before the first deploy) -> WARN only, run still passes.
 run MOCK_NO_ARTIFACT=1 >"$SANDBOX/out6" 2>&1 || fail "S6 artifact-absent should not fail the run"
-grep -q "not present yet" "$SANDBOX/out6" || fail "S6 expected artifact WARN"
+grep -qF "WARN: gcf-artifacts not present yet — the first Functions deploy creates it" "$SANDBOX/out6" || fail "S6 expected artifact WARN: $(cat "$SANDBOX/out6")"
 ok "absent artifact repo is WARN-only"
 
 # 7. Billing not linked -> fail.
@@ -277,5 +293,12 @@ ln -s "$SANDBOX/bin/gcloud" "$SANDBOX/bin-no-node/gcloud"
 if run PATH="$SANDBOX/bin-no-node" >"$SANDBOX/out18" 2>&1; then fail "S18 expected failure without node: $(cat "$SANDBOX/out18")"; fi
 grep -qF "Missing required tool: node" "$SANDBOX/out18" || fail "S18 should name node: $(cat "$SANDBOX/out18")"
 ok "missing node is refused up front"
+
+# 19. gcf-artifacts exists without a cleanup policy, as a brand-new project's
+# first deploy leaves it -> WARN only, with the command that sets the policy.
+run MOCK_ARTIFACT_POLICY= >"$SANDBOX/out19" 2>&1 || fail "S19 a missing cleanup policy should be WARN-only: $(cat "$SANDBOX/out19")"
+grep -qF "WARN: gcf-artifacts has no cleanup policy — set it with: firebase functions:artifacts:setpolicy --project proj --location us-central1 --days 7 --non-interactive --force" "$SANDBOX/out19" \
+  || fail "S19 expected a missing-policy WARN with the setpolicy command: $(cat "$SANDBOX/out19")"
+ok "gcf-artifacts without a cleanup policy is WARN-only and names the fix"
 
 echo "PASS ($pass cases)"
