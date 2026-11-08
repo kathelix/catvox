@@ -15,6 +15,7 @@ CatVox collects the following data types for MVP:
 | Product interaction | Analytics | Yes | No |
 | Photos or videos | App functionality | Yes | No |
 | Audio data | App functionality | Yes | No |
+| Coarse location | Analytics | Yes | No |
 
 Notes:
 
@@ -26,6 +27,16 @@ Notes:
   share actions.
 - **Photos or videos** and **Audio data** cover user-provided clips recorded in
   app or selected from Photos and uploaded for AI analysis.
+- **Coarse location** is the approximate location (city, region and country)
+  that PostHog estimates from each analytics event's IP address, its default
+  GeoIP enrichment. It is attached to the event and the PostHog person profile,
+  so it is linked to the install ID. Ivan decided on 2026-11-08 to keep it, for
+  audience insight (decision Q5 on the privacy policy PR). He also decided to turn
+  on PostHog's "Discard client IP data" (`posthog_project_settings.anonymize_ips`,
+  provider 1.0.20 or later). GeoIP runs before the IP is discarded, so PostHog
+  keeps the location but not the raw IP address. It is not yet declared
+  in `CatVox/PrivacyInfo.xcprivacy`: add `NSPrivacyCollectedDataTypeCoarseLocation`
+  (linked, not tracking, purpose Analytics) before submission.
 - CatVox does not use collected data for third-party advertising or tracking.
 - CatVox analytics must not include raw video, AI-generated cat thoughts, local
   file paths, Photos asset identifiers, or owner-entered content.
@@ -33,19 +44,24 @@ Notes:
 The PostHog SDK also ships its own privacy manifest. App Store Connect answers
 must account for both CatVox-owned collection and third-party SDK collection.
 
-The current built app bundle contains privacy manifests from:
+The current built app bundle (PostHog iOS SDK 3.93.6 and Firebase 13.1.1, as
+pinned in `Package.resolved`) contains these privacy manifests:
 
 | Bundle | Manifest reports |
 |---|---|
 | `CatVox.app/PrivacyInfo.xcprivacy` | User ID, product interaction, photos or videos, audio data, UserDefaults, file timestamp API usage |
-| `PostHog_PostHog.bundle/PrivacyInfo.xcprivacy` | Product interaction, other usage data, UserDefaults API usage |
-| `PLCrashReporter_CrashReporter.bundle/PrivacyInfo.xcprivacy` | Crash data and other diagnostic data |
+| `PostHog_PostHog.bundle/PrivacyInfo.xcprivacy` | Product interaction, other usage data, UserDefaults, system boot time, file timestamp API usage |
+| `PostHog_PHPLCrashReporter.bundle/PrivacyInfo.xcprivacy` | Crash data and other diagnostic data |
+| Six `Firebase_*` and `GoogleUtilities_*` bundles | No collected data; some report UserDefaults API usage |
 
-CatVox disables PostHog crash autocapture in `AnalyticsService`, but the
-PostHog Swift package still includes `PLCrashReporter` as a packaged dependency
-and Xcode includes that dependency's privacy manifest in the built bundle. Before
-submission, generate Xcode's privacy report from the archive and make sure App
-Store Connect answers match the final report.
+CatVox disables PostHog crash autocapture in `AnalyticsService`
+(`errorTrackingConfig.autoCapture = false`), so the SDK never installs its
+crash-reporting integration. The PostHog package still builds the crash reporter
+it vendors (its `PHPLCrashReporter` target, a copy of PLCrashReporter), and Xcode
+includes that target's privacy manifest in the built bundle. Before submission,
+generate Xcode's privacy report from the archive and make sure App Store Connect
+answers match the final report. Re-check this table after every PostHog or
+Firebase SDK update, because a new version can change its manifest.
 
 ## Required-Reason APIs
 
@@ -61,6 +77,8 @@ privacy manifest.
 
 ## Public Privacy Policy Points
 
+The draft public policy itself is [public-site/privacy.md](public-site/privacy.md), with the support page and a pre-publication checklist in the same folder. Keep it in step with this file and with `CatVox/PrivacyInfo.xcprivacy`.
+
 The public privacy policy should state, in plain user-facing language:
 
 - CatVox uploads selected or recorded cat video clips, including any audio in
@@ -70,6 +88,8 @@ The public privacy policy should state, in plain user-facing language:
   validation, quota, and share/export behavior.
 - Analytics use an anonymous per-install identifier and do not include raw
   videos, Photos asset identifiers, local file paths, or generated cat thoughts.
+- PostHog estimates each user's approximate location (city, region and
+  country) from the IP address of analytics events.
 - CatVox does not sell user data and does not use third-party advertising
   tracking.
 - PostHog crash autocapture is disabled in app configuration. If crash reporting

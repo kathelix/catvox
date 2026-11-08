@@ -77,6 +77,7 @@ Each ADR should usually contain:
 | 0028 | Extract ai-loop to a Standalone Repository Consumed as a Submodule | Accepted |
 | 0029 | Host CatVox in a Kathelix Ltd Google Cloud Organization Folder | Accepted |
 | 0030 | Deploy a New Environment Operator-Locally Before Its Config Lands | Accepted |
+| 0031 | Host CatVox's Public Pages on GitHub Pages | Accepted |
 
 ## Workflow
 

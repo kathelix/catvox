@@ -102,6 +102,7 @@ catvox/
 │   ├── functions.yml              # Functions build + deploy (dev auto, prod manual) + Dev integration
 │   ├── functions-deploy.yml       # Reusable Functions deploy for one environment
 │   ├── markdownlint.yml           # Markdown lint for docs/ and README changes
+│   ├── pages.yml                  # Publishes docs/public-site/ (privacy policy, support) to GitHub Pages
 │   ├── terraform.yml              # GCP Terraform plan (PR) + dev apply (merge) + prod apply (manual)
 │   ├── terraform-apply.yml        # Reusable Terraform apply for one environment
 │   └── posthog-terraform.yml      # PostHog Terraform plan (PR) + apply (merge to main)
@@ -398,6 +399,7 @@ GitHub Actions WIF produces an external-account Application Default Credentials 
 | `functions.yml` (deploy: dev) | Merge to `main` touching Functions inputs | Auto-deploy to dev via reusable `functions-deploy.yml`, then Dev integration tests |
 | `functions.yml` (deploy: prod) | Push to `main`, after dev integration (`needs: integration-after-deploy`) | Approval-gated prod deploy via `functions-deploy.yml`; the protected `prod` Environment pauses it for reviewer approval; no integration |
 | `markdownlint.yml` | Push/PR touching `docs/**`, top-level `README.md`, `.markdownlint.jsonc`, or workflow | markdownlint quality check for repository docs |
+| `pages.yml` | Push to `main` touching `docs/public-site/**` or workflow; manual `workflow_dispatch` | Publishes the privacy policy and support page to GitHub Pages; skips publishing while any page still has a placeholder or draft notice (ADR-0031) |
 | `terraform.yml` (plan) | PR touching `terraform/core/**`, `Makefile`, or workflow | fmt-check → init → validate → plan → PR comment (only when the plan has changes or a check failed) |
 | `terraform.yml` (apply: dev) | Merge to `main` touching Terraform inputs | Auto-apply to dev via reusable `terraform-apply.yml` |
 | `terraform.yml` (apply: prod) | Manual `workflow_dispatch` from `main` | Prod apply via `terraform-apply.yml`; protected `prod` Environment gates it |
