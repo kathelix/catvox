@@ -1,0 +1,145 @@
+name: Install XcodeGen
+description: >-
+  Install a pinned XcodeGen release on a macOS runner and put it on PATH. The
+  release zip is checked against its SHA-256 and kept in the GitHub Actions
+  cache, so a cache hit needs no network.
+
+inputs:
+  version:
+    description: XcodeGen release tag, e.g. 2.46.0 (XCODEGEN_VERSION in build.yml).
+    required: true
+  sha256:
+    description: >-
+      SHA-256 of that release's xcodegen.zip asset (XCODEGEN_SHA256 in
+      build.yml). Every zip is checked against it before it is unzipped,
+      including a zip restored from the cache.
+    required: true
+  token:
+    description: >-
+      Token for the GitHub REST API, used only when the github.com download
+      fails. The job's default token can read the public release.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    # The key names both pins, so moving either one starts a new cache entry.
+    # The zip stays outside the checkout: the Build job fails on any
+    # untracked file there.
+    - name: Check inputs
+      id: prepare
+      shell: bash
+      env:
+        CATVOX_XCODEGEN_VERSION: ${{ inputs.version }}
+        CATVOX_XCODEGEN_SHA256: ${{ inputs.sha256 }}
+      run: |
+        set -euo pipefail
+        if [[ ! "$CATVOX_XCODEGEN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::The version input must be a release tag such as 2.46.0, got '${CATVOX_XCODEGEN_VERSION}'."
+          exit 1
+        fi
+        if [[ ! "$CATVOX_XCODEGEN_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+          echo "::error::The sha256 input must be 64 lowercase hex digits, got '${CATVOX_XCODEGEN_SHA256}'."
+          exit 1
+        fi
+        {
+          echo "key=xcodegen-${CATVOX_XCODEGEN_VERSION}-${CATVOX_XCODEGEN_SHA256}"
+          echo "zip=${RUNNER_TEMP}/xcodegen-cache/xcodegen.zip"
+        } >> "$GITHUB_OUTPUT"
+
+    # Exact key only, no restore-keys: a zip for another version or digest
+    # must never come back.
+    - name: Restore the XcodeGen zip from the Actions cache
+      id: cache
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ steps.prepare.outputs.zip }}
+        key: ${{ steps.prepare.outputs.key }}
+
+    - name: Install XcodeGen
+      shell: bash
+      env:
+        CATVOX_XCODEGEN_VERSION: ${{ inputs.version }}
+        CATVOX_XCODEGEN_SHA256: ${{ inputs.sha256 }}
+        CATVOX_XCODEGEN_ZIP: ${{ steps.prepare.outputs.zip }}
+        CATVOX_XCODEGEN_CACHE_KEY: ${{ steps.prepare.outputs.key }}
+        CATVOX_GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        version="$CATVOX_XCODEGEN_VERSION"
+        zip="$CATVOX_XCODEGEN_ZIP"
+
+        verify() {
+          echo "${CATVOX_XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
+        }
+
+        # Every attempt gets 20 s to connect and 120 s in all, and a failed
+        # attempt is retried after 10 s; each caller sets its retry window.
+        # --retry-all-errors is needed: with --fail, curl reports an HTTP/2
+        # error response such as 504 as exit 56, which --retry alone does not
+        # retry.
+        fetch() {
+          curl --fail --no-progress-meter --location \
+            --connect-timeout 20 --max-time 120 \
+            --retry-all-errors --retry-delay 10 \
+            "$@"
+        }
+
+        # The cache key names the digest, but only this check proves that the
+        # restored bytes match it.
+        if [[ -f "$zip" ]] && ! verify; then
+          echo "::warning title=XcodeGen cache mismatch::The cached xcodegen.zip does not match the pinned SHA-256, so it was discarded and downloaded again. Delete the entry with: gh cache delete ${CATVOX_XCODEGEN_CACHE_KEY}"
+          rm -f "$zip"
+        fi
+
+        if [[ -f "$zip" ]]; then
+          echo "Using the XcodeGen ${version} zip restored from the Actions cache."
+        else
+          mkdir -p "$(dirname "$zip")"
+          echo "Downloading XcodeGen ${version} from its GitHub release."
+          # github.com and the REST API fail separately. On 2026-11-08,
+          # github.com answered release downloads with HTTP 504 for over 20
+          # minutes while the API served the same asset. So github.com gets
+          # three attempts, and the API gets the long window: up to 5 minutes.
+          if ! fetch --retry 2 --retry-max-time 60 --output "$zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${version}/xcodegen.zip"; then
+            echo "::warning title=XcodeGen download fallback::Downloading XcodeGen from github.com failed, so it was fetched through the GitHub REST API."
+            release="$RUNNER_TEMP/xcodegen-release.json"
+            fetch --retry 8 --retry-max-time 300 --output "$release" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${CATVOX_GITHUB_TOKEN}" \
+              "https://api.github.com/repos/yonaskolb/XcodeGen/releases/tags/${version}"
+            asset_id="$(jq -r '[.assets[] | select(.name == "xcodegen.zip")][0].id // empty' "$release")"
+            if [[ ! "$asset_id" =~ ^[0-9]+$ ]]; then
+              echo "::error::XcodeGen release ${version} has no xcodegen.zip asset."
+              exit 1
+            fi
+            # curl drops the Authorization header when the API redirects to
+            # the asset storage host.
+            fetch --retry 8 --retry-max-time 300 --output "$zip" \
+              --header "Accept: application/octet-stream" \
+              --header "Authorization: Bearer ${CATVOX_GITHUB_TOKEN}" \
+              "https://api.github.com/repos/yonaskolb/XcodeGen/releases/assets/${asset_id}"
+          fi
+          verify
+        fi
+
+        rm -rf "$RUNNER_TEMP/xcodegen"
+        unzip -q "$zip" -d "$RUNNER_TEMP"
+        installed="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
+        echo "$installed"
+        if [[ "$installed" != "Version: ${version}" ]]; then
+          echo "::error::Expected XcodeGen ${version}, got: ${installed}"
+          exit 1
+        fi
+        echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+    # Save now, not when the job ends, so a later failing step still seeds
+    # the cache. This runs only after the step above verified the zip.
+    - name: Save the XcodeGen zip to the Actions cache
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ steps.prepare.outputs.zip }}
+        key: ${{ steps.prepare.outputs.key }}
