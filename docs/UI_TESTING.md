@@ -61,6 +61,15 @@ The UI test target launches the app with:
 | `-seedHistory` | Seeds one deterministic local history item for history-replay coverage. |
 | `-forceQuotaExceeded` | Starts the app with zero scans remaining so the quota/upgrade UI can be tested without backend calls. |
 
+## Waits
+
+Every `waitForExistence` and `waitForNonExistence` call in the suite uses one
+shared timeout, `waitTimeout` in `CatVoxUITests/CatVoxUITests.swift`. It is long
+because GitHub's macOS runners are sometimes several times slower than usual: a
+4-second wait for the source chooser failed on one. A wait returns as soon as
+its element appears or disappears, so passing runs don't take longer. Use the
+constant for new waits, and wait for an element instead of sleeping.
+
 ## Current Coverage
 
 The first suite covers:
