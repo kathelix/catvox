@@ -11,7 +11,7 @@ infrastructure state, with prefix `posthog/state`:
 
 | CatVox env | State bucket | Prefix |
 |---|---|---|
-| `dev` | `catvox-tf-state-kathelix-catvox-dev` | `posthog/state` |
+| `dev` | `catvox-tf-state-kathelix-catvox-dev-2` | `posthog/state` |
 | `prod` | `catvox-tf-state-kathelix-catvox-prod` | `posthog/state` |
 
 There is no separate state bucket for PostHog. The existing per-environment
@@ -60,9 +60,15 @@ environment's `POSTHOG_API_KEY` secret.
 
 ## Scope
 
-This root manages the `CatVox <Environment>` PostHog project, the
-"Analytics basics" dashboard, its dashboard layout, and 5 normalized MVP
-insights:
+This root manages the `CatVox <Environment>` PostHog project, its IP setting,
+the "Analytics basics" dashboard, its dashboard layout, and 5 normalized MVP
+insights.
+
+The IP setting (`posthog_project_settings.this`) turns on PostHog's
+**Discard client IP data** (`anonymize_ips = true`), so the project stores no
+IP addresses. GeoIP runs first, so events still carry an approximate location
+(city, region, country). It needs provider 1.0.20 or later; the lock pins
+1.0.28. Every other project setting stays at PostHog's default. The insights:
 
 - scan conversion:
   `scan_source_chosen -> video_validation_passed -> analysis_completed`
@@ -77,7 +83,8 @@ insights:
 
 Terraform is the source of truth — new environments are provisioned by
 `terraform apply` against fresh per-environment state, which creates the
-project, dashboard, layout, and insights directly from the HCL in this root.
+project, its IP setting, dashboard, layout, and insights directly from the HCL
+in this root.
 No PostHog UI clicks, no wizard, no import. Sequence:
 
 1. Bootstrap the new environment's GCP/Firebase foundation and the
