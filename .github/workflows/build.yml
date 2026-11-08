@@ -123,16 +123,56 @@ jobs:
 
       # The ios-floor job must test the app's real deployment target. Catch a
       # floor change here, on the pull request, rather than at the next
-      # weekly run. Every target and configuration must agree.
+      # weekly run. plutil parses the project file as a property list, so
+      # comments and quoting can't fool the check. Every native target's
+      # configurations must set IPHONEOS_DEPLOYMENT_TARGET themselves, and
+      # every value in the project must equal IOS_FLOOR_VERSION exactly.
+      # Anything else fails: an unset or inherited value, a non-version value,
+      # or an SDK-conditional variant such as IPHONEOS_DEPLOYMENT_TARGET[sdk=...].
       - name: Check iOS floor pin matches the deployment target
         run: |
-          targets="$(grep -Eo 'IPHONEOS_DEPLOYMENT_TARGET = [^;]+;' CatVox.xcodeproj/project.pbxproj \
-            | sed -E 's/^IPHONEOS_DEPLOYMENT_TARGET = "?([^";]*)"?;$/\1/' | sort -u | paste -sd ' ' -)"
-          if [ "$targets" != "$IOS_FLOOR_VERSION" ]; then
-            echo "::error title=iOS floor drift::CatVox.xcodeproj sets IPHONEOS_DEPLOYMENT_TARGET to '${targets:-nothing}', but IOS_FLOOR_VERSION is ${IOS_FLOOR_VERSION}. Move the IOS_FLOOR_* pins in build.yml to the new floor."
+          set -euo pipefail
+          if ! project="$(plutil -convert json -o - CatVox.xcodeproj/project.pbxproj)"; then
+            echo "::error title=iOS floor drift::plutil could not parse CatVox.xcodeproj/project.pbxproj."
             exit 1
           fi
-          echo "Deployment target ${targets} matches IOS_FLOOR_VERSION."
+          # One line per build configuration: "<owner>/<config><TAB><value>".
+          if ! settings="$(jq -r '
+            .objects as $o
+            | $o[.rootObject] as $project
+            | ( ($o[$project.buildConfigurationList].buildConfigurations[]
+                  | {owner: "project", required: false, id: .}),
+                ($project.targets[] | $o[.] as $t
+                  | $o[$t.buildConfigurationList].buildConfigurations[]
+                  | {owner: $t.name, required: ($t.isa == "PBXNativeTarget"), id: .}) )
+            | . as $entry
+            | $o[$entry.id] as $config
+            | ($config.buildSettings // {}) as $build
+            | "\($entry.owner)/\($config.name)" as $where
+            | ( ($build | keys[] | select(startswith("IPHONEOS_DEPLOYMENT_TARGET["))
+                  | "\($where)\t\(.) (SDK-conditional)"),
+                (if $build | has("IPHONEOS_DEPLOYMENT_TARGET") then
+                   "\($where)\t\($build.IPHONEOS_DEPLOYMENT_TARGET | if type == "string" then . else tojson end)"
+                 elif $entry.required then "\($where)\t<unset>"
+                 else empty end) )' <<< "$project")"; then
+            echo "::error title=iOS floor drift::Could not read build configurations from CatVox.xcodeproj/project.pbxproj."
+            exit 1
+          fi
+          if [ -z "$settings" ]; then
+            echo "::error title=iOS floor drift::CatVox.xcodeproj/project.pbxproj has no deployment-target settings to check."
+            exit 1
+          fi
+          problems=""
+          while IFS=$'\t' read -r where value; do
+            if [ "$value" != "$IOS_FLOOR_VERSION" ]; then
+              problems="${problems}${where}=${value}; "
+            fi
+          done <<< "$settings"
+          if [ -n "$problems" ]; then
+            echo "::error title=iOS floor drift::Every target configuration must set IPHONEOS_DEPLOYMENT_TARGET to IOS_FLOOR_VERSION (${IOS_FLOOR_VERSION}) as a plain version. Found: ${problems}Move the IOS_FLOOR_* pins in build.yml together with any deployment-target change."
+            exit 1
+          fi
+          echo "All $(wc -l <<< "$settings" | tr -d ' ') deployment-target settings equal IOS_FLOOR_VERSION ${IOS_FLOOR_VERSION}."
 
       - name: Validate Firebase Environment Config
         run: |
