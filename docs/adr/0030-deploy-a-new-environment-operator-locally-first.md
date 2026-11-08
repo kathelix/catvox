@@ -1,6 +1,6 @@
 # ADR-0030: Deploy a New Environment Operator-Locally Before Its Config Lands
 
-- Status: Proposed (accepted on merge)
+- Status: Accepted
 - Date: 2026-11-07
 - Owners: Kathelix / CatVox
 - Related docs: `docs/CREATE_NEW_ENVIRONMENT.md`, `docs/CI_BOOTSTRAP.md`,

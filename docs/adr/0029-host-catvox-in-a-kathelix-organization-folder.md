@@ -1,6 +1,6 @@
 # ADR-0029: Host CatVox in a Kathelix Ltd Google Cloud Organization Folder
 
-- Status: Proposed (accepted on merge)
+- Status: Accepted
 - Date: 2026-11-07
 - Owners: Kathelix / CatVox
 - Related docs: `docs/CREATE_NEW_ENVIRONMENT.md` (Organization Prerequisites),
