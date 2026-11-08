@@ -18,8 +18,11 @@ The target regenerates the Xcode project from `project.yml` and runs the
 simulator when needed:
 
 ```bash
-IOS_UI_TEST_DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=latest" make ios-ui-test
+make ios-ui-test IOS_UI_TEST_DESTINATION="platform=iOS Simulator,name=iPhone 17,OS=26.5"
 ```
+
+Pass the destination on the make command line. The Makefile assigns it with
+`:=`, so an environment-variable prefix is silently ignored.
 
 ## Launch Arguments
 

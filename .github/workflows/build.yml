@@ -38,36 +38,74 @@ concurrency:
 permissions:
   contents: read
 
+# Pinned iOS toolchain, shared by both jobs. Bump these on purpose, never by
+# drift:
+# - DEVELOPER_DIR selects one Xcode installed on the runner image. Every
+#   xcodebuild/xcrun call fails loudly if the image no longer ships it.
+# - XcodeGen comes from its GitHub release, checked against a SHA-256, so CI
+#   renders the same project as a local `make ios-generate` with that version.
+# - The Makefile's default simulator ("iPhone 16") is not on this image. The
+#   Makefile sets IOS_*_DESTINATION with `:=`, which an environment variable
+#   cannot override, so the steps below pass it on the make command line.
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+  XCODEGEN_VERSION: 2.46.0
+  XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+  XCPRETTY_VERSION: 0.4.1
+  IOS_SIMULATOR_DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=26.5
+
 jobs:
   build:
     name: Build — iOS Simulator
-    runs-on: macos-15          # Ships with Xcode 16.x; iOS 17+ SDK included
+    runs-on: macos-26          # Apple silicon; Xcode pinned by DEVELOPER_DIR
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       # ── Toolchain ───────────────────────────────────────────────────────
-      - name: Show Xcode version
-        run: xcodebuild -version
-
-      - name: Cache Homebrew downloads
-        uses: actions/cache@v6
-        with:
-          path: ~/Library/Caches/Homebrew/downloads
-          key: homebrew-xcodegen-${{ runner.os }}
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/xcodegen.zip"
+          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
+          unzip -q "$zip" -d "$RUNNER_TEMP"
+          version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
+          echo "$version"
+          if [ "$version" != "Version: ${XCODEGEN_VERSION}" ]; then
+            echo "::error::Expected XcodeGen ${XCODEGEN_VERSION}, got: ${version}"
+            exit 1
+          fi
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Install xcpretty
-        run: gem install xcpretty --no-document --quiet
+        run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
 
       # ── Project generation ───────────────────────────────────────────────
-      # Regenerate from project.yml to catch any drift between the spec
-      # and the committed .xcodeproj.
       - name: Generate Xcode project
         run: make ios-generate
+
+      # CI builds from a fresh generation, so a stale committed project would
+      # only break local Xcode and archive builds (e.g. a missing resource).
+      # Check the whole tree, not just `git diff`: untracked files (a new
+      # scheme) and outputs outside the .xcodeproj (CatVox/Info.plist) count.
+      - name: Check generated project is committed
+        run: |
+          drift="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$drift" ]; then
+            echo "$drift"
+            git --no-pager diff
+            echo "::error title=Generated project drift::The committed XcodeGen output does not match project.yml. Run 'make ios-generate' with XcodeGen ${XCODEGEN_VERSION} and commit the result."
+            exit 1
+          fi
 
       - name: Validate Firebase Environment Config
         run: |
@@ -97,11 +135,21 @@ jobs:
       - name: Run iOS Unit Tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-test-only
+        run: make ios-test-only IOS_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
+
+      # SwiftPM must build the versions pinned in the committed Package.resolved.
+      # If project.yml's package requirements changed without a matching
+      # Package.resolved, xcodebuild re-resolved and rewrote it above.
+      - name: Check Package.resolved is committed
+        run: |
+          if ! git diff --exit-code -- CatVox.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
+            echo "::error title=Package.resolved drift::xcodebuild re-resolved Swift packages. Resolve them locally (make ios-build) after the project.yml change and commit Package.resolved."
+            exit 1
+          fi
 
   ui-tests:
     name: UI Tests — iOS Simulator
-    runs-on: macos-15
+    runs-on: macos-26
     needs: build
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
@@ -109,22 +157,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Show Xcode version
-        run: xcodebuild -version
-
-      - name: Cache Homebrew downloads
-        uses: actions/cache@v6
-        with:
-          path: ~/Library/Caches/Homebrew/downloads
-          key: homebrew-xcodegen-${{ runner.os }}
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/xcodegen.zip"
+          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
+          unzip -q "$zip" -d "$RUNNER_TEMP"
+          version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
+          echo "$version"
+          if [ "$version" != "Version: ${XCODEGEN_VERSION}" ]; then
+            echo "::error::Expected XcodeGen ${XCODEGEN_VERSION}, got: ${version}"
+            exit 1
+          fi
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Install xcpretty
-        run: gem install xcpretty --no-document --quiet
+        run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
 
       - name: Run iOS UI Tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-ui-test
+        run: make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
