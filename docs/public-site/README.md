@@ -21,7 +21,8 @@ Each open item in the drafts is marked `[PLACEHOLDER Qn: …]` or `[PLACEHOLDER 
   - the analytics opt-out and the pre-upload consent screen (P26);
   - the install ID, shown and copyable in the About screen (P25);
   - automatic deletion of inactive usage records (audit H6).
-- [ ] The vendor settings the policy relies on are live in the protected environment: soft delete off for clip storage and Gemini caching off (Q4); PostHog discarding IP addresses with GeoIP off (Q5).
+- [ ] The vendor settings the policy relies on are live in the protected environment: soft delete off for clip storage and Gemini caching off (Q4).
+- [ ] PostHog's IP-based location (GeoIP) stays on, as decided for Q5, so the App Privacy answers and `CatVox/PrivacyInfo.xcprivacy` declare Coarse Location for analytics (see `docs/app-store-privacy.md`). If "Discard client IP data" is also switched on, the policy can add that PostHog then discards the IP address itself.
 - [ ] Gemini still runs in a US location after the model upgrade (Q13, plan item P11).
 - [ ] The App Store age rating matches the policy's minimum age (Q9).
 - [ ] Service-provider terms are in place and recorded (audit H5). Google's Cloud Data Processing Addendum applies automatically; PostHog's DPA does not, so it has to be generated and countersigned in the PostHog app.

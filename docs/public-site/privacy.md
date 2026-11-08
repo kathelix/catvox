@@ -11,7 +11,7 @@ CatVox is an iPhone app that reads your cat's mood and behaviour from a short vi
 - **No account.** CatVox doesn't ask for your name, email address or phone number.
 - **Your clip goes to Google for analysis.** When you scan, the video and its sound are uploaded to Google Cloud in the United States and analysed by Google's Gemini AI model. The clip is deleted automatically once it's a day old. **[PLACEHOLDER Q4: accurate only once soft delete is turned off for clip storage. Otherwise: "…once it's a day old, and erased for good about a week after that."]**
 - **Your history stays on your iPhone.** Saved scans live only on your phone, and you can delete them at any time.
-- **Analytics, not advertising.** We use PostHog to see how CatVox is used, for example how many scans succeed. We never send it your videos or the text CatVox writes about your cat, and you can turn analytics off. **[PLACEHOLDER Q8: true only once the analytics opt-out (P26) ships]**
+- **Analytics, not advertising.** We use PostHog to see how CatVox is used, for example how many scans succeed and roughly where our users are. We never send it your videos or the text CatVox writes about your cat, and you can turn analytics off. **[PLACEHOLDER Q8: true only once the analytics opt-out (P26) ships]**
 - **No ads, no tracking, no selling.** CatVox shows no ads, doesn't track you across other companies' apps or websites, and we never sell your data.
 - **Insight and fun, not veterinary advice.** CatVox's results come from AI and can be wrong.
 
@@ -56,7 +56,7 @@ Each event can include:
 - details about what happened, such as where the clip came from, why it was rejected, a description of an error, a random ID for the scan, and a result's short labels: the persona, the main emotion and the confidence score;
 - technical details that PostHog's software adds, such as CatVox's version, your iPhone model, iOS version, screen size, language and time-zone settings, and whether you're on Wi-Fi or mobile data.
 
-**Your IP address.** Like any internet service, PostHog receives your IP address when CatVox sends it an event. **[PLACEHOLDER Q5: recommended, once PostHog's settings are changed: "We've set PostHog to discard it and not to estimate your location from it." Otherwise: "PostHog stores it with the event and uses it to estimate your approximate location, such as your city, region and country, which it adds to the event and to your analytics profile."]**
+**Your IP address and approximate location.** Like any internet service, PostHog receives your IP address when CatVox sends it an event. PostHog uses it to estimate your approximate location, such as your city, region and country, and adds that to the event and to your analytics profile. We use this to understand where CatVox's users are, for example to decide which languages to support.
 
 CatVox never sends PostHog your videos or their sound, the text CatVox writes about your cat (the analysis, the cat's "thought" or the tip), file names, or anything from your Photos library. PostHog's automatic tap tracking, session recording, screen-view tracking, crash reporting and surveys are all switched off.
 
@@ -118,7 +118,7 @@ We don't sell or rent your data. We share it only with the service providers bel
 |---|---|---|---|
 | Google Cloud | Runs our servers, stores clips and usage records, analyses clips with its Gemini AI models, and keeps our server logs | Clips, install ID, usage record, IP address and logs | United States; server logs on Google's global infrastructure |
 | Firebase App Check (Google) | Confirms that requests come from a genuine copy of CatVox | The App Attest proof, which it checks but doesn't keep, and short-lived tokens | Google's global infrastructure |
-| PostHog | Product analytics | Analytics events, install ID, device details and IP address | United States |
+| PostHog | Product analytics | Analytics events, install ID, device details, IP address and the approximate location PostHog estimates from it | United States |
 | Google Workspace | Our email, if you contact us | Your email address and messages | Google's global infrastructure |
 
 We may also disclose data if the law requires it, or to protect the rights, safety or property of CatVox users, Kathelix or others. If Kathelix's business is sold or reorganised, your data would move with it and stay protected by this policy.
