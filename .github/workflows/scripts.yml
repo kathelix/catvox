@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'Makefile'
+      # The top-level scripts the tests exercise, so a change to one re-runs them.
+      - 'scripts/*.sh'
+      - 'scripts/*.mjs'
       - 'scripts/lib/**'
       - 'scripts/test/**'
       - 'config/environments/**'
@@ -19,6 +22,9 @@ on:
     branches: [main]
     paths:
       - 'Makefile'
+      # The top-level scripts the tests exercise, so a change to one re-runs them.
+      - 'scripts/*.sh'
+      - 'scripts/*.mjs'
       - 'scripts/lib/**'
       - 'scripts/test/**'
       - 'config/environments/**'

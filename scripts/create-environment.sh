@@ -5,6 +5,20 @@
 # the GCP/Firebase project, bootstraps remote Terraform state and Functions
 # source storage, prepares ignored local Terraform config files, and can
 # optionally apply Terraform, export the Firebase plist, and deploy Functions.
+#
+# Fail-fast preflight: every input is checked before the first cloud mutation,
+# so a bad or ambiguous input aborts with nothing created, linked, or written.
+#   - exactly one numeric parent, FOLDER_ID or ORGANIZATION_ID (never both); an
+#     existing project must already sit under that parent;
+#   - BILLING_ACCOUNT_ID is required, and billing must read back as enabled
+#     after linking, before any bucket is created;
+#   - an App Check debug token (APP_CHECK_DEBUG_TOKEN, or one already in the
+#     tfvars file) is refused unless config/environments/<env>.xcconfig sets
+#     CATVOX_ENVIRONMENT_PROTECTED = false;
+#   - an existing terraform/core/env/<env>.tfvars is kept as-is, so a supplied
+#     ALERT_EMAIL or APP_CHECK_DEBUG_TOKEN that differs from it is refused
+#     rather than silently ignored; the file must be in the plain one-line form
+#     this script writes, so what is checked is what Terraform reads.
 
 set -euo pipefail
 
@@ -27,6 +41,11 @@ RUN_TERRAFORM_APPLY="${RUN_TERRAFORM_APPLY:-}"
 RUN_FUNCTIONS_DEPLOY="${RUN_FUNCTIONS_DEPLOY:-}"
 RUN_POSTHOG_TERRAFORM_APPLY="${RUN_POSTHOG_TERRAFORM_APPLY:-}"
 MANAGE_GCF_SOURCES_BUCKET_IAM="${CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM:-}"
+FOLDER_ID="${FOLDER_ID:-}"
+ORGANIZATION_ID="${ORGANIZATION_ID:-}"
+BILLING_ACCOUNT_ID="${BILLING_ACCOUNT_ID:-}"
+ALERT_EMAIL="${ALERT_EMAIL:-}"
+APP_CHECK_DEBUG_TOKEN="${APP_CHECK_DEBUG_TOKEN:-}"
 
 cd "${REPO_ROOT}"
 
@@ -68,6 +87,95 @@ quote_tf_string() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
+# Read the existing tfvars file into TFVARS_ALERT_EMAIL and TFVARS_DEBUG_TOKEN:
+# the text between the quotes (still escaped, so compare it with
+# quote_tf_string output), `null` for a null value, or empty when the key is
+# absent. The whole file is parsed, and it must be in the plain form this
+# script writes: blank lines, whole-line # or // comments, and one-line
+# `key = null` or `key = "string"` assignments of app_check_debug_token and
+# alert_email, each at most once and optionally followed by a # or // comment.
+# Anything else — a block comment, a multi-line value, a repeated or unknown
+# key, text after a value — is refused, so a commented-out or shadowed line can
+# never stand in for the assignment Terraform actually reads.
+TFVARS_ALERT_EMAIL=""
+TFVARS_DEBUG_TOKEN=""
+load_tfvars() {
+  local parsed key value
+  if ! parsed="$(awk '
+    function refuse(why) {
+      printf "%s line %d: %s\n", FILENAME, FNR, why > "/dev/stderr"
+      exit 1
+    }
+    /^[[:space:]]*$/ || /^[[:space:]]*(#|\/\/)/ { next }
+    {
+      if ($0 !~ /^[[:space:]]*[A-Za-z_][A-Za-z0-9_-]*[[:space:]]*=/) {
+        refuse("not a one-line key = value assignment or a whole-line comment")
+      }
+      key = $0
+      sub(/^[[:space:]]+/, "", key)
+      sub(/[[:space:]]*=.*$/, "", key)
+      if (key != "app_check_debug_token" && key != "alert_email") refuse("unexpected key " key)
+      if (key in seen) refuse(key " is assigned more than once")
+      seen[key] = 1
+      rest = $0
+      sub(/^[^=]*=[[:space:]]*/, "", rest)
+      if (rest ~ /^null[[:space:]]*((#|\/\/).*)?$/) {
+        print key "\tnull"
+        next
+      }
+      if (match(rest, /^"[^"]*"/)) {
+        if (substr(rest, RLENGTH + 1) !~ /^[[:space:]]*((#|\/\/).*)?$/) {
+          refuse("unexpected text after the value of " key)
+        }
+        print key "\t" substr(rest, 2, RLENGTH - 2)
+        next
+      }
+      refuse("the value of " key " is not null or a one-line quoted string")
+    }
+  ' "${TFVARS_FILE}")"; then
+    echo "Refusing: ${TFVARS_FILE} is not in the plain form this script can read safely (see above)." >&2
+    echo "Keep only whole-line comments and one-line app_check_debug_token and alert_email assignments, or delete the file to regenerate it." >&2
+    exit 1
+  fi
+  while IFS=$'\t' read -r key value; do
+    case "${key}" in
+      alert_email) TFVARS_ALERT_EMAIL="${value}" ;;
+      app_check_debug_token) TFVARS_DEBUG_TOKEN="${value}" ;;
+    esac
+  done <<< "${parsed}"
+}
+
+# An App Check debug token lets any client that holds it pass App Check, so only
+# an environment whose committed xcconfig positively declares it mutable
+# (CATVOX_ENVIRONMENT_PROTECTED = false) may register one. A missing file, a
+# missing key, or any other value fails closed. $1 names where the token came
+# from, for the error message.
+refuse_debug_token_unless_mutable() {
+  local origin="$1" tier
+  tier="$("${SCRIPT_DIR}/lib/read-xcconfig-value.sh" "${ENV_CONFIG}" CATVOX_ENVIRONMENT_PROTECTED)"
+  case "${tier}" in
+    false)
+      return 0
+      ;;
+    true)
+      echo "Refusing ${origin}: '${ENVIRONMENT}' is a protected environment (CATVOX_ENVIRONMENT_PROTECTED = true in ${ENV_CONFIG})." >&2
+      echo "Protected environments must not register an App Check debug token." >&2
+      ;;
+    *)
+      echo "Refusing ${origin}: cannot confirm '${ENVIRONMENT}' is a mutable environment." >&2
+      echo "${ENV_CONFIG} must exist and set CATVOX_ENVIRONMENT_PROTECTED = false (found: '${tier}')." >&2
+      ;;
+  esac
+  exit 1
+}
+
+refuse_tfvars_mismatch() {  # $1 = supplied variable, $2 = tfvars key
+  echo "Refusing: ${1} does not match ${2} in the existing ${TFVARS_FILE}." >&2
+  echo "An existing tfvars file is kept as-is, so the supplied value would be silently ignored." >&2
+  echo "Unset ${1} to keep the file's value, or update ${2} in that file (or delete the file to regenerate it), then re-run." >&2
+  exit 1
+}
+
 require_value CATVOX_ENVIRONMENT "${ENVIRONMENT}"
 require_value CATVOX_PROJECT_ID "${PROJECT_ID}"
 require_value PROJECT_DISPLAY_NAME "${PROJECT_DISPLAY_NAME}"
@@ -84,6 +192,9 @@ require_value RUN_TERRAFORM_APPLY "${RUN_TERRAFORM_APPLY}"
 require_value RUN_FUNCTIONS_DEPLOY "${RUN_FUNCTIONS_DEPLOY}"
 require_value RUN_POSTHOG_TERRAFORM_APPLY "${RUN_POSTHOG_TERRAFORM_APPLY}"
 require_value CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM "${MANAGE_GCF_SOURCES_BUCKET_IAM}"
+
+# The committed config that declares this environment's security tier.
+ENV_CONFIG="${CATVOX_ENV_CONFIG:-config/environments/${ENVIRONMENT}.xcconfig}"
 
 MANAGE_GCF_SOURCES_BUCKET_IAM="$(normalize_bool CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM "${MANAGE_GCF_SOURCES_BUCKET_IAM}")"
 
@@ -134,22 +245,80 @@ case "${IOS_APP_DELETION_POLICY}" in
     ;;
 esac
 
-if gcloud projects describe "${PROJECT_ID}" >/dev/null 2>&1; then
-  echo "GCP project ${PROJECT_ID} already exists."
+# ── Preflight: no cloud calls until every input below checks out ────────────
+
+# Parent: exactly one of FOLDER_ID / ORGANIZATION_ID. Silently preferring one
+# when both are set could create the project outside the intended folder, and
+# so outside any org-policy exception that folder carries.
+if [[ -n "${FOLDER_ID}" && -n "${ORGANIZATION_ID}" ]]; then
+  echo "Set exactly one of FOLDER_ID or ORGANIZATION_ID, not both." >&2
+  exit 1
+elif [[ -n "${FOLDER_ID}" ]]; then
+  PARENT_VAR="FOLDER_ID"
+  PARENT_TYPE="folder"
+  PARENT_ID="${FOLDER_ID}"
+elif [[ -n "${ORGANIZATION_ID}" ]]; then
+  PARENT_VAR="ORGANIZATION_ID"
+  PARENT_TYPE="organization"
+  PARENT_ID="${ORGANIZATION_ID}"
 else
-  create_args=(projects create "${PROJECT_ID}" "--name=${PROJECT_DISPLAY_NAME}")
-  if [[ -n "${ORGANIZATION_ID:-}" ]]; then
-    create_args+=("--organization=${ORGANIZATION_ID}")
-  elif [[ -n "${FOLDER_ID:-}" ]]; then
-    create_args+=("--folder=${FOLDER_ID}")
-  fi
-  gcloud "${create_args[@]}"
+  echo "Set exactly one of FOLDER_ID or ORGANIZATION_ID: the parent to create the project under (an existing project must already have it)." >&2
+  exit 1
+fi
+if [[ ! "${PARENT_ID}" =~ ^[0-9]+$ ]]; then
+  echo "${PARENT_VAR} must be a numeric ${PARENT_TYPE} ID (got: ${PARENT_ID})." >&2
+  exit 1
 fi
 
-if [[ -n "${BILLING_ACCOUNT_ID:-}" ]]; then
-  gcloud billing projects link "${PROJECT_ID}" --billing-account="${BILLING_ACCOUNT_ID}"
+# Billing: required up front. The state bucket below cannot be created on a
+# project without billing, and failing there leaves a half-built environment.
+require_value BILLING_ACCOUNT_ID "${BILLING_ACCOUNT_ID}"
+
+# App Check debug token and the private tfvars values.
+if [[ -n "${APP_CHECK_DEBUG_TOKEN}" ]]; then
+  refuse_debug_token_unless_mutable "APP_CHECK_DEBUG_TOKEN"
+fi
+if [[ -f "${TFVARS_FILE}" ]]; then
+  load_tfvars
+  if [[ -n "${ALERT_EMAIL}" && "$(quote_tf_string "${ALERT_EMAIL}")" != "${TFVARS_ALERT_EMAIL}" ]]; then
+    refuse_tfvars_mismatch ALERT_EMAIL alert_email
+  fi
+  if [[ -n "${APP_CHECK_DEBUG_TOKEN}" && "$(quote_tf_string "${APP_CHECK_DEBUG_TOKEN}")" != "${TFVARS_DEBUG_TOKEN}" ]]; then
+    refuse_tfvars_mismatch APP_CHECK_DEBUG_TOKEN app_check_debug_token
+  fi
+  # The Makefile passes this file to every terraform plan/apply, so a token
+  # already in it is registered exactly like a supplied one.
+  if [[ "${TFVARS_DEBUG_TOKEN}" != "null" && -n "${TFVARS_DEBUG_TOKEN//[[:space:]]/}" ]]; then
+    refuse_debug_token_unless_mutable "the app_check_debug_token in ${TFVARS_FILE}"
+  fi
 else
-  echo "BILLING_ACCOUNT_ID not set; skipping billing link."
+  require_value ALERT_EMAIL "${ALERT_EMAIL}"
+fi
+
+# ── Cloud bootstrap ─────────────────────────────────────────────────────────
+
+if gcloud projects describe "${PROJECT_ID}" >/dev/null 2>&1; then
+  echo "GCP project ${PROJECT_ID} already exists."
+  # The requested parent must hold for an existing project too; otherwise a
+  # project made elsewhere would be provisioned outside the intended parent.
+  existing_parent_type="$(gcloud projects describe "${PROJECT_ID}" --format='value(parent.type)')"
+  existing_parent_id="$(gcloud projects describe "${PROJECT_ID}" --format='value(parent.id)')"
+  if [[ "${existing_parent_type}" != "${PARENT_TYPE}" || "${existing_parent_id}" != "${PARENT_ID}" ]]; then
+    echo "GCP project ${PROJECT_ID} already exists under ${existing_parent_type:-no parent} ${existing_parent_id}, not the requested ${PARENT_TYPE} ${PARENT_ID}." >&2
+    echo "Pass the project's actual parent instead, or move the project under ${PARENT_TYPE} ${PARENT_ID} first." >&2
+    exit 1
+  fi
+else
+  gcloud projects create "${PROJECT_ID}" "--name=${PROJECT_DISPLAY_NAME}" "--${PARENT_TYPE}=${PARENT_ID}"
+fi
+
+gcloud billing projects link "${PROJECT_ID}" --billing-account="${BILLING_ACCOUNT_ID}"
+# Confirm billing reads back as enabled before creating the buckets, which need it.
+billing_enabled="$(gcloud billing projects describe "${PROJECT_ID}" --format='value(billingEnabled)')"
+if [[ "$(printf '%s' "${billing_enabled}" | tr '[:upper:]' '[:lower:]')" != "true" ]]; then
+  echo "Billing is not enabled on ${PROJECT_ID} after linking ${BILLING_ACCOUNT_ID} (billingEnabled: ${billing_enabled:-empty})." >&2
+  echo "Check that the billing account is open, then re-run." >&2
+  exit 1
 fi
 
 if firebase projects:list --json --non-interactive | grep -q "\"projectId\": \"${PROJECT_ID}\""; then
@@ -183,10 +352,9 @@ fi
 mkdir -p "$(dirname "${TFVARS_FILE}")"
 
 if [[ ! -f "${TFVARS_FILE}" ]]; then
-  require_value ALERT_EMAIL "${ALERT_EMAIL:-}"
-
+  # The preflight already required ALERT_EMAIL and vetted any debug token.
   app_check_line='app_check_debug_token             = null'
-  if [[ -n "${APP_CHECK_DEBUG_TOKEN:-}" ]]; then
+  if [[ -n "${APP_CHECK_DEBUG_TOKEN}" ]]; then
     app_check_line="app_check_debug_token             = \"$(quote_tf_string "${APP_CHECK_DEBUG_TOKEN}")\""
   fi
   cat > "${TFVARS_FILE}" <<EOF
@@ -260,7 +428,7 @@ cat <<EOF
 
 Remaining secrets to add to the GitHub Environment named '${ENVIRONMENT}':
   TF_VAR_ALERT_EMAIL=<same alert email used in ${TFVARS_FILE}>
-  TF_VAR_APP_CHECK_DEBUG_TOKEN=<Dev only; same UUID used in ${TFVARS_FILE}>
+  TF_VAR_APP_CHECK_DEBUG_TOKEN=<mutable environments only; same UUID used in ${TFVARS_FILE}>
   POSTHOG_API_KEY=<already set by RUN_POSTHOG_TERRAFORM_APPLY=1, otherwise set manually>
 
 After Terraform apply and Functions deploy, update config/environments/${ENVIRONMENT}.xcconfig with:
