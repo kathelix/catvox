@@ -22,7 +22,11 @@
 #   - an existing terraform/core/env/<env>.tfvars is kept as-is, so a supplied
 #     ALERT_EMAIL or APP_CHECK_DEBUG_TOKEN that differs from it is refused
 #     rather than silently ignored; the file must be in the plain one-line form
-#     this script writes, so what is checked is what Terraform reads.
+#     this script writes, so what is checked is what Terraform reads;
+#   - the `terraform fmt -check -recursive` that `make terraform-plan` starts
+#     with must already pass in terraform/core. It also reads the git-ignored
+#     env/*.tfvars files, other environments' included, so a hand-edited one is
+#     refused here, with the fix, instead of stopping the run at the plan step.
 
 set -euo pipefail
 
@@ -148,6 +152,33 @@ load_tfvars() {
       app_check_debug_token) TFVARS_DEBUG_TOKEN="${value}" ;;
     esac
   done <<< "${parsed}"
+}
+
+# Run the formatting check `make terraform-plan` starts with (the Makefile's
+# `terraform fmt -check -recursive` in terraform/core; keep the two in step) and
+# refuse, with the fix, if it fails. It runs before any cloud call because the
+# plan comes after the cloud bootstrap, and fmt itself prints only file names.
+refuse_unless_terraform_fmt_clean() {
+  local fmt_out rc=0
+  fmt_out="$(terraform -chdir=terraform/core fmt -check -recursive -no-color 2>&1)" || rc=$?
+  if [[ "${rc}" -eq 0 ]]; then
+    return 0
+  fi
+  if [[ "${rc}" -eq 3 ]]; then
+    # Exit 3: everything parsed, and these files are not in fmt's layout.
+    echo "Refusing: make terraform-plan would stop at its terraform fmt -check -recursive step." >&2
+    echo "These files in terraform/core are not in terraform fmt's layout:" >&2
+    sed 's/^/  /' <<< "${fmt_out}" >&2
+    echo "The check also reads the git-ignored env/*.tfvars files, other environments' included." >&2
+    echo "terraform fmt changes only whitespace and alignment. For each file listed, run" >&2
+    echo "  terraform -chdir=terraform/core fmt <file>" >&2
+    echo "then re-run." >&2
+  else
+    echo "Refusing: terraform fmt -check -recursive in terraform/core failed (exit ${rc}), so make terraform-plan would stop there too:" >&2
+    sed 's/^/  /' <<< "${fmt_out}" >&2
+    echo "Fix the error above, then re-run." >&2
+  fi
+  exit 1
 }
 
 # An App Check debug token lets any client that holds it pass App Check, so only
@@ -346,6 +377,10 @@ else
   require_value ALERT_EMAIL "${ALERT_EMAIL}"
 fi
 
+# Terraform formatting, last: no cloud call, but the plan that would otherwise
+# trip on it runs only after the cloud bootstrap.
+refuse_unless_terraform_fmt_clean
+
 # ── Cloud bootstrap ─────────────────────────────────────────────────────────
 
 lookup_project
@@ -385,7 +420,16 @@ if [[ "$(printf '%s' "${billing_enabled}" | tr '[:upper:]' '[:lower:]')" != "tru
   exit 1
 fi
 
-if firebase projects:list --json --non-interactive | grep -q "\"projectId\": \"${PROJECT_ID}\""; then
+# Capture the whole listing, then search it. Piped straight into `grep -q`, grep
+# exits at the first match, firebase can die of SIGPIPE while still writing,
+# and pipefail reads that as "not enabled" (the import step's `state list`
+# failed that way). A failed listing stops the run instead.
+if ! firebase_projects="$(firebase projects:list --json --non-interactive)"; then
+  echo "Could not list Firebase projects (firebase projects:list failed; its error is above)." >&2
+  echo "Check the Firebase CLI login (firebase login), then re-run." >&2
+  exit 1
+fi
+if [[ "${firebase_projects}" == *"\"projectId\": \"${PROJECT_ID}\""* ]]; then
   echo "Firebase is already enabled for ${PROJECT_ID}."
 else
   firebase projects:addfirebase "${PROJECT_ID}" --non-interactive
@@ -417,12 +461,17 @@ mkdir -p "$(dirname "${TFVARS_FILE}")"
 
 if [[ ! -f "${TFVARS_FILE}" ]]; then
   # The preflight already required ALERT_EMAIL and vetted any debug token.
-  app_check_line='app_check_debug_token             = null'
+  # Written exactly as terraform fmt lays it out: the `=` of consecutive
+  # one-line attributes lines up one space after the longest key. The plan
+  # step's `terraform fmt -check -recursive` reads this git-ignored file too,
+  # so any other spacing stops a new environment's first run there. Keep both
+  # assignments on one line each, the form load_tfvars reads back.
+  app_check_value="null"
   if [[ -n "${APP_CHECK_DEBUG_TOKEN}" ]]; then
-    app_check_line="app_check_debug_token             = \"$(quote_tf_string "${APP_CHECK_DEBUG_TOKEN}")\""
+    app_check_value="\"$(quote_tf_string "${APP_CHECK_DEBUG_TOKEN}")\""
   fi
   cat > "${TFVARS_FILE}" <<EOF
-${app_check_line}
+app_check_debug_token = ${app_check_value}
 alert_email           = "$(quote_tf_string "${ALERT_EMAIL}")"
 EOF
   echo "Created ${TFVARS_FILE}"
@@ -480,7 +529,10 @@ else
 fi
 
 if [[ "${RUN_FUNCTIONS_DEPLOY}" == "1" ]]; then
-  # make functions-deploy sets the Artifact Registry cleanup policy itself.
+  # make functions-deploy sets the Artifact Registry cleanup policy itself,
+  # except in a brand-new project: gcf-artifacts does not exist yet when it
+  # runs, so that first deploy ends non-zero after deploying, and
+  # `make environment-doctor` prints the command that sets the policy.
   make functions-deploy \
     CATVOX_ENVIRONMENT="${ENVIRONMENT}" \
     CATVOX_PROJECT_ID="${PROJECT_ID}"

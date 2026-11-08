@@ -23,10 +23,23 @@ SANDBOX="$(mktemp -d)"
 trap 'rm -rf "${SANDBOX}"' EXIT
 mkdir -p "${SANDBOX}/bin"
 
+# `state list` prints MOCK_TF_STATE's addresses first, then MOCK_TF_STATE_FILLER
+# more, or fails the way an unreadable backend does when MOCK_TF_STATE_ERROR is
+# set. A large filler outgrows any pipe buffer, so a reader that stops at the
+# first match always leaves this writer to die of SIGPIPE.
 cat > "${SANDBOX}/bin/terraform" <<'SH'
 #!/usr/bin/env bash
 if [[ "$1" == "-chdir=terraform/core" && "$2" == "state" && "$3" == "list" ]]; then
+  if [[ -n "${MOCK_TF_STATE_ERROR:-}" ]]; then
+    printf '%s\n' "${MOCK_TF_STATE_ERROR}" >&2
+    exit 1
+  fi
   printf '%s\n' ${MOCK_TF_STATE:-}
+  i=0
+  while (( i < ${MOCK_TF_STATE_FILLER:-0} )); do
+    printf 'google_project_iam_member.filler["roles/example.role%d"]\n' "$i"
+    i=$((i + 1))
+  done
   exit 0
 fi
 exit 0
@@ -73,9 +86,10 @@ export CATVOX_PROJECT_ID="kathelix-catvox-prod"
 export CATVOX_IOS_BUNDLE_ID="com.kathelix.catvox"
 export CATVOX_TF_VARS_FILE="terraform/core/env/prod.tfvars"
 
+OUT="${SANDBOX}/out"
 run_case() {
   : > "${IMPORT_LOG}"
-  PATH="${SANDBOX}/bin:${PATH}" bash "${SCRIPT}" >/dev/null 2>&1
+  PATH="${SANDBOX}/bin:${PATH}" bash "${SCRIPT}" >"${OUT}" 2>&1
 }
 
 FS_IMPORT="google_firestore_database.default	projects/kathelix-catvox-prod/databases/(default)"
@@ -129,5 +143,41 @@ unset MOCK_FIREBASE_FAIL
 run_case
 [[ ! -s "${IMPORT_LOG}" ]] || fail "no-match: expected no imports, got $(cat "${IMPORT_LOG}")"
 pass "non-matching bundle id does not import a foreign app"
+
+# 7. Regression: both addresses are in state and listed first, then ~1 MB more.
+# The old `state list | grep -Fxq` stopped reading at the first match, terraform
+# died of SIGPIPE, and pipefail read "absent": the run re-imported managed
+# resources ("Resource already managed by Terraform"). Both must still be found.
+export IMPORT_LOG="${SANDBOX}/log7"
+export MOCK_TF_STATE="google_firestore_database.default google_firebase_apple_app.ios" MOCK_TF_STATE_FILLER=20000
+export MOCK_FIRESTORE_EXISTS=1 MOCK_FIREBASE_JSON="${FIREBASE_JSON}"; unset MOCK_FIREBASE_FAIL
+run_case || fail "large-state: run failed: $(cat "${OUT}")"
+[[ ! -s "${IMPORT_LOG}" ]] || fail "large-state: re-imported resources already in state: $(cat "${IMPORT_LOG}")"
+grep -Fq "google_firestore_database.default: already in Terraform state; skipping." "${OUT}" || fail "large-state: firestore not found in state: $(cat "${OUT}")"
+grep -Fq "google_firebase_apple_app.ios: already in Terraform state; skipping." "${OUT}" || fail "large-state: ios app not found in state: $(cat "${OUT}")"
+pass "addresses listed first in a large state are still found (no SIGPIPE re-import)"
+
+# 8. A failed `state list` stops the run before any import, showing terraform's
+# error. It used to read as "absent" and import both resources anyway.
+export IMPORT_LOG="${SANDBOX}/log8"
+export MOCK_TF_STATE="" MOCK_TF_STATE_FILLER=0
+export MOCK_TF_STATE_ERROR='Error: Backend initialization required, please run "terraform init"'
+export MOCK_FIRESTORE_EXISTS=1 MOCK_FIREBASE_JSON="${FIREBASE_JSON}"; unset MOCK_FIREBASE_FAIL
+if run_case; then fail "state-list-error: expected the run to stop: $(cat "${OUT}")"; fi
+[[ ! -s "${IMPORT_LOG}" ]] || fail "state-list-error: imported despite an unreadable state: $(cat "${IMPORT_LOG}")"
+grep -Fq "Could not list the Terraform state" "${OUT}" || fail "state-list-error: message: $(cat "${OUT}")"
+grep -Fq "${MOCK_TF_STATE_ERROR}" "${OUT}" || fail "state-list-error: terraform's error should be shown: $(cat "${OUT}")"
+unset MOCK_TF_STATE_ERROR
+pass "a failed state list stops the run before any import"
+
+# 9. Only a whole-line, exact address counts as in state: a longer address and
+# the same address inside a module are other resources, so both still import.
+export IMPORT_LOG="${SANDBOX}/log9"
+export MOCK_TF_STATE="google_firestore_database.default_old module.legacy.google_firebase_apple_app.ios" MOCK_TF_STATE_FILLER=0
+export MOCK_FIRESTORE_EXISTS=1 MOCK_FIREBASE_JSON="${FIREBASE_JSON}"; unset MOCK_FIREBASE_FAIL
+run_case || fail "near-miss: run failed: $(cat "${OUT}")"
+grep -Fqx "${FS_IMPORT}" "${IMPORT_LOG}" || fail "near-miss: firestore import missing: $(cat "${IMPORT_LOG}")"
+grep -Fqx "${APP_IMPORT}" "${IMPORT_LOG}" || fail "near-miss: ios app import missing: $(cat "${IMPORT_LOG}")"
+pass "near-miss addresses in state do not count as the resource"
 
 echo "PASS (${pass_count} cases)"
