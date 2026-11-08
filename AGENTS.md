@@ -51,7 +51,7 @@ ADRs are historical records, so preserve their original decision context. If an 
 - **Company:** Kathelix Ltd
 - **Dev Bundle ID:** `com.kathelix.catvox.dev`
 - **Future Prod Bundle ID:** `com.kathelix.catvox`
-- **Active Dev GCP/Firebase Project:** `kathelix-catvox-dev` (project number: `99523926611`)
+- **Active Dev GCP/Firebase Project:** `kathelix-catvox-dev-2` (project number: `229534242423`; Kathelix Ltd organization, `CatVox` folder — see ADR-0029)
 - **Preserved Future Prod Project:** `kathelix-catvox-prod` (project number: `953500951129`; do not delete)
 - **GitHub repo:** `kathelix/catvox`
 - **Primary region:** `us-central1`; Firestore: `nam5` (US multi-region)
@@ -150,8 +150,8 @@ For environment-specific runs, override variables at invocation time, for exampl
 
 ```bash
 CATVOX_ENVIRONMENT=dev make functions-integration
-CATVOX_PROJECT_ID=kathelix-catvox-dev make terraform-plan
-CATVOX_PROJECT_ID=kathelix-catvox-dev make functions-deploy
+CATVOX_PROJECT_ID=kathelix-catvox-dev-2 make terraform-plan
+CATVOX_PROJECT_ID=kathelix-catvox-dev-2 make functions-deploy
 DEVICE_ID=<device-udid> make ios-device-launch
 ```
 
@@ -331,9 +331,9 @@ Implemented in `functions/src/gemini.ts` — update there, not here:
 ### Terraform State
 
 Active Dev GCP infrastructure state lives in GCS:
-`gs://catvox-tf-state-kathelix-catvox-dev/catvox/state`. PostHog Terraform
+`gs://catvox-tf-state-kathelix-catvox-dev-2/catvox/state`. PostHog Terraform
 state for Dev lives in the same bucket under prefix `posthog/state`:
-`gs://catvox-tf-state-kathelix-catvox-dev/posthog/state`. The two roots share
+`gs://catvox-tf-state-kathelix-catvox-dev-2/posthog/state`. The two roots share
 the bucket and CI service account but never share state. See ADR-0020.
 
 Never run `terraform apply` locally without first confirming the remote state is clean:
