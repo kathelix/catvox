@@ -98,7 +98,7 @@ catvox/
 │   └── README.md                    # Umbrella — Terraform layout conventions
 
 ├── .github/workflows/
-│   ├── build.yml                  # Path-filtered iOS build check on push/PR
+│   ├── build.yml                  # Path-filtered iOS build check on push/PR + weekly oldest-iOS tests
 │   ├── functions.yml              # Functions build + deploy (dev auto, prod manual) + Dev integration
 │   ├── functions-deploy.yml       # Reusable Functions deploy for one environment
 │   ├── markdownlint.yml           # Markdown lint for docs/ and README changes
@@ -387,6 +387,7 @@ GitHub Actions WIF produces an external-account Application Default Credentials 
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `build.yml` | Push/PR touching iOS-relevant app, project, config, script, Makefile, or workflow files | XcodeGen → build generic iOS Simulator slice → run unit tests on a concrete simulator |
+| `build.yml` (ios-floor) | Weekly `schedule` on `main`, or manual `workflow_dispatch` | Download the iOS 17.0 simulator runtime → unit + UI tests on an iPhone SE (2nd generation) simulator |
 | `functions.yml` (build) | Push/PR touching `functions/**`, `firebase.json`, `docs/systemInstruction.md`, `Makefile`, or workflow | TypeScript compile check + backend unit tests |
 | `functions.yml` (deploy: dev) | Merge to `main` touching Functions inputs | Auto-deploy to dev via reusable `functions-deploy.yml`, then Dev integration tests |
 | `functions.yml` (deploy: prod) | Push to `main`, after dev integration (`needs: integration-after-deploy`) | Approval-gated prod deploy via `functions-deploy.yml`; the protected `prod` Environment pauses it for reviewer approval; no integration |
