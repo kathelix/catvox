@@ -279,6 +279,8 @@ make ios-test
 - To pick the simulator, override `IOS_TEST_DESTINATION` / `IOS_UI_TEST_DESTINATION` **on the make command line**: `make ios-test IOS_TEST_DESTINATION="platform=iOS Simulator,name=iPhone 17,OS=26.5"`. The Makefile assigns them with `:=`, so an environment-variable prefix (`IOS_TEST_DESTINATION=… make ios-test`) is silently ignored. CI pins its simulator this way (`IOS_SIMULATOR_DESTINATION` in `build.yml`), because the Makefile default `iPhone 16` is not on the runner image.
 - If an iOS target fails with an `xcpretty` stack trace (`invalid byte sequence in US-ASCII`), the shell has no UTF-8 locale; the build itself may be fine. Agent shells often lack one; GitHub runners set it. Run iOS targets with `LC_ALL=en_US.UTF-8`.
 - Mind the shared Mac's disk. Resolving the Firebase package graph downloads about 1 GB of gRPC/abseil binaries into each DerivedData folder. Check `df -h` before resolving or building, reuse the project's DerivedData, and don't clone extra copies (e.g. `-clonedSourcePackagesDirPath` into a scratch directory). Concurrent sessions filled the disk on 2026-11-07.
+  - A new worktree has no DerivedData of its own. Xcode names the folder after the project's path, so the first `make ios-*` in a worktree resolves everything again into a new `~/Library/Developer/Xcode/DerivedData/CatVox-*` folder (about 2.6 GB), and the make targets have no `-derivedDataPath` hook.
+  - To reuse a folder, pick one whose `info.plist` `WorkspacePath` names a checkout with the same `Package.resolved` and no build running. Then run the target's `xcodebuild` command by hand with `-derivedDataPath <folder>` added. PR #192's UI test runs did this and grew the folder by 0.4 GB.
 
 - UI tests use a separate native XCUITest target and are intentionally not merged into the unit-test or backend integration suites:
 
@@ -515,6 +517,7 @@ root, and writes the public PostHog project ID/token back into
   - The first `xcodebuild test` on the new simulator sometimes died before any test ran ("The test runner timed out while preparing to run tests", "Simulator device failed to launch"), then passed on the next attempt.
   - Give each suite one retry with a `::warning::` annotation. The `Makefile` has no hook for xcodebuild's retry flags, so the retry lives in the step.
   - Cap the job generously, and read the log before calling one slow or failed run a regression (PR #186).
+- To tell whether a step's `::warning::` or `::error::` fired, read the job's annotations, not a grep of `gh run view --log`. The log also echoes each step's script, so the message text matches even when that branch never ran. Get job IDs with `gh run view <run-id> --json jobs --jq '.jobs[].databaseId'`, then read `gh api repos/kathelix/catvox/check-runs/<job-id>/annotations`. PR #192 checked that no `ios-floor` retry fired this way.
 
 ### Command Invocation Notes
 
