@@ -31,7 +31,10 @@ Notes:
   that PostHog estimates from each analytics event's IP address, its default
   GeoIP enrichment. It is attached to the event and the PostHog person profile,
   so it is linked to the install ID. Ivan decided on 2026-11-08 to keep it, for
-  audience insight (decision Q5 on the privacy policy PR). It is not yet declared
+  audience insight (decision Q5 on the privacy policy PR). He also decided to turn
+  on PostHog's "Discard client IP data" (`posthog_project_settings.anonymize_ips`,
+  provider 1.0.20 or later). GeoIP runs before the IP is discarded, so PostHog
+  keeps the location but not the raw IP address. It is not yet declared
   in `CatVox/PrivacyInfo.xcprivacy`: add `NSPrivacyCollectedDataTypeCoarseLocation`
   (linked, not tracking, purpose Analytics) before submission.
 - CatVox does not use collected data for third-party advertising or tracking.
