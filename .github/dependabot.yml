@@ -44,3 +44,18 @@ updates:
       timezone: Etc/UTC
     labels:
       - maintenance
+
+  # iOS Swift packages (firebase-ios-sdk, posthog-ios). Dependabot finds the
+  # Xcode-managed Package.resolved inside CatVox.xcodeproj and updates it in
+  # place, within the version rules it reads from project.pbxproj. Those rules
+  # come from project.yml (XcodeGen), so a bump past them (e.g. a new major)
+  # is a manual project.yml change + `make ios-generate`.
+  - package-ecosystem: swift
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Etc/UTC
+    labels:
+      - maintenance
