@@ -395,7 +395,8 @@ GitHub Actions WIF produces an external-account Application Default Credentials 
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `build.yml` | Push/PR touching iOS-relevant app, project, config, script, Makefile, or workflow files | XcodeGen → build generic iOS Simulator slice → run unit tests on a concrete simulator |
-| `build.yml` (ios-floor) | Weekly `schedule` on `main`, or manual `workflow_dispatch` | Download the iOS 17.0 simulator runtime → unit + UI tests on an iPhone SE (2nd generation) simulator |
+| `build.yml` (ui-tests) | Push to `main` touching the same files, or manual `workflow_dispatch` | UI tests on an iPhone 17 / iOS 26.5 simulator, one retry; `.xcresult` artifact when a suite fails or needs its retry |
+| `build.yml` (ios-floor) | Weekly `schedule` on `main`, or manual `workflow_dispatch` | Download the iOS 17.0 simulator runtime → unit + UI tests on an iPhone SE (2nd generation) simulator, one retry each; `.xcresult` artifact when a suite fails or needs its retry |
 | `functions.yml` (build) | Push/PR touching `functions/**`, `firebase.json`, `docs/systemInstruction.md`, `Makefile`, or workflow | TypeScript compile check + backend unit tests |
 | `functions.yml` (deploy: dev) | Merge to `main` touching Functions inputs | Auto-deploy to dev via reusable `functions-deploy.yml`, then Dev integration tests |
 | `functions.yml` (deploy: prod) | Push to `main`, after dev integration (`needs: integration-after-deploy`) | Approval-gated prod deploy via `functions-deploy.yml`; the protected `prod` Environment pauses it for reviewer approval; no integration |
