@@ -15,10 +15,10 @@ settings:
 packages:
   PostHog:
     url: https://github.com/PostHog/posthog-ios
-    from: 3.57.2
+    from: 3.93.6
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
-    from: 12.13.0
+    from: 13.1.1
 
 targets:
   CatVox:

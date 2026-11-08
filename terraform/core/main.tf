@@ -53,6 +53,8 @@ resource "google_project_service" "apis" {
     "firebaseextensions.googleapis.com",  # Firebase Functions deploy prerequisite
     "firebaseappcheck.googleapis.com",    # App Check enforcement
     "iam.googleapis.com",                 # SA + role management
+    "iamcredentials.googleapis.com",      # signBlob for V4 signed upload URLs; SA impersonation for WIF
+    "sts.googleapis.com",                 # Security Token Service — GitHub Actions WIF token exchange
     "artifactregistry.googleapis.com",    # Container images for Functions 2nd gen
     "cloudbilling.googleapis.com",        # Required by Firebase CLI for Functions deploy
     "compute.googleapis.com",             # Provisions default compute SA used by Functions 2nd gen builds

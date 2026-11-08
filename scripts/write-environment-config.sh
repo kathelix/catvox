@@ -21,16 +21,30 @@
 #               CATVOX_POSTHOG_PROJECT_ID and CATVOX_POSTHOG_PROJECT_TOKEN.
 #     all       identity, then hosts, then posthog.
 #
+#   ALLOW_MISSING_HOSTS  0 | 1   (default: 0)
+#     1 lets the hosts phase skip a function that gcloud reports as not found
+#     (not deployed yet), leaving its key unchanged. Any other lookup failure
+#     still fails the run.
+#
 # Writes the working tree only. It never stages or commits — the operator
 # reviews the diff and commits (this keeps committed config, especially a
 # protected environment's xcconfig, under operator control). Idempotent:
 # re-running converges the managed keys and leaves every other line untouched, so
 # an unchanged re-run produces no diff.
 #
+# Backend check: a Terraform working directory keeps whatever backend the last
+# `make terraform-init` selected, which may be another environment's. Before any
+# value is written, every root this run reads must prove it belongs to this
+# environment: terraform/core's terraform_state_bucket_name output must equal
+# CATVOX_TF_STATE_BUCKET in the environment's xcconfig, and terraform/posthog's
+# environment_name output must equal CATVOX_ENVIRONMENT.
+#
 # Identity reads are strict (a missing Terraform output or plist fails the run —
 # the precondition is that apply + plist export already happened). Host reads are
-# lenient (a function that is not deployed yet is reported and skipped, not an
-# error — the operator re-runs PHASE=hosts after the deploy).
+# strict too: both hosts are resolved before either is written, and a function
+# that is not deployed fails the run unless ALLOW_MISSING_HOSTS=1 (then it is
+# reported and skipped — re-run PHASE=hosts after the deploy). A lookup that fails
+# for any other reason (auth, permission, no service URI) always fails the run.
 #
 # Expects the same environment the Makefile terraform targets read, and that
 # `make terraform-init` (and apply) has already run for this environment.
@@ -47,6 +61,7 @@ PHASE="${WRITE_CONFIG_PHASE:-identity}"
 PROJECT_ID="${CATVOX_PROJECT_ID:-}"
 REGION="${CATVOX_FUNCTION_REGION:-}"
 PLIST="${CATVOX_FIREBASE_PLIST_OUTPUT:-CatVox/Resources/Firebase/GoogleService-Info-${ENVIRONMENT}.plist}"
+ALLOW_MISSING_HOSTS="${ALLOW_MISSING_HOSTS:-0}"
 
 # Cloud Run function names are part of the backend contract and identical in
 # every environment (TRD §6.2). Each maps to the host-only xcconfig key it fills.
@@ -56,6 +71,11 @@ FUNCTION_ANALYSEVIDEO="analyseVideo"
 case "$PHASE" in
   identity | hosts | posthog | all) ;;
   *) echo "WRITE_CONFIG_PHASE must be 'identity', 'hosts', 'posthog', or 'all' (got: $PHASE)" >&2; exit 1 ;;
+esac
+
+case "$ALLOW_MISSING_HOSTS" in
+  0 | 1) ;;
+  *) echo "ALLOW_MISSING_HOSTS must be 0 or 1 (got: $ALLOW_MISSING_HOSTS)" >&2; exit 1 ;;
 esac
 
 if [[ ! -f "$ENV_CONFIG" ]]; then
@@ -123,6 +143,46 @@ posthog_tf_output() {
   clean_token "$val"
 }
 
+# Fail unless terraform/core is initialised against this environment's state
+# bucket (the one its committed xcconfig names), so no other environment's
+# outputs are ever read as this one's.
+assert_core_backend() {
+  local expected actual
+  expected="$("${REPO_ROOT}/scripts/lib/read-xcconfig-value.sh" "$ENV_CONFIG" CATVOX_TF_STATE_BUCKET)"
+  if [[ -z "$expected" ]]; then
+    echo "ERROR: ${ENV_CONFIG} does not set CATVOX_TF_STATE_BUCKET, so the Terraform backend cannot be checked." >&2
+    exit 1
+  fi
+  if ! actual="$(tf_output terraform_state_bucket_name)"; then
+    echo "Could not confirm terraform/core is initialised for ${ENVIRONMENT}." >&2
+    exit 1
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    echo "ERROR: terraform/core is initialised against state bucket '${actual}', but ${ENVIRONMENT} uses '${expected}' (${ENV_CONFIG})." >&2
+    echo "Its outputs belong to another environment. Run 'make terraform-init CATVOX_ENVIRONMENT=${ENVIRONMENT}', then re-run." >&2
+    if [[ -n "${CATVOX_TF_STATE_BUCKET:-}" && "${CATVOX_TF_STATE_BUCKET}" != "$expected" ]]; then
+      echo "CATVOX_TF_STATE_BUCKET=${CATVOX_TF_STATE_BUCKET} is set in your environment and overrides the xcconfig in make." >&2
+      echo "If that is ${ENVIRONMENT}'s bucket, update CATVOX_TF_STATE_BUCKET in ${ENV_CONFIG} first; otherwise unset it." >&2
+    fi
+    exit 1
+  fi
+}
+
+# Fail unless terraform/posthog is initialised against this environment's
+# PostHog state (its environment_name output names the environment).
+assert_posthog_backend() {
+  local actual
+  if ! actual="$(posthog_tf_output environment_name)"; then
+    echo "Could not confirm terraform/posthog is initialised for ${ENVIRONMENT}." >&2
+    exit 1
+  fi
+  if [[ "$actual" != "$ENVIRONMENT" ]]; then
+    echo "ERROR: terraform/posthog is initialised against the '${actual}' environment's state, not ${ENVIRONMENT}'s." >&2
+    echo "Run 'make posthog-terraform-init CATVOX_ENVIRONMENT=${ENVIRONMENT}', then re-run." >&2
+    exit 1
+  fi
+}
+
 write_identity() {
   require_tool terraform
   require_tool plutil
@@ -161,22 +221,67 @@ write_posthog() {
   set_xcconfig_value CATVOX_POSTHOG_PROJECT_TOKEN "$project_token"
 }
 
-# Lenient read of a deployed Cloud Run function host. Prints the hostname only
-# (no scheme/path) on success; returns non-zero if the function is not deployed
-# yet or cannot be read, so the caller can warn and skip rather than fail.
+# Read a deployed Cloud Run function's host. Prints the hostname only (no
+# scheme/path) and returns 0 when deployed. Returns 3 only when gcloud
+# positively reports the function as not found; any other failure (auth,
+# permission, transient, or a function with no service URI) returns 1 and is
+# never mistaken for "not deployed".
 function_host() {
-  local name="$1" uri host
-  if ! uri="$(gcloud functions describe "$name" --v2 \
+  local name="$1" uri host err_file rc=0
+  err_file="$(mktemp "${TMPDIR:-/tmp}/catvox-function-describe.XXXXXX")" || {
+    echo "ERROR: could not create a temp file to read ${name}." >&2
+    return 1
+  }
+  uri="$(gcloud functions describe "$name" --v2 \
         --project "$PROJECT_ID" --region "$REGION" \
-        --format='value(serviceConfig.uri)' 2>/dev/null)"; then
+        --format='value(serviceConfig.uri)' 2>"$err_file")" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    # gcloud words a missing function as NOT_FOUND / "was not found" (or "does
+    # not exist"); a permission error's "(or it may not exist)" must not match.
+    if grep -qiE 'not[ _]found|does not exist' "$err_file"; then
+      rm -f "$err_file"
+      return 3
+    fi
+    echo "ERROR: could not read ${name} (gcloud functions describe exited ${rc}):" >&2
+    cat "$err_file" >&2
+    rm -f "$err_file"
     return 1
   fi
+  rm -f "$err_file"
   uri="$(clean_token "$uri")"
-  [[ -n "$uri" ]] || return 1
+  if [[ -z "$uri" ]]; then
+    echo "ERROR: ${name} exists but reports no service URI (deploy incomplete or failed?)." >&2
+    return 1
+  fi
   host="${uri#https://}"
   host="${host#http://}"
   host="${host%%/*}"
   printf '%s' "$host"
+}
+
+# Resolve the host for KEY from function NAME. Prints the host, or nothing when
+# a not-deployed function is skipped under ALLOW_MISSING_HOSTS=1; returns
+# non-zero when the run must fail.
+lookup_host() {
+  local name="$1" key="$2" host rc=0
+  host="$(function_host "$name")" || rc=$?
+  case "$rc" in
+    0)
+      printf '%s' "$host"
+      ;;
+    3)
+      if [[ "$ALLOW_MISSING_HOSTS" == "1" ]]; then
+        echo "  skipped:   ${key} (${name} not deployed yet; re-run PHASE=hosts after deploy)" >&2
+      else
+        echo "ERROR: ${name} is not deployed in ${PROJECT_ID} (${REGION}), so ${key} cannot be filled." >&2
+        echo "Deploy the functions first, or pass ALLOW_MISSING_HOSTS=1 to fill only the deployed ones." >&2
+        return 1
+      fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 write_hosts() {
@@ -184,19 +289,35 @@ write_hosts() {
   [[ -n "$PROJECT_ID" ]] || { echo "ERROR: CATVOX_PROJECT_ID is required for the hosts phase." >&2; exit 1; }
   [[ -n "$REGION" ]] || { echo "ERROR: CATVOX_FUNCTION_REGION is required for the hosts phase." >&2; exit 1; }
 
-  echo "Writing backend host values into ${ENV_CONFIG}:"
-  local host
-  if host="$(function_host "$FUNCTION_GETSIGNEDUPLOADURL")"; then
-    set_xcconfig_value CATVOX_SIGNED_UPLOAD_URL_HOST "$host"
-  else
-    echo "  skipped:   CATVOX_SIGNED_UPLOAD_URL_HOST (${FUNCTION_GETSIGNEDUPLOADURL} not deployed yet; re-run PHASE=hosts after deploy)" >&2
+  # Resolve both hosts before writing either, so a failed lookup leaves the
+  # file untouched.
+  local upload_host analyse_host failed=0
+  upload_host="$(lookup_host "$FUNCTION_GETSIGNEDUPLOADURL" CATVOX_SIGNED_UPLOAD_URL_HOST)" || failed=1
+  analyse_host="$(lookup_host "$FUNCTION_ANALYSEVIDEO" CATVOX_ANALYSE_VIDEO_HOST)" || failed=1
+  if [[ "$failed" == "1" ]]; then
+    echo "No backend host values were written to ${ENV_CONFIG}." >&2
+    exit 1
   fi
-  if host="$(function_host "$FUNCTION_ANALYSEVIDEO")"; then
-    set_xcconfig_value CATVOX_ANALYSE_VIDEO_HOST "$host"
-  else
-    echo "  skipped:   CATVOX_ANALYSE_VIDEO_HOST (${FUNCTION_ANALYSEVIDEO} not deployed yet; re-run PHASE=hosts after deploy)" >&2
+
+  echo "Writing backend host values into ${ENV_CONFIG}:"
+  if [[ -n "$upload_host" ]]; then
+    set_xcconfig_value CATVOX_SIGNED_UPLOAD_URL_HOST "$upload_host"
+  fi
+  if [[ -n "$analyse_host" ]]; then
+    set_xcconfig_value CATVOX_ANALYSE_VIDEO_HOST "$analyse_host"
   fi
 }
+
+# Every Terraform root this run reads must belong to this environment, checked
+# before any phase writes a value.
+if [[ "$PHASE" == "identity" || "$PHASE" == "all" ]]; then
+  require_tool terraform
+  assert_core_backend
+fi
+if [[ "$PHASE" == "posthog" || "$PHASE" == "all" ]]; then
+  require_tool terraform
+  assert_posthog_backend
+fi
 
 if [[ "$PHASE" == "identity" || "$PHASE" == "all" ]]; then
   write_identity

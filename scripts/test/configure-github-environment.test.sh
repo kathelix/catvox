@@ -38,11 +38,18 @@ case "$path" in
   *deployment-branch-policies/*) [[ "$method" == "DELETE" ]] && echo "DELETE ${path##*/}" >> "$GH_LOG";;
   *deployment-branch-policies)
     if [[ "$method" == "POST" ]]; then echo "POST ${fval#name=}" >> "$GH_LOG";
+    elif [[ "${MOCK_CUSTOM_POLICIES:-false}" != "true" ]]; then
+      # Real GitHub answers 404 when the environment has no custom branch
+      # policies, and gh prints that body on stdout (even with --jq), exit 1.
+      echo '{"message":"Not Found","documentation_url":"https://docs.github.com/rest/deployments/branch-policies#list-deployment-branch-policies","status":"404"}'
+      exit 1
     elif [[ "$jq" == *name* ]]; then echo "${MOCK_READBACK_BRANCHES:-}";   # verify read-back (names)
     else printf '%s\n' ${MOCK_EXISTING_POLICIES:-}; fi;;                    # reconcile read (ids)
   *environments/*)
     if [[ "$method" == "PUT" && $have_input -eq 1 ]]; then
       b="$(cat)"; echo "PUT $(printf '%s' "$b" | tr -d ' \n\t')" >> "$GH_LOG";
+    elif [[ "$jq" == *deployment_branch_policy* ]]; then
+      echo "${MOCK_CUSTOM_POLICIES:-false}"                                 # verify read-back (custom policies on?)
     else echo "${MOCK_READBACK_REVIEWERS:-}"; fi;;                          # verify read-back (reviewers)
 esac
 exit 0
@@ -54,7 +61,7 @@ PATH_HERMETIC="$SANDBOX/bin:/usr/bin:/bin"
 # 1. Protected + ref pin + reviewer -> required reviewer + custom main policy; verify passes.
 LOG="$SANDBOX/log1"; : > "$LOG"
 env -i PATH="$PATH_HERMETIC" GH_LOG="$LOG" GITHUB_REPO=kathelix/catvox \
-  MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=main \
+  MOCK_CUSTOM_POLICIES=true MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=main \
   CATVOX_ENVIRONMENT=prod CATVOX_ENVIRONMENT_PROTECTED=true \
   CATVOX_GCP_WIF_GITHUB_REF=refs/heads/main GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko \
   bash "$SCRIPT" >/dev/null 2>&1 || fail "S1 script errored"
@@ -65,15 +72,17 @@ grep -q "DELETE" "$LOG" && fail "S1 unexpected DELETE"
 ok "protected env -> required reviewer + custom main branch policy"
 
 # 2. Mutable + no ref + no reviewer -> open environment; verify passes (empty/empty).
+#    GitHub answers the branch-policy list with a 404 body here (no custom
+#    policies); the verify step must not read that body as policy names.
 LOG="$SANDBOX/log2"; : > "$LOG"
 env -i PATH="$PATH_HERMETIC" GH_LOG="$LOG" GITHUB_REPO=kathelix/catvox \
   MOCK_READBACK_REVIEWERS= MOCK_READBACK_BRANCHES= \
   CATVOX_ENVIRONMENT=dev CATVOX_ENVIRONMENT_PROTECTED=false \
-  bash "$SCRIPT" >/dev/null 2>&1 || fail "S2 script errored"
+  bash "$SCRIPT" >"$SANDBOX/out2" 2>&1 || fail "S2 script errored: $(cat "$SANDBOX/out2")"
 grep -Fxq 'PUT {"reviewers":null,"deployment_branch_policy":null}' "$LOG" \
   || fail "S2 PUT body wrong: $(grep '^PUT' "$LOG")"
 grep -qE "POST|DELETE" "$LOG" && fail "S2 unexpected branch-policy calls"
-ok "mutable env -> no reviewers, no branch restriction"
+ok "mutable env -> no reviewers, no branch restriction (GitHub's 404 list is not read as names)"
 
 # 3. Protected without reviewers -> fail fast (before any API call).
 if env -i PATH="$PATH_HERMETIC" GH_LOG="$SANDBOX/log3" GITHUB_REPO=kathelix/catvox \
@@ -94,7 +103,7 @@ ok "non-refs/heads ref fails"
 # 5. Protected with a stale existing policy -> reconcile (delete + re-add); verify passes.
 LOG="$SANDBOX/log5"; : > "$LOG"
 env -i PATH="$PATH_HERMETIC" GH_LOG="$LOG" GITHUB_REPO=kathelix/catvox \
-  MOCK_EXISTING_POLICIES=999 MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=main \
+  MOCK_CUSTOM_POLICIES=true MOCK_EXISTING_POLICIES=999 MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=main \
   CATVOX_ENVIRONMENT=prod CATVOX_ENVIRONMENT_PROTECTED=true \
   CATVOX_GCP_WIF_GITHUB_REF=refs/heads/main GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko \
   bash "$SCRIPT" >/dev/null 2>&1 || fail "S5 script errored"
@@ -105,12 +114,25 @@ ok "stale branch policy reconciled (delete + re-add)"
 # 6. Verification catches drift: read-back branch disagrees with config -> non-zero exit.
 LOG="$SANDBOX/log6"; : > "$LOG"
 if env -i PATH="$PATH_HERMETIC" GH_LOG="$LOG" GITHUB_REPO=kathelix/catvox \
-   MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=master \
+   MOCK_CUSTOM_POLICIES=true MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=master \
    CATVOX_ENVIRONMENT=prod CATVOX_ENVIRONMENT_PROTECTED=true \
    CATVOX_GCP_WIF_GITHUB_REF=refs/heads/main GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko \
    bash "$SCRIPT" >/dev/null 2>&1; then
   fail "S6 expected verification failure when read-back branch != config"
 fi
 ok "verification fails on read-back drift"
+
+# 7. Protected env whose read-back shows custom branch policies switched off
+#    (restriction removed) -> verification fails rather than passing as "none".
+LOG="$SANDBOX/log7"; : > "$LOG"
+if env -i PATH="$PATH_HERMETIC" GH_LOG="$LOG" GITHUB_REPO=kathelix/catvox \
+   MOCK_CUSTOM_POLICIES=false MOCK_READBACK_REVIEWERS=IvanBoyko MOCK_READBACK_BRANCHES=main \
+   CATVOX_ENVIRONMENT=prod CATVOX_ENVIRONMENT_PROTECTED=true \
+   CATVOX_GCP_WIF_GITHUB_REF=refs/heads/main GITHUB_ENVIRONMENT_REVIEWERS=IvanBoyko \
+   bash "$SCRIPT" >"$SANDBOX/out7" 2>&1; then
+  fail "S7 expected verification failure when custom branch policies are off"
+fi
+grep -q "branch-policy mismatch" "$SANDBOX/out7" || fail "S7 should report the branch-policy mismatch: $(cat "$SANDBOX/out7")"
+ok "protected env with branch restriction removed fails verification"
 
 echo "PASS ($pass cases)"

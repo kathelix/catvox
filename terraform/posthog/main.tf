@@ -23,8 +23,10 @@ terraform {
 
   required_providers {
     posthog = {
-      source  = "PostHog/posthog"
-      version = "~> 1.0"
+      source = "PostHog/posthog"
+      # 1.0.20 added anonymize_ips to posthog_project_settings; 1.0.26 stopped
+      # saved plans from resetting the settings this root leaves unmanaged.
+      version = "~> 1.0, >= 1.0.26"
     }
   }
 
@@ -61,4 +63,15 @@ resource "posthog_project" "this" {
   organization_id = var.posthog_organization_id
   name            = "CatVox ${title(var.environment_name)}"
   timezone        = "UTC"
+}
+
+# Discard each event's client IP address at ingestion (PostHog's "Discard
+# client IP data"). GeoIP enrichment runs first, so events keep an approximate
+# location (city, region, country) while PostHog stores no IP addresses — the
+# promise the privacy policy makes. Settings this resource omits stay at
+# PostHog's defaults. Destroying it only stops Terraform managing the setting;
+# it does not switch IP discarding back off.
+resource "posthog_project_settings" "this" {
+  project_id    = posthog_project.this.id
+  anonymize_ips = true
 }

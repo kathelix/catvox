@@ -13,6 +13,7 @@ on:
       - 'Makefile'
       - 'project.yml'
       - '.github/workflows/build.yml'
+      - '.github/actions/install-xcodegen/**'
   pull_request:
     branches: [main]
     paths:
@@ -25,49 +26,147 @@ on:
       - 'Makefile'
       - 'project.yml'
       - '.github/workflows/build.yml'
+      - '.github/actions/install-xcodegen/**'
   workflow_dispatch:
+  # Weekly run on main, mainly for the ios-floor job, which is too slow to run
+  # on every pull request.
+  schedule:
+    - cron: '37 4 * * 1'  # Mondays 04:37 UTC
 
-# Cancel any in-progress run for the same branch so each push doesn't queue
-# behind the previous one.
+# Cancel any in-progress run for the same branch and event so each push doesn't
+# queue behind the previous one. The event is part of the key so the weekly
+# scheduled run and a push to main never cancel each other.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Restrict the default GITHUB_TOKEN to least privilege. Both jobs only check
-# out the repo and run the build/test toolchain — no write scopes required.
+# Restrict the default GITHUB_TOKEN to least privilege. Every job only checks
+# out the repo and runs the build/test toolchain — no write scopes required.
 permissions:
   contents: read
+
+# Pinned iOS toolchain, shared by every job. Bump these on purpose, never by
+# drift:
+# - DEVELOPER_DIR selects one Xcode installed on the runner image. Every
+#   xcodebuild/xcrun call fails loudly if the image no longer ships it.
+# - XcodeGen comes from its GitHub release, checked against a SHA-256, so CI
+#   renders the same project as a local `make ios-generate` with that version.
+#   .github/actions/install-xcodegen keeps the verified zip in the Actions
+#   cache, keyed on both values, so a cache hit needs no network.
+# - The Makefile's default simulator ("iPhone 16") is not on this image. The
+#   Makefile sets IOS_*_DESTINATION with `:=`, which an environment variable
+#   cannot override, so the steps below pass it on the make command line.
+# - IOS_FLOOR_* select the oldest iOS the app supports, for the ios-floor job.
+#   IOS_FLOOR_VERSION must equal IPHONEOS_DEPLOYMENT_TARGET in project.yml;
+#   the build job fails if they differ. The image ships only current
+#   simulator runtimes, so ios-floor downloads IOS_FLOOR_RUNTIME_BUILD from
+#   Apple on every run (iOS 17.0: 7.56 GB, about 2 minutes, no Apple ID).
+#   The device is the smallest screen iOS 17 supports (375x667 pt).
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+  XCODEGEN_VERSION: 2.46.0
+  XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+  XCPRETTY_VERSION: 0.4.1
+  IOS_SIMULATOR_DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=26.5
+  IOS_FLOOR_VERSION: '17.0'
+  IOS_FLOOR_RUNTIME_BUILD: 21A328
+  IOS_FLOOR_DEVICE_TYPE: iPhone SE (2nd generation)
 
 jobs:
   build:
     name: Build — iOS Simulator
-    runs-on: macos-15          # Ships with Xcode 16.x; iOS 17+ SDK included
+    runs-on: macos-26          # Apple silicon; Xcode pinned by DEVELOPER_DIR
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       # ── Toolchain ───────────────────────────────────────────────────────
-      - name: Show Xcode version
-        run: xcodebuild -version
-
-      - name: Cache Homebrew downloads
-        uses: actions/cache@v6
-        with:
-          path: ~/Library/Caches/Homebrew/downloads
-          key: homebrew-xcodegen-${{ runner.os }}
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        uses: ./.github/actions/install-xcodegen
+        with:
+          version: ${{ env.XCODEGEN_VERSION }}
+          sha256: ${{ env.XCODEGEN_SHA256 }}
 
       - name: Install xcpretty
-        run: gem install xcpretty --no-document --quiet
+        run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
 
       # ── Project generation ───────────────────────────────────────────────
-      # Regenerate from project.yml to catch any drift between the spec
-      # and the committed .xcodeproj.
       - name: Generate Xcode project
         run: make ios-generate
+
+      # CI builds from a fresh generation, so a stale committed project would
+      # only break local Xcode and archive builds (e.g. a missing resource).
+      # Check the whole tree, not just `git diff`: untracked files (a new
+      # scheme) and outputs outside the .xcodeproj (CatVox/Info.plist) count.
+      - name: Check generated project is committed
+        run: |
+          drift="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$drift" ]; then
+            echo "$drift"
+            git --no-pager diff
+            echo "::error title=Generated project drift::The committed XcodeGen output does not match project.yml. Run 'make ios-generate' with XcodeGen ${XCODEGEN_VERSION} and commit the result."
+            exit 1
+          fi
+
+      # The ios-floor job must test the app's real deployment target. Catch a
+      # floor change here, on the pull request, rather than at the next
+      # weekly run. plutil parses the project file as a property list, so
+      # comments and quoting can't fool the check. Every native target's
+      # configurations must set IPHONEOS_DEPLOYMENT_TARGET themselves, and
+      # every value in the project must equal IOS_FLOOR_VERSION exactly.
+      # Anything else fails: an unset or inherited value, a non-version value,
+      # or an SDK-conditional variant such as IPHONEOS_DEPLOYMENT_TARGET[sdk=...].
+      - name: Check iOS floor pin matches the deployment target
+        run: |
+          set -euo pipefail
+          if ! project="$(plutil -convert json -o - CatVox.xcodeproj/project.pbxproj)"; then
+            echo "::error title=iOS floor drift::plutil could not parse CatVox.xcodeproj/project.pbxproj."
+            exit 1
+          fi
+          # One line per build configuration: "<owner>/<config><TAB><value>".
+          if ! settings="$(jq -r '
+            .objects as $o
+            | $o[.rootObject] as $project
+            | ( ($o[$project.buildConfigurationList].buildConfigurations[]
+                  | {owner: "project", required: false, id: .}),
+                ($project.targets[] | $o[.] as $t
+                  | $o[$t.buildConfigurationList].buildConfigurations[]
+                  | {owner: $t.name, required: ($t.isa == "PBXNativeTarget"), id: .}) )
+            | . as $entry
+            | $o[$entry.id] as $config
+            | ($config.buildSettings // {}) as $build
+            | "\($entry.owner)/\($config.name)" as $where
+            | ( ($build | keys[] | select(startswith("IPHONEOS_DEPLOYMENT_TARGET["))
+                  | "\($where)\t\(.) (SDK-conditional)"),
+                (if $build | has("IPHONEOS_DEPLOYMENT_TARGET") then
+                   "\($where)\t\($build.IPHONEOS_DEPLOYMENT_TARGET | if type == "string" then . else tojson end)"
+                 elif $entry.required then "\($where)\t<unset>"
+                 else empty end) )' <<< "$project")"; then
+            echo "::error title=iOS floor drift::Could not read build configurations from CatVox.xcodeproj/project.pbxproj."
+            exit 1
+          fi
+          if [ -z "$settings" ]; then
+            echo "::error title=iOS floor drift::CatVox.xcodeproj/project.pbxproj has no deployment-target settings to check."
+            exit 1
+          fi
+          problems=""
+          while IFS=$'\t' read -r where value; do
+            if [ "$value" != "$IOS_FLOOR_VERSION" ]; then
+              problems="${problems}${where}=${value}; "
+            fi
+          done <<< "$settings"
+          if [ -n "$problems" ]; then
+            echo "::error title=iOS floor drift::Every target configuration must set IPHONEOS_DEPLOYMENT_TARGET to IOS_FLOOR_VERSION (${IOS_FLOOR_VERSION}) as a plain version. Found: ${problems}Move the IOS_FLOOR_* pins in build.yml together with any deployment-target change."
+            exit 1
+          fi
+          echo "All $(wc -l <<< "$settings" | tr -d ' ') deployment-target settings equal IOS_FLOOR_VERSION ${IOS_FLOOR_VERSION}."
 
       - name: Validate Firebase Environment Config
         run: |
@@ -97,11 +196,21 @@ jobs:
       - name: Run iOS Unit Tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-test-only
+        run: make ios-test-only IOS_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
+
+      # SwiftPM must build the versions pinned in the committed Package.resolved.
+      # If project.yml's package requirements changed without a matching
+      # Package.resolved, xcodebuild re-resolved and rewrote it above.
+      - name: Check Package.resolved is committed
+        run: |
+          if ! git diff --exit-code -- CatVox.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
+            echo "::error title=Package.resolved drift::xcodebuild re-resolved Swift packages. Resolve them locally (make ios-build) after the project.yml change and commit Package.resolved."
+            exit 1
+          fi
 
   ui-tests:
     name: UI Tests — iOS Simulator
-    runs-on: macos-15
+    runs-on: macos-26
     needs: build
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
@@ -109,22 +218,104 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Show Xcode version
-        run: xcodebuild -version
-
-      - name: Cache Homebrew downloads
-        uses: actions/cache@v6
-        with:
-          path: ~/Library/Caches/Homebrew/downloads
-          key: homebrew-xcodegen-${{ runner.os }}
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        uses: ./.github/actions/install-xcodegen
+        with:
+          version: ${{ env.XCODEGEN_VERSION }}
+          sha256: ${{ env.XCODEGEN_SHA256 }}
 
       - name: Install xcpretty
-        run: gem install xcpretty --no-document --quiet
+        run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
 
       - name: Run iOS UI Tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-ui-test
+        run: make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
+
+  # Unit and UI tests on the oldest iOS the app supports (IOS_FLOOR_* above).
+  # About 15 minutes on a fast runner and over an hour on a slow one (one run
+  # took 79 minutes), so it runs on the weekly schedule and on manual
+  # dispatch, not on every pull request.
+  ios-floor:
+    name: Unit + UI Tests — Oldest Supported iOS
+    runs-on: macos-26
+    needs: build
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          df -h /System/Volumes/Data
+
+      - name: Install XcodeGen
+        uses: ./.github/actions/install-xcodegen
+        with:
+          version: ${{ env.XCODEGEN_VERSION }}
+          sha256: ${{ env.XCODEGEN_SHA256 }}
+
+      - name: Install xcpretty
+        run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
+
+      # Apple serves this runtime without sign-in. xcodebuild prints a
+      # progress line every few hundred KB; the filter drops those lines.
+      - name: Install the iOS floor simulator runtime
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          xcodebuild -downloadPlatform iOS -buildVersion "$IOS_FLOOR_RUNTIME_BUILD" 2>&1 \
+            | tr '\r' '\n' | awk '!/: [0-9.]+% \(/'
+          xcrun simctl runtime list
+
+      - name: Create the iOS floor simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+          runtime="$(xcrun simctl list runtimes -j \
+            | jq -c --arg build "$IOS_FLOOR_RUNTIME_BUILD" '[.runtimes[] | select(.buildversion == $build and .isAvailable)][0] // empty')"
+          if [ -z "$runtime" ]; then
+            echo "::error::No available iOS simulator runtime with build ${IOS_FLOOR_RUNTIME_BUILD}."
+            exit 1
+          fi
+          device_type="$(jq -r --arg name "$IOS_FLOOR_DEVICE_TYPE" '.supportedDeviceTypes[]? | select(.name == $name) | .identifier' <<< "$runtime")"
+          if [ -z "$device_type" ]; then
+            echo "::error::The iOS ${IOS_FLOOR_VERSION} runtime does not support '${IOS_FLOOR_DEVICE_TYPE}'."
+            exit 1
+          fi
+          udid="$(xcrun simctl create "$IOS_FLOOR_DEVICE_TYPE" "$device_type" "$(jq -r '.identifier' <<< "$runtime")")"
+          xcrun simctl bootstatus "$udid" -b
+          echo "IOS_FLOOR_DESTINATION=platform=iOS Simulator,id=${udid}" >> "$GITHUB_ENV"
+
+      # On a slow runner the new simulator can time out before any test runs
+      # ("The test runner timed out while preparing to run tests", or
+      # "Simulator device failed to launch"), so each suite gets one retry.
+      # The warning keeps the first failure visible in the run summary.
+      - name: Run iOS Unit Tests
+        env:
+          CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
+        run: |
+          if ! make ios-test IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"; then
+            echo "::warning title=iOS floor unit tests retried::The first unit test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log before dismissing it."
+            make ios-test-only IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+          fi
+
+      # Runs even when unit tests fail, so one run reports both suites.
+      - name: Run iOS UI Tests
+        if: ${{ !cancelled() && steps.simulator.outcome == 'success' }}
+        env:
+          CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
+        run: |
+          if ! make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"; then
+            echo "::warning title=iOS floor UI tests retried::The first UI test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log before dismissing it."
+            make ios-ui-test-only IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+          fi

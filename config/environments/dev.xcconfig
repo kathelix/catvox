@@ -5,7 +5,7 @@
 // truncates the value to https:.
 // Boolean fields use lowercase true or false only.
 
-CATVOX_PROJECT_ID = kathelix-catvox-dev
+CATVOX_PROJECT_ID = kathelix-catvox-dev-2
 CATVOX_ENVIRONMENT = dev
 // Environment security tier (ADR-0026). false = mutable: debug token allowed,
 // App Check may be UNENFORCED, WIF trusts any ref, integration tests permitted.
@@ -14,9 +14,9 @@ CATVOX_ENVIRONMENT = dev
 CATVOX_ENVIRONMENT_PROTECTED = false
 CATVOX_FUNCTION_REGION = us-central1
 CATVOX_FIRESTORE_LOCATION = nam5
-CATVOX_TF_STATE_BUCKET = catvox-tf-state-kathelix-catvox-dev
-CATVOX_GCP_CI_SERVICE_ACCOUNT = catvox-ci-sa@kathelix-catvox-dev.iam.gserviceaccount.com
-CATVOX_GCP_WIF_PROVIDER = projects/99523926611/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+CATVOX_TF_STATE_BUCKET = catvox-tf-state-kathelix-catvox-dev-2
+CATVOX_GCP_CI_SERVICE_ACCOUNT = catvox-ci-sa@kathelix-catvox-dev-2.iam.gserviceaccount.com
+CATVOX_GCP_WIF_PROVIDER = projects/229534242423/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
 // WIF ref pin: empty trusts any ref. See ADR-0024.
 CATVOX_GCP_WIF_GITHUB_REF =
 CATVOX_IOS_BUNDLE_ID = com.kathelix.catvox.dev
@@ -28,13 +28,13 @@ CATVOX_FIREBASE_APPLE_TEAM_ID = QYT76L5836
 // Check. See ADR-0025.
 CATVOX_FIREBASE_FIRESTORE_APP_CHECK_ENFORCEMENT = UNENFORCED
 CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM = true
-CATVOX_SIGNED_UPLOAD_URL_HOST = getsigneduploadurl-o2aj5rh53a-uc.a.run.app
-CATVOX_ANALYSE_VIDEO_HOST = analysevideo-o2aj5rh53a-uc.a.run.app
-CATVOX_FIREBASE_APP_ID = 1:99523926611:ios:9b3848f13783e1c585c4a6
-CATVOX_FIREBASE_API_KEY = AIzaSyC85HcKTzF0GozBD1rj8TqUGjXi2q88s9Q
-CATVOX_POSTHOG_PROJECT_TOKEN = phc_ktoFY7ywiGeSCdyLT7msVfWtankAWx8QLLrLerBzmMr8
+CATVOX_SIGNED_UPLOAD_URL_HOST = getsigneduploadurl-2orfuuynna-uc.a.run.app
+CATVOX_ANALYSE_VIDEO_HOST = analysevideo-2orfuuynna-uc.a.run.app
+CATVOX_FIREBASE_APP_ID = 1:229534242423:ios:3d9eb37b78711fefd8d872
+CATVOX_FIREBASE_API_KEY = AIzaSyDsYQHNJvvgbIArE7jkIa0CH5nJ0GzBk4Q
+CATVOX_POSTHOG_PROJECT_TOKEN = phc_rW9MvjE8ykYcP2Aa3vmDuLjmwgKt22axYujtHtZThtC3
 CATVOX_POSTHOG_HOST_NAME = us.i.posthog.com
 CATVOX_POSTHOG_API_HOST_NAME = us.posthog.com
-CATVOX_POSTHOG_PROJECT_ID = 402530
+CATVOX_POSTHOG_PROJECT_ID = 720088
 CATVOX_POSTHOG_ORGANIZATION_ID = 019dd8f1-bb9a-0000-0b42-cc4eed1ae14f
 CATVOX_INTEGRATION_SAFE_ENVIRONMENTS = dev

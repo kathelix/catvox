@@ -12,6 +12,8 @@
 #
 # Idempotent and safe to re-run: a resource already in Terraform state is
 # skipped, and a resource absent from the project is left for apply to create.
+# If the state cannot be listed, the run stops before any import: a failed
+# listing never reads as "not in state".
 # Importing changes no infrastructure — it only records existing resources in
 # state — but it does mutate remote state, so it runs as part of provisioning
 # rather than a pure read-only preview.
@@ -30,8 +32,31 @@ PROJECT_ID="${CATVOX_PROJECT_ID:?CATVOX_PROJECT_ID is required}"
 IOS_BUNDLE_ID="${CATVOX_IOS_BUNDLE_ID:?CATVOX_IOS_BUNDLE_ID is required}"
 TFVARS_FILE="${CATVOX_TF_VARS_FILE:-terraform/core/env/${ENVIRONMENT}.tfvars}"
 
+# The resource addresses in Terraform state, one per line, listed once before
+# any import. The listing is captured whole and searched afterwards. Piped
+# straight into `grep -q`, grep exited at the first match, terraform died of
+# SIGPIPE while still writing (exit 141), and pipefail turned an address that
+# is in state into "absent", so the run re-imported a managed resource and
+# failed with "Resource already managed by Terraform". The imports below add
+# only their own addresses, so one listing serves both checks.
+STATE_ADDRESSES=""
+load_state_addresses() {
+  if ! STATE_ADDRESSES="$(terraform -chdir=terraform/core state list)"; then
+    echo "Could not list the Terraform state (terraform state list failed; its error is above)." >&2
+    echo "Stopping before any import. Check that make terraform-init ran for ${ENVIRONMENT} and that your credentials can read its state bucket, then re-run." >&2
+    exit 1
+  fi
+}
+
+# True when $1 is one of the listed addresses (a whole-line, literal match).
 terraform_state_has() {
-  terraform -chdir=terraform/core state list 2>/dev/null | grep -Fxq "$1"
+  local address
+  while IFS= read -r address; do
+    if [[ "${address}" == "$1" ]]; then
+      return 0
+    fi
+  done <<< "${STATE_ADDRESSES}"
+  return 1
 }
 
 run_terraform_import() {
@@ -81,6 +106,7 @@ import_firebase_ios_app() {
 }
 
 echo "Importing pre-existing resources into Terraform state (idempotent)..."
+load_state_addresses
 import_firestore_default
 import_firebase_ios_app
 echo "Pre-existing resource import phase complete."
