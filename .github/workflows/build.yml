@@ -215,14 +215,15 @@ jobs:
         run: make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
 
   # Unit and UI tests on the oldest iOS the app supports (IOS_FLOOR_* above).
-  # About 15 minutes including the runtime download, so it runs on the weekly
-  # schedule and on manual dispatch, not on every pull request.
+  # About 15 minutes on a fast runner and up to an hour on a slow one, so it
+  # runs on the weekly schedule and on manual dispatch, not on every pull
+  # request.
   ios-floor:
     name: Unit + UI Tests — Oldest Supported iOS
     runs-on: macos-26
     needs: build
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -286,9 +287,16 @@ jobs:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
         run: make ios-test IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
 
-      # Runs even when unit tests fail, so one run reports both suites.
+      # Runs even when unit tests fail, so one run reports both suites. On a
+      # slow runner the first app launch on the new simulator can time out
+      # ("Simulator device failed to launch"), so a failed suite is retried
+      # once. The warning keeps the first failure visible in the run summary.
       - name: Run iOS UI Tests
         if: ${{ !cancelled() && steps.simulator.outcome == 'success' }}
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+        run: |
+          if ! make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"; then
+            echo "::warning title=iOS floor UI tests retried::The first UI test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log before dismissing it."
+            make ios-ui-test-only IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+          fi
