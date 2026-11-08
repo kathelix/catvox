@@ -99,19 +99,45 @@ case "$args" in
 esac
 SH
 
+# firebase lists no projects, unless MOCK_FIREBASE_PROJECT names one to list
+# first, followed by MOCK_FIREBASE_FILLER more (enough of them outgrow any pipe
+# buffer). MOCK_FIREBASE_LIST_ERROR makes projects:list fail with that message.
 cat > "$BIN/firebase" <<'SH'
 #!/usr/bin/env bash
 echo "firebase $*" >> "$CALLS"
 case "$1" in
-  projects:list | apps:list) echo '{"status":"success","result":[]}' ;;
+  projects:list)
+    if [[ -n "${MOCK_FIREBASE_LIST_ERROR:-}" ]]; then echo "$MOCK_FIREBASE_LIST_ERROR" >&2; exit 1; fi
+    if [[ -z "${MOCK_FIREBASE_PROJECT:-}" ]]; then echo '{"status":"success","result":[]}'; exit 0; fi
+    printf '{\n  "status": "success",\n  "result": [\n    {\n      "projectId": "%s",\n      "projectNumber": "123456"\n    }' "$MOCK_FIREBASE_PROJECT"
+    i=0
+    while (( i < ${MOCK_FIREBASE_FILLER:-0} )); do
+      printf ',\n    {\n      "projectId": "filler-project-%d",\n      "projectNumber": "%d"\n    }' "$i" "$i"
+      i=$((i + 1))
+    done
+    printf '\n  ]\n}\n'
+    ;;
+  apps:list) echo '{"status":"success","result":[]}' ;;
   projects:addfirebase) ;;
   *) echo "firebase mock: unexpected call: $*" >&2; exit 1 ;;
 esac
 SH
 
-# terraform's `state list` prints nothing (an empty state); node is reached only
-# by the import script's app discovery and finds no app; make records the target.
-for tool in terraform node make; do
+# terraform: the preflight's `fmt` check passes unless MOCK_TF_FMT_RC says
+# otherwise, printing MOCK_TF_FMT_OUTPUT; every other call, `state list`
+# included (an empty state), prints nothing.
+cat > "$BIN/terraform" <<'SH'
+#!/usr/bin/env bash
+echo "terraform $*" >> "$CALLS"
+if [[ "${2:-}" == "fmt" ]]; then
+  if [[ -n "${MOCK_TF_FMT_OUTPUT:-}" ]]; then printf '%s\n' "$MOCK_TF_FMT_OUTPUT"; fi
+  exit "${MOCK_TF_FMT_RC:-0}"
+fi
+SH
+
+# node is reached only by the import script's app discovery and finds no app;
+# make records the target.
+for tool in node make; do
   cat > "$BIN/$tool" <<SH
 #!/usr/bin/env bash
 echo "$tool \$*" >> "\$CALLS"
@@ -137,12 +163,12 @@ write_tfvars_raw() {
   cp "$TFVARS" "$TFVARS.before"
 }
 
-# An existing tfvars file written the way the script writes it:
-# write_tfvars <alert_email> <token|null>.
+# An existing tfvars file written the way the script writes it, in terraform
+# fmt's layout: write_tfvars <alert_email> <token|null>.
 write_tfvars() {
   local token_value="null"
   if [[ "$2" != "null" ]]; then token_value="\"$2\""; fi
-  write_tfvars_raw "$(printf 'app_check_debug_token             = %s\nalert_email           = "%s"' "$token_value" "$1")"
+  write_tfvars_raw "$(printf 'app_check_debug_token = %s\nalert_email           = "%s"' "$token_value" "$1")"
 }
 
 # Run with a valid baseline — mutable environment, folder parent, billing, alert
@@ -451,5 +477,81 @@ assert_refused_before_cloud C26 "CREATE_PROJECT is required."
 if run CREATE_PROJECT=yes; then fail "C26 expected refusal for CREATE_PROJECT=yes"; fi
 assert_refused_before_cloud C26 "CREATE_PROJECT must be 0 or 1."
 ok "a missing or invalid CREATE_PROJECT is refused before any cloud call"
+
+# 27. Regression: the generated tfvars is exactly in terraform fmt's layout,
+# with a debug token and with null. The plan step's `terraform fmt -check
+# -recursive` reads this git-ignored file too, and the old 13-space padding
+# after app_check_debug_token stopped every new environment's first run there.
+# The real terraform checks the file when it is on PATH. A re-run reads the
+# file back and keeps it.
+printf 'app_check_debug_token = "%s"\nalert_email           = "alerts@example.com"\n' "$TOKEN" > "$SANDBOX/expected-token.tfvars"
+printf 'app_check_debug_token = null\nalert_email           = "alerts@example.com"\n' > "$SANDBOX/expected-null.tfvars"
+for variant in token null; do
+  token_arg=()
+  if [[ "$variant" == "token" ]]; then token_arg=(APP_CHECK_DEBUG_TOKEN="$TOKEN"); fi
+  reset false
+  run ${token_arg[@]+"${token_arg[@]}"} || fail "C27 ($variant) run should succeed: $(cat "$OUT")"
+  cmp -s "$SANDBOX/expected-$variant.tfvars" "$TFVARS" || fail "C27 ($variant) tfvars is not in terraform fmt's layout: $(cat "$TFVARS")"
+  if command -v terraform >/dev/null 2>&1; then
+    CHECKPOINT_DISABLE=1 terraform fmt -check -no-color "$TFVARS" >/dev/null 2>&1 \
+      || fail "C27 ($variant) terraform fmt -check rejects the generated tfvars: $(cat "$TFVARS")"
+  fi
+  cp "$TFVARS" "$TFVARS.before"
+  run ${token_arg[@]+"${token_arg[@]}"} || fail "C27 ($variant) re-run should succeed: $(cat "$OUT")"
+  grep -qF "Keeping existing ${TFVARS}" "$OUT" || fail "C27 ($variant) re-run should keep the generated tfvars: $(cat "$OUT")"
+  cmp -s "$TFVARS.before" "$TFVARS" || fail "C27 ($variant) re-run changed the tfvars"
+done
+if command -v terraform >/dev/null 2>&1; then
+  ok "generated tfvars is in terraform fmt's layout (exact text, and terraform fmt -check) and reads back on a re-run"
+else
+  ok "generated tfvars is in terraform fmt's layout (exact text; terraform not on PATH, so its fmt -check was skipped) and reads back on a re-run"
+fi
+
+# 28. A file the plan step's fmt check would reject (here a hand-edited tfvars
+# of another environment) is refused before any cloud call, named, with the
+# fix. Only the local terraform fmt check ran, and nothing was written.
+reset false
+if run MOCK_TF_FMT_RC=3 MOCK_TF_FMT_OUTPUT="env/prod.tfvars"; then fail "C28 expected refusal when terraform fmt -check lists a file"; fi
+grep -qF "Refusing: make terraform-plan would stop at its terraform fmt -check -recursive step." "$OUT" || fail "C28 message: $(cat "$OUT")"
+grep -qxF "  env/prod.tfvars" "$OUT" || fail "C28 should name the file: $(cat "$OUT")"
+grep -qF "terraform -chdir=terraform/core fmt <file>" "$OUT" || fail "C28 should give the fix: $(cat "$OUT")"
+[[ "$(cat "$CALLS")" == "terraform -chdir=terraform/core fmt -check -recursive -no-color" ]] || fail "C28 only the fmt check may run: $(cat "$CALLS")"
+[[ ! -e "$TFVARS" ]] || fail "C28 tfvars was written"
+ok "a file terraform fmt -check rejects is named, with the fix, before any cloud call"
+
+# 29. terraform fmt failing outright (a syntax error) is refused the same way,
+# with terraform's error shown.
+reset false
+if run MOCK_TF_FMT_RC=2 MOCK_TF_FMT_OUTPUT="Error: Unterminated template string"; then fail "C29 expected refusal when terraform fmt fails"; fi
+grep -qF "Refusing: terraform fmt -check -recursive in terraform/core failed (exit 2)" "$OUT" || fail "C29 message: $(cat "$OUT")"
+grep -qxF "  Error: Unterminated template string" "$OUT" || fail "C29 should show terraform's error: $(cat "$OUT")"
+[[ "$(cat "$CALLS")" == "terraform -chdir=terraform/core fmt -check -recursive -no-color" ]] || fail "C29 only the fmt check may run: $(cat "$CALLS")"
+[[ ! -e "$TFVARS" ]] || fail "C29 tfvars was written"
+ok "a terraform fmt error is refused before any cloud call, with the error shown"
+
+# 30. Regression: firebase lists this project first, then ~1.4 MB more. Piped
+# into `grep -q`, the listing could be cut at the match, firebase died of
+# SIGPIPE, and pipefail read "not enabled". Control: a list that has only a
+# longer ID starting with this one (proj-2) still adds Firebase.
+reset false
+run MOCK_PROJECT_EXISTS=1 MOCK_FIREBASE_PROJECT=proj MOCK_FIREBASE_FILLER=20000 || fail "C30 run should succeed: $(cat "$OUT")"
+grep -qF "Firebase is already enabled for proj." "$OUT" || fail "C30 should find the project in the listing: $(cat "$OUT")"
+not_called "firebase projects:addfirebase" || fail "C30 must not add Firebase to a project that has it"
+reset false
+run MOCK_PROJECT_EXISTS=1 MOCK_FIREBASE_PROJECT=proj-2 MOCK_FIREBASE_FILLER=3 || fail "C30 control run should succeed: $(cat "$OUT")"
+called "firebase projects:addfirebase proj --non-interactive" || fail "C30 should add Firebase when only proj-2 is listed: $(cat "$CALLS")"
+ok "a project listed first in a large Firebase listing is found; a longer ID is not mistaken for it"
+
+# 31. A failed Firebase project listing stops the run before Firebase is added
+# or any bucket is created, showing firebase's error. It used to read as "not
+# enabled".
+reset false
+if run MOCK_PROJECT_EXISTS=1 MOCK_FIREBASE_LIST_ERROR="Error: Failed to authenticate, have you run firebase login?"; then
+  fail "C31 expected refusal when firebase projects:list fails"
+fi
+grep -qF "Could not list Firebase projects" "$OUT" || fail "C31 message: $(cat "$OUT")"
+grep -qF "Error: Failed to authenticate, have you run firebase login?" "$OUT" || fail "C31 should show firebase's error: $(cat "$OUT")"
+assert_no_mutation_after C31
+ok "a failed Firebase project listing stops the run before any mutation"
 
 echo "PASS ($pass cases)"
