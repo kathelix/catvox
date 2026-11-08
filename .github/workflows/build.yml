@@ -13,6 +13,7 @@ on:
       - 'Makefile'
       - 'project.yml'
       - '.github/workflows/build.yml'
+      - '.github/actions/install-xcodegen/**'
   pull_request:
     branches: [main]
     paths:
@@ -25,6 +26,7 @@ on:
       - 'Makefile'
       - 'project.yml'
       - '.github/workflows/build.yml'
+      - '.github/actions/install-xcodegen/**'
   workflow_dispatch:
 
 # Cancel any in-progress run for the same branch so each push doesn't queue
@@ -44,6 +46,8 @@ permissions:
 #   xcodebuild/xcrun call fails loudly if the image no longer ships it.
 # - XcodeGen comes from its GitHub release, checked against a SHA-256, so CI
 #   renders the same project as a local `make ios-generate` with that version.
+#   .github/actions/install-xcodegen keeps the verified zip in the Actions
+#   cache, keyed on both values, so a cache hit needs no network.
 # - The Makefile's default simulator ("iPhone 16") is not on this image. The
 #   Makefile sets IOS_*_DESTINATION with `:=`, which an environment variable
 #   cannot override, so the steps below pass it on the make command line.
@@ -71,20 +75,10 @@ jobs:
           xcrun simctl list devices available
 
       - name: Install XcodeGen
-        run: |
-          set -euo pipefail
-          zip="$RUNNER_TEMP/xcodegen.zip"
-          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
-            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
-          echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
-          unzip -q "$zip" -d "$RUNNER_TEMP"
-          version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
-          echo "$version"
-          if [ "$version" != "Version: ${XCODEGEN_VERSION}" ]; then
-            echo "::error::Expected XcodeGen ${XCODEGEN_VERSION}, got: ${version}"
-            exit 1
-          fi
-          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/install-xcodegen
+        with:
+          version: ${{ env.XCODEGEN_VERSION }}
+          sha256: ${{ env.XCODEGEN_SHA256 }}
 
       - name: Install xcpretty
         run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
@@ -164,20 +158,10 @@ jobs:
           xcrun simctl list devices available
 
       - name: Install XcodeGen
-        run: |
-          set -euo pipefail
-          zip="$RUNNER_TEMP/xcodegen.zip"
-          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
-            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
-          echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
-          unzip -q "$zip" -d "$RUNNER_TEMP"
-          version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
-          echo "$version"
-          if [ "$version" != "Version: ${XCODEGEN_VERSION}" ]; then
-            echo "::error::Expected XcodeGen ${XCODEGEN_VERSION}, got: ${version}"
-            exit 1
-          fi
-          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/install-xcodegen
+        with:
+          version: ${{ env.XCODEGEN_VERSION }}
+          sha256: ${{ env.XCODEGEN_SHA256 }}
 
       - name: Install xcpretty
         run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
