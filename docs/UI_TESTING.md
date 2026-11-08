@@ -29,8 +29,9 @@ Pass the destination on the make command line. The Makefile assigns it with
 The Build workflow's `ios-floor` job runs this suite and the unit tests on the
 app's deployment target: iOS 17.0 on an iPhone SE (2nd generation) simulator,
 the smallest screen iOS 17 supports. It runs every Monday on `main` and on
-manual dispatch, not on pull requests. A failed UI run there gets one retry,
-because the first app launch on a new simulator can time out on a slow runner.
+manual dispatch, not on pull requests. A failed run of either suite there gets
+one retry, because a new simulator can time out before any test runs on a slow
+runner.
 To run it on a branch:
 
 ```bash

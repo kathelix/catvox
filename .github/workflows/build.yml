@@ -287,15 +287,15 @@ jobs:
         run: make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
 
   # Unit and UI tests on the oldest iOS the app supports (IOS_FLOOR_* above).
-  # About 15 minutes on a fast runner and up to an hour on a slow one, so it
-  # runs on the weekly schedule and on manual dispatch, not on every pull
-  # request.
+  # About 15 minutes on a fast runner and over an hour on a slow one (one run
+  # took 79 minutes), so it runs on the weekly schedule and on manual
+  # dispatch, not on every pull request.
   ios-floor:
     name: Unit + UI Tests — Oldest Supported iOS
     runs-on: macos-26
     needs: build
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -370,15 +370,20 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
           echo "IOS_FLOOR_DESTINATION=platform=iOS Simulator,id=${udid}" >> "$GITHUB_ENV"
 
+      # On a slow runner the new simulator can time out before any test runs
+      # ("The test runner timed out while preparing to run tests", or
+      # "Simulator device failed to launch"), so each suite gets one retry.
+      # The warning keeps the first failure visible in the run summary.
       - name: Run iOS Unit Tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-test IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+        run: |
+          if ! make ios-test IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"; then
+            echo "::warning title=iOS floor unit tests retried::The first unit test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log before dismissing it."
+            make ios-test-only IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+          fi
 
-      # Runs even when unit tests fail, so one run reports both suites. On a
-      # slow runner the first app launch on the new simulator can time out
-      # ("Simulator device failed to launch"), so a failed suite is retried
-      # once. The warning keeps the first failure visible in the run summary.
+      # Runs even when unit tests fail, so one run reports both suites.
       - name: Run iOS UI Tests
         if: ${{ !cancelled() && steps.simulator.outcome == 'success' }}
         env:
