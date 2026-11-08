@@ -606,8 +606,8 @@ This is the environment's one and only operator-local deploy.
 - Every later deploy goes through the protected CI path (step 7).
 - **On a brand-new project, the deploy ends with an error even though it
   worked.** `make functions-deploy` deploys both functions, then exits non-zero
-  with "Functions successfully deployed but could not set up cleanup policy in
-  location <region>". Its cleanup-policy step runs before the first deploy
+  with `Functions successfully deployed but could not set up cleanup policy in location <region>`.
+  Its cleanup-policy step runs before the first deploy
   creates the `gcf-artifacts` repository. Run
   `firebase functions:artifacts:setpolicy --project <project-id> --location <region> --days 7 --non-interactive --force`
   once, then carry on; `make environment-doctor` prints the same command.
