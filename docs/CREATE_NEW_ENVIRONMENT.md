@@ -200,6 +200,12 @@ there.
 
 The order is the same for both tiers.
 
+Before any cloud call, the script checks the inputs above and runs
+`terraform fmt -check -recursive` in `terraform/core`, the plan step's first
+check. That check also reads every git-ignored `env/*.tfvars`, other
+environments' included. Fix a file it lists with
+`terraform -chdir=terraform/core fmt <file>`.
+
 The script:
 
 1. Looks up the GCP project. An existing project must sit under the requested
@@ -207,7 +213,8 @@ The script:
    `CREATE_PROJECT=1`, and any other lookup error stops the run before any
    change.
 2. Links billing to `BILLING_ACCOUNT_ID` and checks that it reads back as enabled.
-3. Enables Firebase on the project.
+3. Enables Firebase on the project. A failed `firebase projects:list` stops
+   the run, for example when the Firebase CLI is not logged in.
 4. Bootstraps the GCS Terraform state bucket with versioning.
 5. Creates the Cloud Functions Gen 2 source bucket so Terraform can manage its IAM before the first deploy.
 6. Creates secrets-only `terraform/core/env/<env>.tfvars` if it does not already exist. An existing file must agree with any supplied `ALERT_EMAIL` or `APP_CHECK_DEBUG_TOKEN`.
@@ -219,7 +226,9 @@ The script:
     matching GitHub Environment, stores the key as that environment's
     `POSTHOG_API_KEY` secret, applies `terraform/posthog`, and writes the
     public PostHog project ID/token into the environment xcconfig.
-11. Optionally sets the Functions artifact cleanup policy and deploys Cloud Functions.
+11. Optionally sets the Functions artifact cleanup policy and deploys Cloud
+    Functions. On a brand-new project the first deploy ends with a
+    cleanup-policy error after deploying both functions; see checklist step 4.
 12. Prints the remaining GitHub Environment secrets and committed xcconfig values still needing review.
 
 `RUN_TERRAFORM_APPLY`, `RUN_POSTHOG_TERRAFORM_APPLY`, and
@@ -235,7 +244,9 @@ Two helpers support the steps that follow, both environment-agnostic
   the `attribute.environment` mapping, and the CI SA's `workloadIdentityUser`
   impersonation binding — the Cloud Functions Gen2 build SA's grants, and the
   state bucket) and fails fast with a fix hint instead of surfacing them as a
-  mid-deploy error.
+  mid-deploy error. It needs `node` on PATH. Its source-bucket line reads
+  PASS, "lacks", or "could not read/parse … unverified". Its cleanup-policy
+  line checks `gcf-artifacts`, the repository the Functions builds push to.
 - `make environment-write-config` — writes the resolved non-secret values into
   `config/environments/<env>.xcconfig`. It takes them from:
   - the Terraform outputs and the plist (`PHASE=identity`, the default);
@@ -471,7 +482,8 @@ The phase is idempotent and safe to re-run: a resource already in Terraform stat
 is skipped, and a resource absent from the project is left for apply to create
 (so a brand-new environment is a no-op). It imports nothing destructive — it only
 records existing resources in state — but it does write to remote state, so it
-runs as part of provisioning rather than a pure read-only preview.
+runs as part of provisioning rather than a pure read-only preview. A failed
+`terraform state list` stops the import step before any import.
 
 App Check singleton configs (`google_firebase_app_check_app_attest_config`,
 `google_firebase_app_check_service_config`) are intentionally not imported: they
@@ -592,6 +604,15 @@ This is the environment's one and only operator-local deploy.
 - Its backend hosts go into the environment's config PR, because the
   release-safety check rejects placeholder hosts in a protected config.
 - Every later deploy goes through the protected CI path (step 7).
+- **On a brand-new project, the deploy ends with an error even though it
+  worked.** `make functions-deploy` deploys both functions, then exits non-zero
+  with "Functions successfully deployed but could not set up cleanup policy in
+  location <region>". Its cleanup-policy step runs before the first deploy
+  creates the `gcf-artifacts` repository. Run
+  `firebase functions:artifacts:setpolicy --project <project-id> --location <region> --days 7 --non-interactive --force`
+  once, then carry on; `make environment-doctor` prints the same command.
+  Never pass `--force` to `firebase deploy`: there it also deletes deployed
+  functions that are missing from the source.
 
 ```bash
 CATVOX_ENVIRONMENT="$ENV" make functions-deploy
