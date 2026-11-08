@@ -10,10 +10,11 @@
 # its argv to a call log.
 #
 # Each refusal must fire before the first cloud call (empty call log, tfvars
-# absent or byte-identical) — or, for the two checks that need a cloud read or
-# link first (an existing project's parent, billing enabled), before the first
-# mutation after it. Positive controls prove valid inputs still run end to end,
-# so no refusal passes for an unrelated reason.
+# absent or byte-identical) — or, for the checks that need a cloud read or link
+# first (the project lookup, an existing project's state and parent, billing
+# enabled), before the first mutation after it. Positive controls prove valid
+# inputs still run end to end, so no refusal passes for an unrelated reason.
+# Every run gets a private TMPDIR that must be empty when the run ends.
 #
 # Not yet listed in the Makefile's scripts-test target; until it is,
 # scripts/test/write-environment-config.test.sh runs it.
@@ -36,30 +37,53 @@ CREATED="$SANDBOX/created"  # project ids the gcloud mock has "created"
 CFG="$SANDBOX/sbx.xcconfig"
 TFVARS="$SANDBOX/env/sbx.tfvars"
 OUT="$SANDBOX/out"
+TMPROOT="$SANDBOX/tmp"      # the script's TMPDIR; must be empty after every run
+mkdir -p "$TMPROOT"
 TOKEN="11111111-2222-4333-8444-555555555555"
 
 # System tools the scripts run, linked one by one so PATH stays self-contained.
-for tool in bash awk cat dirname grep mkdir sed tr; do
+for tool in bash awk cat dirname grep mkdir mktemp rm sed tr; do
   real="$(command -v "$tool")"
   [[ "$real" == /* ]] || fail "test host lacks $tool"
   ln -s "$real" "$BIN/$tool"
 done
 
 # gcloud answers the calls the bootstrap makes. A project exists once created,
-# or from the start with MOCK_PROJECT_EXISTS=1 (parent from MOCK_PARENT_TYPE /
-# MOCK_PARENT_ID). MOCK_BILLING_ENABLED overrides the billingEnabled read-back
-# (set it empty for an empty read). Any unexpected call fails loudly.
+# or from the start with MOCK_PROJECT_EXISTS=1 (state from MOCK_LIFECYCLE, parent
+# from MOCK_PARENT_TYPE / MOCK_PARENT_ID). A missing project gets the answer
+# gcloud 592 really gives: the same permission error as a project this account
+# cannot see. MOCK_DESCRIBE_ERROR makes every project lookup fail another way.
+# MOCK_BILLING_ENABLED overrides the billingEnabled read-back (set it empty for
+# an empty read). Any unexpected call fails loudly.
 cat > "$BIN/gcloud" <<'SH'
 #!/usr/bin/env bash
 echo "gcloud $*" >> "$CALLS"
 args="$*"
 case "$args" in
   "projects describe "*)
+    denied="ERROR: (gcloud.projects.describe) [ci@example.com] does not have permission to access projects instance"
+    case "${MOCK_DESCRIBE_ERROR:-}" in
+      "") ;;
+      expired)
+        echo "ERROR: (gcloud.projects.describe) There was a problem refreshing your current auth tokens: Reauthentication failed. cannot prompt during non-interactive execution." >&2
+        exit 1 ;;
+      unauthenticated)
+        echo "ERROR: (gcloud.projects.describe) UNAUTHENTICATED: Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential." >&2
+        exit 1 ;;
+      disabled)  # a permission error for this project, with another cause
+        echo "$denied [$3] (or it may not exist): Cloud Resource Manager API has not been used in project 123456 before or it is disabled." >&2
+        exit 1 ;;
+      other-instance)  # the "not visible" answer, but for another project
+        echo "$denied [other-proj] (or it may not exist): The caller does not have permission." >&2
+        exit 1 ;;
+      *) echo "gcloud mock: unknown MOCK_DESCRIBE_ERROR: $MOCK_DESCRIBE_ERROR" >&2; exit 1 ;;
+    esac
     if [[ -z "${MOCK_PROJECT_EXISTS:-}" ]] && ! grep -qxF "$3" "$CREATED"; then
-      echo "ERROR: (gcloud.projects.describe) NOT_FOUND: project $3 not found" >&2
+      echo "$denied [$3] (or it may not exist): The caller does not have permission. This command is authenticated as ci@example.com which is the active account specified by the [core/account] property" >&2
       exit 1
     fi
     case "$args" in
+      *"value(lifecycleState)"*) echo "${MOCK_LIFECYCLE-ACTIVE}" ;;
       *"value(parent.type)"*) echo "${MOCK_PARENT_TYPE:-folder}" ;;
       *"value(parent.id)"*) echo "${MOCK_PARENT_ID:-1234}" ;;
       *"value(projectNumber)"*) echo "123456" ;;
@@ -125,9 +149,10 @@ write_tfvars() {
 # email — overridden by trailing KEY=value arguments (an empty value unsets the
 # variable as far as the script is concerned). Output lands in $OUT.
 run() {
+  local rc=0
   : > "$CALLS"
   : > "$CREATED"
-  env -i PATH="$BIN" CALLS="$CALLS" CREATED="$CREATED" \
+  env -i PATH="$BIN" TMPDIR="$TMPROOT" CALLS="$CALLS" CREATED="$CREATED" \
     CATVOX_ENVIRONMENT=sbx CATVOX_PROJECT_ID=proj PROJECT_DISPLAY_NAME="CatVox Sandbox" \
     CATVOX_FUNCTION_REGION=us-central1 CATVOX_FIRESTORE_LOCATION=nam5 \
     CATVOX_TF_STATE_BUCKET=catvox-tf-state-proj CATVOX_TF_STATE_PREFIX=catvox/state \
@@ -137,7 +162,10 @@ run() {
     CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true \
     RUN_TERRAFORM_APPLY=0 RUN_POSTHOG_TERRAFORM_APPLY=0 RUN_FUNCTIONS_DEPLOY=0 \
     FOLDER_ID=1234 BILLING_ACCOUNT_ID=0X0X0X-0X0X0X-0X0X0X ALERT_EMAIL=alerts@example.com \
-    "$@" bash "$SCRIPT" >"$OUT" 2>&1
+    "$@" bash "$SCRIPT" >"$OUT" 2>&1 || rc=$?
+  # The project lookup's temporary file must not outlive the run, whatever its outcome.
+  [[ -z "$(ls -A "$TMPROOT")" ]] || fail "temporary files left behind: $(ls -A "$TMPROOT")"
+  return "$rc"
 }
 
 # A mocked CLI ran with this fragment in its argv / never did. Only grep's
@@ -173,6 +201,7 @@ assert_no_mutation_after() {  # case-id
 # 1. Positive control: mutable environment, folder parent, new project, debug token.
 reset false
 run APP_CHECK_DEBUG_TOKEN="$TOKEN" || fail "C1 valid run should succeed: $(cat "$OUT")"
+grep -qF "GCP project proj was not found (or this account cannot see it); creating it." "$OUT" || fail "C1 gcloud's not-found answer should read as absent: $(cat "$OUT")"
 called "gcloud projects create proj --name=CatVox Sandbox --folder=1234" || fail "C1 project not created under the folder: $(cat "$CALLS")"
 not_called "--organization" || fail "C1 must not pass --organization"
 called "gcloud billing projects link proj --billing-account=0X0X0X-0X0X0X-0X0X0X" || fail "C1 billing not linked"
@@ -372,5 +401,31 @@ alert_email = \"alerts@example.com\" // on-call"
 run || fail "C22 comments should be accepted: $(cat "$OUT")"
 cmp -s "$TFVARS.before" "$TFVARS" || fail "C22 tfvars changed"
 ok "whole-line and trailing comments are read as comments, not as assignments"
+
+# 23. A project lookup that fails for any reason other than gcloud's "not found
+# or not visible" answer for this project stops the run before any mutation and
+# quotes gcloud's error: expired credentials, invalid credentials, a permission
+# error for this project with another cause, and the "not visible" answer for
+# some other project. Each used to read as a missing project.
+reset false
+for err in expired unauthenticated disabled other-instance; do
+  if run MOCK_DESCRIBE_ERROR="$err"; then fail "C23 expected refusal when the project lookup fails ($err)"; fi
+  grep -qF "Could not look up GCP project proj (gcloud exited 1); stopping before any change:" "$OUT" || fail "C23 ($err) message: $(cat "$OUT")"
+  grep -qF "ERROR: (gcloud.projects.describe)" "$OUT" || fail "C23 ($err) should quote gcloud's error: $(cat "$OUT")"
+  assert_no_mutation_after C23
+  not_called "billing projects link" || fail "C23 ($err) must not link billing"
+done
+ok "a project lookup that fails for another reason stops the run before any mutation, quoting gcloud's error"
+
+# 24. An existing project that is not ACTIVE (pending deletion, or an empty state
+# read) is refused before any mutation instead of being provisioned.
+reset false
+for state in DELETE_REQUESTED ""; do
+  if run MOCK_PROJECT_EXISTS=1 MOCK_LIFECYCLE="$state"; then fail "C24 expected refusal when the project state is '$state'"; fi
+  grep -qF "GCP project proj exists, but its state is ${state:-empty}, not ACTIVE." "$OUT" || fail "C24 message: $(cat "$OUT")"
+  assert_no_mutation_after C24
+  not_called "billing projects link" || fail "C24 must not link billing"
+done
+ok "an existing project that is not ACTIVE is refused before any mutation"
 
 echo "PASS ($pass cases)"

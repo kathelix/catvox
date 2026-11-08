@@ -10,6 +10,9 @@
 # so a bad or ambiguous input aborts with nothing created, linked, or written.
 #   - exactly one numeric parent, FOLDER_ID or ORGANIZATION_ID (never both); an
 #     existing project must already sit under that parent;
+#   - the project lookup tells a missing project from a failed lookup: expired
+#     credentials or any other error stop the run instead of reading as absent,
+#     and an existing project must be ACTIVE;
 #   - BILLING_ACCOUNT_ID is required, and billing must read back as enabled
 #     after linking, before any bucket is created;
 #   - an App Check debug token (APP_CHECK_DEBUG_TOKEN, or one already in the
@@ -176,6 +179,37 @@ refuse_tfvars_mismatch() {  # $1 = supplied variable, $2 = tfvars key
   exit 1
 }
 
+# Look up the GCP project three ways: it exists (PROJECT_LIFECYCLE then holds its
+# lifecycleState), it is absent, or the lookup failed. Resource Manager answers a
+# project that does not exist and one this account cannot see the same way, with
+# a permission error ending "(or it may not exist): The caller does not have
+# permission". Only that answer, for this project, counts as absent; the create
+# that follows then fails loudly if the ID is already taken. Any other failure,
+# such as expired credentials, a network error or a disabled API, stops the run
+# here instead of reading as a missing project.
+PROJECT_STATE=""
+PROJECT_LIFECYCLE=""
+lookup_project() {
+  local err_file rc=0
+  if ! err_file="$(mktemp "${TMPDIR:-/tmp}/catvox-project-describe.XXXXXX")"; then
+    echo "Could not create a temporary file to look up GCP project ${PROJECT_ID}." >&2
+    exit 1
+  fi
+  PROJECT_LIFECYCLE="$(gcloud projects describe "${PROJECT_ID}" --format='value(lifecycleState)' 2>"${err_file}")" || rc=$?
+  if [[ "${rc}" -eq 0 ]]; then
+    PROJECT_STATE="exists"
+  elif grep -qF -- "access projects instance [${PROJECT_ID}] (or it may not exist): The caller does not have permission" "${err_file}"; then
+    PROJECT_STATE="absent"
+  else
+    echo "Could not look up GCP project ${PROJECT_ID} (gcloud exited ${rc}); stopping before any change:" >&2
+    cat "${err_file}" >&2
+    rm -f "${err_file}"
+    echo "Fix the error above (for expired credentials, run gcloud auth login), then re-run." >&2
+    exit 1
+  fi
+  rm -f "${err_file}"
+}
+
 require_value CATVOX_ENVIRONMENT "${ENVIRONMENT}"
 require_value CATVOX_PROJECT_ID "${PROJECT_ID}"
 require_value PROJECT_DISPLAY_NAME "${PROJECT_DISPLAY_NAME}"
@@ -297,7 +331,13 @@ fi
 
 # ── Cloud bootstrap ─────────────────────────────────────────────────────────
 
-if gcloud projects describe "${PROJECT_ID}" >/dev/null 2>&1; then
+lookup_project
+if [[ "${PROJECT_STATE}" == "exists" ]]; then
+  if [[ "${PROJECT_LIFECYCLE}" != "ACTIVE" ]]; then
+    echo "GCP project ${PROJECT_ID} exists, but its state is ${PROJECT_LIFECYCLE:-empty}, not ACTIVE." >&2
+    echo "Restore it first (gcloud projects undelete ${PROJECT_ID}), or use a new project ID." >&2
+    exit 1
+  fi
   echo "GCP project ${PROJECT_ID} already exists."
   # The requested parent must hold for an existing project too; otherwise a
   # project made elsewhere would be provisioned outside the intended parent.
@@ -309,6 +349,7 @@ if gcloud projects describe "${PROJECT_ID}" >/dev/null 2>&1; then
     exit 1
   fi
 else
+  echo "GCP project ${PROJECT_ID} was not found (or this account cannot see it); creating it."
   gcloud projects create "${PROJECT_ID}" "--name=${PROJECT_DISPLAY_NAME}" "--${PARENT_TYPE}=${PARENT_ID}"
 fi
 
