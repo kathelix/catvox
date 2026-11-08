@@ -103,9 +103,12 @@ environment. See ADR-0029.
    - Upgrade it to paid before a protected environment takes public traffic,
      and before the trial's end date. When a trial ends, Google stops every
      resource billed to it.
-7. **Firebase terms.** Open the Firebase console once with the operator
-   account and accept the terms before the first
-   `firebase projects:addfirebase`.
+7. **Firebase terms.** Accept the Firebase terms once with the operator
+   account before the first run, at
+   `https://console.firebase.google.com/?forceCheckTos=true`. Terms are per
+   Google account and cannot be accepted from the CLI, the API or Terraform.
+   Without them, `firebase projects:addfirebase` fails with a bare
+   `403 The caller does not have permission`, even for the project owner.
 8. **Operator workstation.** If the workstation also holds other Google
    identities, keep CatVox's separate:
    - **gcloud:** use a dedicated configuration, selected per command with
@@ -113,7 +116,11 @@ environment. See ADR-0029.
    - **Application Default Credentials:** keep them in a separate file.
      1. Run `CLOUDSDK_CONFIG=<dir> gcloud auth application-default login`.
      2. Point Terraform and the Node scripts at it with
-        `GOOGLE_APPLICATION_CREDENTIALS=<dir>/application_default_credentials.json`.
+        `GOOGLE_APPLICATION_CREDENTIALS=<dir>/application_default_credentials.json`,
+        on every Terraform command in both roots. Even
+        `terraform init -backend=false` reads the state of the backend the
+        directory was last initialized with, using whatever credentials it
+        finds.
      3. If a call fails because the credentials have no quota project, set one
         once the environment's project exists:
         `CLOUDSDK_CONFIG=<dir> gcloud auth application-default set-quota-project <project-id>`.
@@ -131,6 +138,7 @@ Pick explicit values before running the script:
 | `PROJECT_DISPLAY_NAME` | `Kathelix CatVox <Env>` | Yes |
 | `FOLDER_ID` (or `ORGANIZATION_ID`) | `<catvox-folder-id>` | Yes, exactly one, numeric. Use the CatVox folder so its sharing exception applies (see Organization Prerequisites). An existing project must already sit under that parent. |
 | `BILLING_ACCOUNT_ID` | `<billing-account-id>` | Yes. It is linked on every run and must read back as enabled before Firebase or any bucket is created. |
+| `CREATE_PROJECT` | `0` or `1` | Yes. `1` lets the run create the GCP project when gcloud cannot find it: the first run for a new project. `0` never creates one: use it for re-runs. Any other project-lookup error, such as expired credentials, stops the run whatever the flag says. |
 | `CATVOX_FUNCTION_REGION` | `us-central1` | Yes |
 | `CATVOX_FIRESTORE_LOCATION` | `nam5` | Yes |
 | `CATVOX_TF_STATE_BUCKET` | `catvox-tf-state-kathelix-catvox-<env>` | Yes |
@@ -168,11 +176,15 @@ CATVOX_FIREBASE_IOS_APP_DELETION_POLICY=ABANDON \
 CATVOX_FIREBASE_APPLE_TEAM_ID=QYT76L5836 \
 CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true \
 ALERT_EMAIL=<alerts@example.com> \
+CREATE_PROJECT=1 \
 RUN_TERRAFORM_APPLY=1 \
 RUN_POSTHOG_TERRAFORM_APPLY=1 \
 RUN_FUNCTIONS_DEPLOY=1 \
 make environment-create
 ```
+
+`CREATE_PROJECT=1` is for the first run of a new project. Pass
+`CREATE_PROJECT=0` on every re-run.
 
 If you are bootstrapping an environment that allows mutable integration tests,
 pass `APP_CHECK_DEBUG_TOKEN=<your-uuid4>`.
@@ -190,7 +202,10 @@ The order is the same for both tiers.
 
 The script:
 
-1. Creates or verifies the GCP project.
+1. Looks up the GCP project. An existing project must sit under the requested
+   parent. A project gcloud cannot find is created only with
+   `CREATE_PROJECT=1`, and any other lookup error stops the run before any
+   change.
 2. Links billing to `BILLING_ACCOUNT_ID` and checks that it reads back as enabled.
 3. Enables Firebase on the project.
 4. Bootstraps the GCS Terraform state bucket with versioning.
@@ -504,10 +519,16 @@ GCP-admin credentials.
   environment. The plist export validates the new plist against the xcconfig,
   which still holds `replace-with-*` identity values. By then the plist file is
   already written.
+- **A fresh project's first apply can stop early** while newly enabled APIs
+  and service agents come live, for example an `accessNotConfigured` 403 from
+  the IAM API, or the Vertex AI service agent "does not exist" yet. Wait a
+  minute and re-run the same command with `CREATE_PROJECT=0`; every step skips
+  what already exists.
 
 ```bash
 # Authenticate as the organization's GCP admin first (Organization
-# Prerequisites → Operator workstation).
+# Prerequisites → Operator workstation). CREATE_PROJECT=1 on the first run of
+# a new project only; re-runs pass CREATE_PROJECT=0.
 CATVOX_ENVIRONMENT="$ENV" \
 CATVOX_PROJECT_ID="$PROJECT_ID" \
 PROJECT_DISPLAY_NAME="Kathelix CatVox <Env>" \
@@ -523,6 +544,7 @@ CATVOX_FIREBASE_IOS_APP_DELETION_POLICY=ABANDON \
 CATVOX_FIREBASE_APPLE_TEAM_ID=QYT76L5836 \
 CATVOX_MANAGE_GCF_SOURCES_BUCKET_IAM=true \
 ALERT_EMAIL=<alerts@example.com> \
+CREATE_PROJECT=1 \
 RUN_TERRAFORM_APPLY=1 \
 RUN_POSTHOG_TERRAFORM_APPLY=0 \
 RUN_FUNCTIONS_DEPLOY=0 \
