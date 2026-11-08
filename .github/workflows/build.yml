@@ -85,11 +85,27 @@ jobs:
           xcrun simctl list devices available
 
       - name: Install XcodeGen
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           zip="$RUNNER_TEMP/xcodegen.zip"
-          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
-            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          # Fetch the release asset through the GitHub API. github.com's
+          # /releases/download/ URL has returned HTTP 504 for minutes at a
+          # time while the API served the same file.
+          for attempt in 1 2 3 4; do
+            if gh release download "$XCODEGEN_VERSION" --repo yonaskolb/XcodeGen \
+                --pattern xcodegen.zip --output "$zip" --clobber; then
+              break
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::Could not download XcodeGen ${XCODEGEN_VERSION} after ${attempt} attempts."
+              exit 1
+            fi
+            echo "XcodeGen download attempt ${attempt} failed; retrying in 15 seconds."
+            sleep 15
+          done
           echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
           unzip -q "$zip" -d "$RUNNER_TEMP"
           version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
@@ -231,11 +247,27 @@ jobs:
           xcrun simctl list devices available
 
       - name: Install XcodeGen
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           zip="$RUNNER_TEMP/xcodegen.zip"
-          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
-            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          # Fetch the release asset through the GitHub API. github.com's
+          # /releases/download/ URL has returned HTTP 504 for minutes at a
+          # time while the API served the same file.
+          for attempt in 1 2 3 4; do
+            if gh release download "$XCODEGEN_VERSION" --repo yonaskolb/XcodeGen \
+                --pattern xcodegen.zip --output "$zip" --clobber; then
+              break
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::Could not download XcodeGen ${XCODEGEN_VERSION} after ${attempt} attempts."
+              exit 1
+            fi
+            echo "XcodeGen download attempt ${attempt} failed; retrying in 15 seconds."
+            sleep 15
+          done
           echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
           unzip -q "$zip" -d "$RUNNER_TEMP"
           version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
@@ -275,11 +307,27 @@ jobs:
           df -h /System/Volumes/Data
 
       - name: Install XcodeGen
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           zip="$RUNNER_TEMP/xcodegen.zip"
-          curl --fail --silent --show-error --location --retry 3 --output "$zip" \
-            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          # Fetch the release asset through the GitHub API. github.com's
+          # /releases/download/ URL has returned HTTP 504 for minutes at a
+          # time while the API served the same file.
+          for attempt in 1 2 3 4; do
+            if gh release download "$XCODEGEN_VERSION" --repo yonaskolb/XcodeGen \
+                --pattern xcodegen.zip --output "$zip" --clobber; then
+              break
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::Could not download XcodeGen ${XCODEGEN_VERSION} after ${attempt} attempts."
+              exit 1
+            fi
+            echo "XcodeGen download attempt ${attempt} failed; retrying in 15 seconds."
+            sleep 15
+          done
           echo "${XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
           unzip -q "$zip" -d "$RUNNER_TEMP"
           version="$("$RUNNER_TEMP/xcodegen/bin/xcodegen" --version)"
