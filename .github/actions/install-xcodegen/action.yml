@@ -74,14 +74,15 @@ runs:
           echo "${CATVOX_XCODEGEN_SHA256}  ${zip}" | shasum -a 256 --check
         }
 
-        # Each request retries any failure every 10 seconds, for up to 5
-        # minutes. Plain --retry is not enough: with --fail, curl reports an
-        # HTTP/2 error response such as 504 as exit 56, which --retry alone
-        # does not retry.
+        # Every attempt gets 20 s to connect and 120 s in all, and a failed
+        # attempt is retried after 10 s; each caller sets its retry window.
+        # --retry-all-errors is needed: with --fail, curl reports an HTTP/2
+        # error response such as 504 as exit 56, which --retry alone does not
+        # retry.
         fetch() {
           curl --fail --no-progress-meter --location \
             --connect-timeout 20 --max-time 120 \
-            --retry 8 --retry-all-errors --retry-delay 10 --retry-max-time 300 \
+            --retry-all-errors --retry-delay 10 \
             "$@"
         }
 
@@ -97,14 +98,15 @@ runs:
         else
           mkdir -p "$(dirname "$zip")"
           echo "Downloading XcodeGen ${version} from its GitHub release."
-          if ! fetch --output "$zip" \
+          # github.com and the REST API fail separately. On 2026-11-08,
+          # github.com answered release downloads with HTTP 504 for over 20
+          # minutes while the API served the same asset. So github.com gets
+          # three attempts, and the API gets the long window: up to 5 minutes.
+          if ! fetch --retry 2 --retry-max-time 60 --output "$zip" \
             "https://github.com/yonaskolb/XcodeGen/releases/download/${version}/xcodegen.zip"; then
-            # github.com and the REST API can fail separately. On 2026-11-08,
-            # github.com answered release downloads with HTTP 504 for over 20
-            # minutes while the API still served the same asset.
             echo "::warning title=XcodeGen download fallback::Downloading XcodeGen from github.com failed, so it was fetched through the GitHub REST API."
             release="$RUNNER_TEMP/xcodegen-release.json"
-            fetch --output "$release" \
+            fetch --retry 8 --retry-max-time 300 --output "$release" \
               --header "Accept: application/vnd.github+json" \
               --header "Authorization: Bearer ${CATVOX_GITHUB_TOKEN}" \
               "https://api.github.com/repos/yonaskolb/XcodeGen/releases/tags/${version}"
@@ -115,7 +117,7 @@ runs:
             fi
             # curl drops the Authorization header when the API redirects to
             # the asset storage host.
-            fetch --output "$zip" \
+            fetch --retry 8 --retry-max-time 300 --output "$zip" \
               --header "Accept: application/octet-stream" \
               --header "Authorization: Bearer ${CATVOX_GITHUB_TOKEN}" \
               "https://api.github.com/repos/yonaskolb/XcodeGen/releases/assets/${asset_id}"
