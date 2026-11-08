@@ -493,7 +493,7 @@ Active Dev uses the GitHub Environment named `dev` with:
 
 ### 8.5 Environment Creation Runbook
 
-Use `docs/CREATE_NEW_ENVIRONMENT.md` and `make environment-create` when creating a new GCP/Firebase environment or when reconstructing an environment after a full destroy. The runbook covers project creation, optional billing link, Firebase enablement, Terraform state bootstrap, Functions source bucket bootstrap, Terraform init/plan/apply, Firebase plist export, Functions deploy, GitHub Environment secrets, validation, and legacy pre-split cleanup. See §7.8 for the environment lifecycle contract — the files create and destroy touch, and the guarantee that neither requires a source-code change.
+Use `docs/CREATE_NEW_ENVIRONMENT.md` and `make environment-create` when creating a new GCP/Firebase environment or when reconstructing an environment after a full destroy. The runbook covers project creation, required billing link, Firebase enablement, Terraform state bootstrap, Functions source bucket bootstrap, Terraform init/plan/apply, Firebase plist export, Functions deploy, GitHub Environment secrets, validation, and legacy pre-split cleanup. See §7.8 for the environment lifecycle contract — the files create and destroy touch, and the guarantee that neither requires a source-code change.
 
 ---
 

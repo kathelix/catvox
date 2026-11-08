@@ -51,9 +51,17 @@ For a protected environment, do not set the App Check debug-token secret, keep
 mutable integration-test allowlists out of it (no post-deploy integration tests
 run against it — use `make smoke CATVOX_ENVIRONMENT=<env>`), and keep the
 Firebase iOS app deletion policy set to `ABANDON` in its
-`config/environments/<env>.xcconfig`. The first apply for a brand-new protected
-environment is operator-local (it creates the WIF pool and `catvox-ci-sa`); every
-subsequent apply and deploy goes through this protected dispatch path.
+`config/environments/<env>.xcconfig`.
+
+A brand-new environment's first Terraform apply and first Functions deploy are
+operator-local:
+
+- the apply creates the WIF pool and `catvox-ci-sa`;
+- the deploy produces the backend hosts that the environment's config PR must
+  carry (ADR-0030).
+
+For a protected environment, every later apply and deploy goes through this
+protected dispatch path.
 
 Required secrets per environment:
 
