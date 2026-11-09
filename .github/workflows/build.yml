@@ -277,11 +277,12 @@ jobs:
             | tr '\r' '\n' | awk '!/: [0-9.]+% \(/'
           xcrun simctl runtime list
 
-      # The runner image builds a dyld shared cache only for the runtimes it
-      # ships. Without one, the downloaded runtime's first boot competes with
-      # building it. On slow runners that boot took up to 10 minutes and could
-      # end in "Data Migration Failed", and then UI tests failed with
-      # "kAXErrorServerNotFound". So build the cache before the boot.
+      # The runner image has a dyld shared cache only for the runtimes it
+      # ships. Installing this runtime starts building one in the background,
+      # and a simulator that boots during that build stays slow: the boot took
+      # up to 10 minutes and could end in "Data Migration Failed", and UI tests
+      # failed with "kAXErrorServerNotFound" or could not launch the test
+      # runner. `dyld_shared_cache update` waits until the cache is built.
       # `bootstatus -b` exits 0 even when the boot ends in "Data Migration
       # Failed", so the step checks for "Finished" (Status=4294967295).
       - name: Create the iOS floor simulator
