@@ -277,6 +277,14 @@ jobs:
             | tr '\r' '\n' | awk '!/: [0-9.]+% \(/'
           xcrun simctl runtime list
 
+      # The runner image has a dyld shared cache only for the runtimes it
+      # ships. Installing this runtime starts building one in the background,
+      # and a simulator that boots during that build stays slow: the boot took
+      # up to 10 minutes and could end in "Data Migration Failed", and UI tests
+      # failed with "kAXErrorServerNotFound" or could not launch the test
+      # runner. `dyld_shared_cache update` waits until the cache is built.
+      # `bootstatus -b` exits 0 even when the boot ends in "Data Migration
+      # Failed", so the step checks for "Finished" (Status=4294967295).
       - name: Create the iOS floor simulator
         id: simulator
         run: |
@@ -292,8 +300,21 @@ jobs:
             echo "::error::The iOS ${IOS_FLOOR_VERSION} runtime does not support '${IOS_FLOOR_DEVICE_TYPE}'."
             exit 1
           fi
-          udid="$(xcrun simctl create "$IOS_FLOOR_DEVICE_TYPE" "$device_type" "$(jq -r '.identifier' <<< "$runtime")")"
-          xcrun simctl bootstatus "$udid" -b
+          runtime_id="$(jq -r '.identifier' <<< "$runtime")"
+          start=$SECONDS
+          if xcrun simctl runtime dyld_shared_cache update "$runtime_id"; then
+            echo "dyld shared cache ready after $((SECONDS - start)) s."
+          else
+            echo "::warning title=iOS floor dyld shared cache not built::'simctl runtime dyld_shared_cache update' failed for ${runtime_id}; the simulator boots without a cache, which can be slow."
+          fi
+          udid="$(xcrun simctl create "$IOS_FLOOR_DEVICE_TYPE" "$device_type" "$runtime_id")"
+          boot_log="${RUNNER_TEMP}/ios-floor-bootstatus.log"
+          start=$SECONDS
+          xcrun simctl bootstatus "$udid" -b | tee "$boot_log"
+          echo "Boot ended after $((SECONDS - start)) s."
+          if ! grep -q 'Status=4294967295, isTerminal=YES' "$boot_log"; then
+            echo "::warning title=iOS floor simulator boot incomplete::The iOS ${IOS_FLOOR_VERSION} simulator boot did not end in 'Finished' (see the step log, often 'Data Migration Failed'). Expect slow or failing UI tests, often 'kAXErrorServerNotFound'."
+          fi
           echo "IOS_FLOOR_DESTINATION=platform=iOS Simulator,id=${udid}" >> "$GITHUB_ENV"
 
       # On a slow runner the new simulator can time out before any test runs
