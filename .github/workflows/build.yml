@@ -269,12 +269,46 @@ jobs:
 
       # Apple serves this runtime without sign-in. xcodebuild prints a
       # progress line every few hundred KB; the filter drops those lines.
+      # CoreSimulator starts on first use, and on a slow runner it took
+      # almost 2 minutes to answer. simctl waits for it, but -downloadPlatform
+      # gives up after about 25 s ("Unable to connect to simulator.", exit
+      # 70), so each attempt runs simctl first. simctl's answer also shows
+      # whether an earlier attempt installed the runtime after all: running
+      # -downloadPlatform again would download all 7.56 GB and then fail
+      # ("Duplicate of <UUID>", also exit 70). A failed attempt is retried
+      # twice, 30 s apart, with a warning that keeps it visible in the run
+      # summary. xcodebuild doesn't resume an interrupted download, so each
+      # retry downloads from the start (about 2 minutes).
       - name: Install the iOS floor simulator runtime
         timeout-minutes: 15
         run: |
           set -o pipefail
-          xcodebuild -downloadPlatform iOS -buildVersion "$IOS_FLOOR_RUNTIME_BUILD" 2>&1 \
-            | tr '\r' '\n' | awk '!/: [0-9.]+% \(/'
+          max_attempts=3
+          for attempt in $(seq "$max_attempts"); do
+            started=$SECONDS
+            if runtimes="$(xcrun simctl list runtimes -j)"; then
+              echo "CoreSimulator answered after $((SECONDS - started)) s."
+              if jq -e --arg build "$IOS_FLOOR_RUNTIME_BUILD" \
+                'any(.runtimes[]; .buildversion == $build and .isAvailable)' <<< "$runtimes" > /dev/null; then
+                echo "The iOS ${IOS_FLOOR_VERSION} runtime (${IOS_FLOOR_RUNTIME_BUILD}) is installed."
+                break
+              fi
+              if xcodebuild -downloadPlatform iOS -buildVersion "$IOS_FLOOR_RUNTIME_BUILD" 2>&1 \
+                | tr '\r' '\n' | awk '!/: [0-9.]+% \(/'; then
+                break
+              else
+                problem="xcodebuild -downloadPlatform exited with code ${PIPESTATUS[0]}"
+              fi
+            else
+              problem="xcrun simctl list runtimes failed after $((SECONDS - started)) s"
+            fi
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "::error title=iOS floor runtime not installed::Could not install the iOS ${IOS_FLOOR_VERSION} simulator runtime (${IOS_FLOOR_RUNTIME_BUILD}) in ${max_attempts} attempts. Last attempt: ${problem}."
+              exit 1
+            fi
+            echo "::warning title=iOS floor runtime install retried::Attempt ${attempt} of ${max_attempts} to install the iOS ${IOS_FLOOR_VERSION} simulator runtime failed (${problem}); retrying in 30 s."
+            sleep 30
+          done
           xcrun simctl runtime list
 
       - name: Create the iOS floor simulator
