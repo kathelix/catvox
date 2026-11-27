@@ -39,10 +39,13 @@ gh workflow run build.yml --ref <branch>
 ```
 
 To run the suite on iOS 17.0 locally, install the runtime first. It is a
-7.56 GB download, so check free space with `df -h` before you start.
+7.56 GB download, so check free space with `df -h` before you start. Let the
+runtime's dyld shared cache finish building before the first boot; a boot
+during that build is slow and can end in "Data Migration Failed".
 
 ```bash
 xcodebuild -downloadPlatform iOS -buildVersion 21A328
+xcrun simctl runtime dyld_shared_cache update com.apple.CoreSimulator.SimRuntime.iOS-17-0
 xcrun simctl create "iPhone SE (2nd generation)" "iPhone SE (2nd generation)" com.apple.CoreSimulator.SimRuntime.iOS-17-0
 make ios-ui-test IOS_UI_TEST_DESTINATION="platform=iOS Simulator,name=iPhone SE (2nd generation),OS=17.0"
 ```
