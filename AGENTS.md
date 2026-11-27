@@ -395,7 +395,8 @@ GitHub Actions WIF produces an external-account Application Default Credentials 
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `build.yml` | Push/PR touching iOS-relevant app, project, config, script, Makefile, or workflow files | XcodeGen → build generic iOS Simulator slice → run unit tests on a concrete simulator |
-| `build.yml` (ios-floor) | Weekly `schedule` on `main`, or manual `workflow_dispatch` | Download the iOS 17.0 simulator runtime → unit + UI tests on an iPhone SE (2nd generation) simulator |
+| `build.yml` (ui-tests) | Push to `main` touching the same files, or manual `workflow_dispatch` | UI tests on an iPhone 17 / iOS 26.5 simulator, one retry; `.xcresult` artifact when a suite fails or needs its retry |
+| `build.yml` (ios-floor) | Weekly `schedule` on `main`, or manual `workflow_dispatch` | Download the iOS 17.0 simulator runtime → unit + UI tests on an iPhone SE (2nd generation) simulator, one retry each; `.xcresult` artifact when a suite fails or needs its retry |
 | `functions.yml` (build) | Push/PR touching `functions/**`, `firebase.json`, `docs/systemInstruction.md`, `Makefile`, or workflow | TypeScript compile check + backend unit tests |
 | `functions.yml` (deploy: dev) | Merge to `main` touching Functions inputs | Auto-deploy to dev via reusable `functions-deploy.yml`, then Dev integration tests |
 | `functions.yml` (deploy: prod) | Push to `main`, after dev integration (`needs: integration-after-deploy`) | Approval-gated prod deploy via `functions-deploy.yml`; the protected `prod` Environment pauses it for reviewer approval; no integration |
@@ -515,11 +516,14 @@ root, and writes the public PostHog project ID/token back into
   - Use one branch per variant, so `concurrency` doesn't cancel one run with another.
   - Delete the branches afterwards; their runs stay viewable.
   - PR #186 measured its iOS 17 job this way before #167 had merged.
+  - To prove a failure or retry path, make the failure deterministic. A unit test that fails only `if #unavailable(iOS 18)` fails `ios-floor` but not the build job that the test jobs `need`. A test that fails only while a marker file is missing, and creates it, fails the first attempt and passes the retry: derive the path from `#filePath` so the file lands next to the checkout, since simulator processes can write the runner's disk. Before pushing, extract each changed step's `run:` script from the YAML and run it under `bash -e` with a fake `make` for every exit-code path (PR #194).
 - A job that tests on a freshly downloaded simulator runtime needs slack for slow `macos-*` runners. On one day and one image, the first boot of a new iOS 17.0 simulator took 47 s to 10 minutes, and the whole job took 15 to 79 minutes.
   - The first `xcodebuild test` on the new simulator sometimes died before any test ran ("The test runner timed out while preparing to run tests", "Simulator device failed to launch"), then passed on the next attempt.
   - Give each suite one retry with a `::warning::` annotation. The `Makefile` has no hook for xcodebuild's retry flags, so the retry lives in the step.
   - Cap the job generously, and read the log before calling one slow or failed run a regression (PR #186).
 - To tell whether a step's `::warning::` or `::error::` fired, read the job's annotations, not a grep of `gh run view --log`. The log also echoes each step's script, so the message text matches even when that branch never ran. Get job IDs with `gh run view <run-id> --json jobs --jq '.jobs[].databaseId'`, then read `gh api repos/kathelix/catvox/check-runs/<job-id>/annotations`. PR #192 checked that no `ios-floor` retry fired this way.
+- On CI, don't leave `.xcresult` bundles in DerivedData until the end of a job. With Xcode 26.6, earlier bundles disappeared from `DerivedData/*/Logs/Test` while later test runs in the same job wrote theirs: one `ios-floor` job kept 2 of its 4, another 3 of 4. Xcode 27.2 on a Mac kept all of them, so a local test can't show this. Move each run's bundle out as soon as the run ends, and check a proof run by counting the bundles in its artifact, not only by finding the artifact (PR #194).
+- Under `bash -e`, errexit also applies inside an `EXIT` trap. If the trap's last command fails, the step exits 1, even after a passing retry. Track the exit code in a variable (`make … || rc=$?`, then `exit "$rc"`) instead of a trap (PR #194).
 
 ### Command Invocation Notes
 

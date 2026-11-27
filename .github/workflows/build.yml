@@ -233,10 +233,50 @@ jobs:
       - name: Install xcpretty
         run: gem install xcpretty --version "$XCPRETTY_VERSION" --no-document --quiet
 
+      # A slow runner can fail to launch the app at all ("Simulator device
+      # failed to launch"), so the suite gets one retry, as in ios-floor
+      # below. The warning keeps the first failure visible in the run summary.
+      #
+      # The Makefile passes no -resultBundlePath, so xcodebuild writes each
+      # run's .xcresult bundle under DerivedData. keep_bundles moves it to
+      # $RUNNER_TEMP/xcresult as soon as the run ends: in one ios-floor job
+      # (Xcode 26.6), the first of four bundles was gone from DerivedData by
+      # the time the upload ran.
       - name: Run iOS UI Tests
+        id: ui-tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
-        run: make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION"
+        run: |
+          keep_bundles() {
+            mkdir -p "$RUNNER_TEMP/xcresult"
+            [ -d ~/Library/Developer/Xcode/DerivedData ] || return 0
+            find ~/Library/Developer/Xcode/DerivedData -mindepth 4 -maxdepth 4 \
+              -path '*/Logs/Test/*.xcresult' -exec mv {} "$RUNNER_TEMP/xcresult/" \;
+          }
+          rc=0
+          make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION" || rc=$?
+          keep_bundles
+          if [ "$rc" -ne 0 ]; then
+            echo "retried=true" >> "$GITHUB_OUTPUT"
+            echo "::warning title=UI tests retried::The first UI test run failed; retrying once. If the retry passes, read the first run's log and its result bundle (artifact ui-tests-xcresult-attempt-${GITHUB_RUN_ATTEMPT}) before dismissing it."
+            rc=0
+            make ios-ui-test-only IOS_UI_TEST_DESTINATION="$IOS_SIMULATOR_DESTINATION" || rc=$?
+            keep_bundles
+          fi
+          exit "$rc"
+
+      # Keep the .xcresult bundles when the suite failed or needed its retry.
+      # They hold each test's activity timeline, a screen recording of each
+      # failed UI test, and the simulator's and app's logs; the xcpretty log
+      # shows only the failing assertion. The name carries the run attempt
+      # so a re-run job keeps its own artifact.
+      - name: Upload test result bundles
+        if: ${{ !cancelled() && (steps.ui-tests.outcome == 'failure' || steps.ui-tests.outputs.retried == 'true') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-tests-xcresult-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/xcresult
+          retention-days: 7
 
   # Unit and UI tests on the oldest iOS the app supports (IOS_FLOOR_* above).
   # About 15 minutes on a fast runner and over an hour on a slow one (one run
@@ -300,22 +340,64 @@ jobs:
       # ("The test runner timed out while preparing to run tests", or
       # "Simulator device failed to launch"), so each suite gets one retry.
       # The warning keeps the first failure visible in the run summary.
+      # keep_bundles moves each run's result bundle out of DerivedData, as in
+      # the ui-tests job.
       - name: Run iOS Unit Tests
+        id: unit-tests
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
         run: |
-          if ! make ios-test IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"; then
-            echo "::warning title=iOS floor unit tests retried::The first unit test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log before dismissing it."
-            make ios-test-only IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+          keep_bundles() {
+            mkdir -p "$RUNNER_TEMP/xcresult"
+            [ -d ~/Library/Developer/Xcode/DerivedData ] || return 0
+            find ~/Library/Developer/Xcode/DerivedData -mindepth 4 -maxdepth 4 \
+              -path '*/Logs/Test/*.xcresult' -exec mv {} "$RUNNER_TEMP/xcresult/" \;
+          }
+          rc=0
+          make ios-test IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION" || rc=$?
+          keep_bundles
+          if [ "$rc" -ne 0 ]; then
+            echo "retried=true" >> "$GITHUB_OUTPUT"
+            echo "::warning title=iOS floor unit tests retried::The first unit test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log and its result bundle (artifact ios-floor-xcresult-attempt-${GITHUB_RUN_ATTEMPT}) before dismissing it."
+            rc=0
+            make ios-test-only IOS_TEST_DESTINATION="$IOS_FLOOR_DESTINATION" || rc=$?
+            keep_bundles
           fi
+          exit "$rc"
 
       # Runs even when unit tests fail, so one run reports both suites.
       - name: Run iOS UI Tests
+        id: ui-tests
         if: ${{ !cancelled() && steps.simulator.outcome == 'success' }}
         env:
           CATVOX_SKIP_XCODE_FIREBASE_CONFIG_VALIDATION: '1'
         run: |
-          if ! make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"; then
-            echo "::warning title=iOS floor UI tests retried::The first UI test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log before dismissing it."
-            make ios-ui-test-only IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION"
+          keep_bundles() {
+            mkdir -p "$RUNNER_TEMP/xcresult"
+            [ -d ~/Library/Developer/Xcode/DerivedData ] || return 0
+            find ~/Library/Developer/Xcode/DerivedData -mindepth 4 -maxdepth 4 \
+              -path '*/Logs/Test/*.xcresult' -exec mv {} "$RUNNER_TEMP/xcresult/" \;
+          }
+          rc=0
+          make ios-ui-test IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION" || rc=$?
+          keep_bundles
+          if [ "$rc" -ne 0 ]; then
+            echo "retried=true" >> "$GITHUB_OUTPUT"
+            echo "::warning title=iOS floor UI tests retried::The first UI test run on iOS ${IOS_FLOOR_VERSION} failed; retrying once. If the retry passes, read the first run's log and its result bundle (artifact ios-floor-xcresult-attempt-${GITHUB_RUN_ATTEMPT}) before dismissing it."
+            rc=0
+            make ios-ui-test-only IOS_UI_TEST_DESTINATION="$IOS_FLOOR_DESTINATION" || rc=$?
+            keep_bundles
           fi
+          exit "$rc"
+
+      # As in the ui-tests job: keep the result bundles of both suites when
+      # either suite failed or needed its retry.
+      - name: Upload test result bundles
+        if: >-
+          ${{ !cancelled() && (steps.unit-tests.outcome == 'failure' || steps.unit-tests.outputs.retried == 'true'
+          || steps.ui-tests.outcome == 'failure' || steps.ui-tests.outputs.retried == 'true') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-floor-xcresult-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/xcresult
+          retention-days: 7
