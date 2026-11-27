@@ -92,7 +92,29 @@ case "$args" in
   "projects create "*) echo "$3" >> "$CREATED" ;;
   "billing projects link "*) ;;
   "billing projects describe "*) echo "${MOCK_BILLING_ENABLED-True}" ;;
-  "storage buckets describe "*) echo "ERROR: bucket not found" >&2; exit 1 ;;
+  "storage buckets describe "*)
+    # $4 is gs://<bucket>. A bucket in MOCK_EXISTING_BUCKETS exists. Any other
+    # gets the 404 gcloud 592 really gives for a missing bucket, unless
+    # MOCK_BUCKET_ERROR makes the lookup fail another way: for the bucket
+    # MOCK_BUCKET_ERROR_FOR names, or for every bucket when that is empty.
+    bkt="${4#gs://}"
+    case " ${MOCK_EXISTING_BUCKETS:-} " in *" ${bkt} "*) exit 0 ;; esac
+    if [[ -n "${MOCK_BUCKET_ERROR:-}" && ( -z "${MOCK_BUCKET_ERROR_FOR:-}" || "${MOCK_BUCKET_ERROR_FOR}" == "${bkt}" ) ]]; then
+      case "${MOCK_BUCKET_ERROR}" in
+        forbidden)  # a bucket that exists but this account cannot read
+          echo "ERROR: (gcloud.storage.buckets.describe) [ci@example.com] does not have permission to access b instance [${bkt}] (or it may not exist): ci@example.com does not have storage.buckets.get access to the Google Cloud Storage bucket. Permission 'storage.buckets.get' denied on resource '//storage.googleapis.com/projects/_/buckets/${bkt}' (or it may not exist). This command is authenticated as ci@example.com which is the active account specified by the [core/account] property." >&2 ;;
+        unauthenticated)
+          echo "ERROR: (gcloud.storage.buckets.describe) HTTPError 401: Invalid Credentials. This command is authenticated with an access token from the CLOUDSDK_AUTH_ACCESS_TOKEN environment variable" >&2 ;;
+        expired)
+          echo "ERROR: (gcloud.storage.buckets.describe) There was a problem refreshing your current auth tokens: Reauthentication failed. cannot prompt during non-interactive execution." >&2 ;;
+        other-bucket)  # the missing-bucket answer, but for another bucket
+          echo "ERROR: (gcloud.storage.buckets.describe) gs://other-bucket not found: 404." >&2 ;;
+        *) echo "gcloud mock: unknown MOCK_BUCKET_ERROR: ${MOCK_BUCKET_ERROR}" >&2 ;;
+      esac
+      exit 1
+    fi
+    echo "ERROR: (gcloud.storage.buckets.describe) gs://${bkt} not found: 404." >&2
+    exit 1 ;;
   "storage buckets create "* | "storage buckets update "*) ;;
   "firestore databases describe "*) exit 1 ;;
   *) echo "gcloud mock: unexpected call: $args" >&2; exit 1 ;;
@@ -553,5 +575,38 @@ grep -qF "Could not list Firebase projects" "$OUT" || fail "C31 message: $(cat "
 grep -qF "Error: Failed to authenticate, have you run firebase login?" "$OUT" || fail "C31 should show firebase's error: $(cat "$OUT")"
 assert_no_mutation_after C31
 ok "a failed Firebase project listing stops the run before any mutation"
+
+# 32. A bucket lookup that fails for any reason other than gcloud's 404 for that
+# bucket stops the run before the bucket is created, quoting gcloud's error: a
+# bucket this account cannot read, invalid or expired credentials, and the 404
+# for another bucket. Each used to read as a missing bucket. The project and its
+# Firebase already exist, so linking billing is the only change before it.
+reset false
+for err in forbidden unauthenticated expired other-bucket; do
+  if run MOCK_PROJECT_EXISTS=1 MOCK_FIREBASE_PROJECT=proj MOCK_BUCKET_ERROR="$err"; then
+    fail "C32 expected refusal when the state bucket lookup fails ($err)"
+  fi
+  grep -qF "Could not look up bucket gs://catvox-tf-state-proj (gcloud exited 1); stopping before creating it:" "$OUT" || fail "C32 ($err) message: $(cat "$OUT")"
+  grep -qF "ERROR: (gcloud.storage.buckets.describe)" "$OUT" || fail "C32 ($err) should quote gcloud's error: $(cat "$OUT")"
+  assert_no_mutation_after C32
+done
+# The Functions source bucket's lookup is checked the same way, after the state
+# bucket (here already there).
+if run MOCK_PROJECT_EXISTS=1 MOCK_FIREBASE_PROJECT=proj MOCK_EXISTING_BUCKETS=catvox-tf-state-proj \
+     MOCK_BUCKET_ERROR=forbidden MOCK_BUCKET_ERROR_FOR=gcf-v2-sources-123456-us-central1; then
+  fail "C32 expected refusal when the Functions source bucket lookup fails"
+fi
+grep -qF "Could not look up bucket gs://gcf-v2-sources-123456-us-central1 (gcloud exited 1); stopping before creating it:" "$OUT" || fail "C32 (sources bucket) message: $(cat "$OUT")"
+assert_no_mutation_after C32
+ok "a bucket lookup that fails for another reason stops the run before that bucket is created, quoting gcloud's error"
+
+# 33. Positive control: buckets that already exist are kept, not created again.
+reset false
+run MOCK_PROJECT_EXISTS=1 MOCK_EXISTING_BUCKETS="catvox-tf-state-proj gcf-v2-sources-123456-us-central1" || fail "C33 run should succeed: $(cat "$OUT")"
+grep -qF "Terraform state bucket catvox-tf-state-proj already exists." "$OUT" || fail "C33 state bucket message: $(cat "$OUT")"
+grep -qF "Cloud Functions source bucket gcf-v2-sources-123456-us-central1 already exists." "$OUT" || fail "C33 sources bucket message: $(cat "$OUT")"
+not_called "gcloud storage buckets create" || fail "C33 must not create an existing bucket: $(cat "$CALLS")"
+not_called "gcloud storage buckets update" || fail "C33 must not update an existing bucket: $(cat "$CALLS")"
+ok "buckets that already exist are kept, not created again"
 
 echo "PASS ($pass cases)"

@@ -22,9 +22,9 @@
 #     all       identity, then hosts, then posthog.
 #
 #   ALLOW_MISSING_HOSTS  0 | 1   (default: 0)
-#     1 lets the hosts phase skip a function that gcloud reports as not found
-#     (not deployed yet), leaving its key unchanged. Any other lookup failure
-#     still fails the run.
+#     1 lets the hosts phase skip a function that is not deployed yet (gcloud
+#     answers with a 404 naming it), leaving its key unchanged. Any other lookup
+#     failure still fails the run.
 #
 # Writes the working tree only. It never stages or commits — the operator
 # reviews the diff and commits (this keeps committed config, especially a
@@ -44,7 +44,8 @@
 # strict too: both hosts are resolved before either is written, and a function
 # that is not deployed fails the run unless ALLOW_MISSING_HOSTS=1 (then it is
 # reported and skipped — re-run PHASE=hosts after the deploy). A lookup that fails
-# for any other reason (auth, permission, no service URI) always fails the run.
+# for any other reason (auth, permission, an unknown region, no service URI)
+# always fails the run.
 #
 # Expects the same environment the Makefile terraform targets read, and that
 # `make terraform-init` (and apply) has already run for this environment.
@@ -222,10 +223,13 @@ write_posthog() {
 }
 
 # Read a deployed Cloud Run function's host. Prints the hostname only (no
-# scheme/path) and returns 0 when deployed. Returns 3 only when gcloud
-# positively reports the function as not found; any other failure (auth,
-# permission, transient, or a function with no service URI) returns 1 and is
-# never mistaken for "not deployed".
+# scheme/path) and returns 0 when deployed. Returns 3 only on gcloud's answer
+# for a function that is not deployed: a 404 naming this exact function,
+# "Resource 'projects/<project>/locations/<region>/functions/<name>' was not
+# found" (gcloud 592). Any other failure returns 1 and is never mistaken for
+# "not deployed": auth, permission, transient, a function with no service URI,
+# or an unknown region, whose 403 also says "not found" ("Location <region> is
+# not found or access is unauthorized.").
 function_host() {
   local name="$1" uri host err_file rc=0
   err_file="$(mktemp "${TMPDIR:-/tmp}/catvox-function-describe.XXXXXX")" || {
@@ -236,9 +240,7 @@ function_host() {
         --project "$PROJECT_ID" --region "$REGION" \
         --format='value(serviceConfig.uri)' 2>"$err_file")" || rc=$?
   if [[ "$rc" -ne 0 ]]; then
-    # gcloud words a missing function as NOT_FOUND / "was not found" (or "does
-    # not exist"); a permission error's "(or it may not exist)" must not match.
-    if grep -qiE 'not[ _]found|does not exist' "$err_file"; then
+    if grep -qF -- "Resource 'projects/${PROJECT_ID}/locations/${REGION}/functions/${name}' was not found" "$err_file"; then
       rm -f "$err_file"
       return 3
     fi

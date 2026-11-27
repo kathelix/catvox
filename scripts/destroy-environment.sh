@@ -92,15 +92,18 @@ export TF_VAR_alert_email="${TF_VAR_alert_email:-teardown-noop@example.invalid}"
 # versions, leaving noncurrent ones that would block the subsequent bucket delete.
 empty_bucket() { gcloud storage rm --recursive --all-versions "gs://$1/**" >/dev/null 2>&1 || true; }
 
-# Classify a bucket as exists | absent | error. A describe that fails for any
-# reason OTHER than not-found (permission, auth, transient) is "error" — callers
-# must treat it as indeterminate and abort, never as "absent", so a probe failure
-# cannot silently skip cleanup or mask a failed delete.
+# Classify a bucket as exists | absent | error. Only gcloud's 404 naming this
+# bucket, "gs://<bucket> not found: 404." (gcloud 592), is "absent". A describe
+# that fails for any other reason (permission, auth, transient) is "error" —
+# callers must treat it as indeterminate and abort, never as "absent", so a
+# probe failure cannot silently skip cleanup or mask a failed delete. A bare
+# "404" is not proof: the Functions sources bucket's name holds the project
+# number, so a permission error that names it can contain "404" too.
 bucket_status() {
   local out
   if out="$(gcloud storage buckets describe "gs://$1" --project "$PROJECT_ID" 2>&1)"; then
     echo exists
-  elif printf '%s' "$out" | grep -qiE 'not found|does not exist|404|no such bucket'; then
+  elif [[ "$out" == *"gs://$1 not found: 404"* ]]; then
     echo absent
   else
     echo error

@@ -6,7 +6,8 @@
 # the script's delete-then-verify-absence step behaves like the real API. Asserts
 # the safety gate, the load-bearing order (state bucket deleted only AFTER
 # terraform destroy), and — per the PR #118 review — that genuine failures abort
-# loudly instead of being masked as a clean teardown.
+# loudly instead of being masked as a clean teardown. The gcloud mock's storage
+# answers are the ones gcloud 592 really prints.
 
 set -uo pipefail
 
@@ -33,12 +34,19 @@ case "$args" in
   *"projects describe"*) printf '%s\n' "${MOCK_PROJECT_NUMBER-123456}";;
   *"storage ls"*)  # PostHog state existence probe (3-way, like real gcloud)
     [[ -n "${MOCK_POSTHOG_STATE:-}" ]] && { echo "${gsurl%/**}/default.tfstate"; exit 0; }
-    [[ -n "${MOCK_POSTHOG_LS_FAIL:-}" ]] && { echo "ERROR: (gcloud.storage.ls) caller does not have permission" >&2; exit 1; }
-    echo "One or more URLs matched no objects." >&2; exit 1;;
+    [[ -n "${MOCK_POSTHOG_LS_FAIL:-}" ]] && { echo "ERROR: (gcloud.storage.ls) [ci@example.com] does not have permission to access b instance [$bkt] (or it may not exist): ci@example.com does not have storage.objects.list access to the Google Cloud Storage bucket. Permission 'storage.objects.list' denied on resource '//storage.googleapis.com/projects/_/buckets/$bkt' (or it may not exist). This command is authenticated as ci@example.com which is the active account specified by the [core/account] property." >&2; exit 1; }
+    echo "ERROR: (gcloud.storage.ls) One or more URLs matched no objects." >&2; exit 1;;
   *"storage buckets describe"*)
-    [[ -n "${MOCK_DESCRIBE_ERROR:-}" ]] && { echo "ERROR: (gcloud.storage.buckets.describe) caller does not have storage.buckets.get access to gs://$bkt" >&2; exit 1; }
-    [[ -n "${MOCK_NO_BUCKETS:-}" ]] && { echo "ERROR: gs://$bkt not found: The specified bucket does not exist." >&2; exit 1; }
-    [[ -f "$DELETED" ]] && grep -qxF "$bkt" "$DELETED" && { echo "ERROR: gs://$bkt not found: The specified bucket does not exist." >&2; exit 1; }
+    # MOCK_DESCRIBE_ERROR: the 403 for a bucket this account cannot read, for
+    # the bucket MOCK_DESCRIBE_ERROR_FOR names (every bucket when empty).
+    # MOCK_DESCRIBE_404_OTHER: the missing-bucket 404, but naming another bucket.
+    if [[ -n "${MOCK_DESCRIBE_ERROR:-}" && ( -z "${MOCK_DESCRIBE_ERROR_FOR:-}" || "${MOCK_DESCRIBE_ERROR_FOR}" == "$bkt" ) ]]; then
+      echo "ERROR: (gcloud.storage.buckets.describe) [ci@example.com] does not have permission to access b instance [$bkt] (or it may not exist): ci@example.com does not have storage.buckets.get access to the Google Cloud Storage bucket. Permission 'storage.buckets.get' denied on resource '//storage.googleapis.com/projects/_/buckets/$bkt' (or it may not exist). This command is authenticated as ci@example.com which is the active account specified by the [core/account] property." >&2
+      exit 1
+    fi
+    [[ -n "${MOCK_DESCRIBE_404_OTHER:-}" ]] && { echo "ERROR: (gcloud.storage.buckets.describe) gs://other-bucket not found: 404." >&2; exit 1; }
+    [[ -n "${MOCK_NO_BUCKETS:-}" ]] && { echo "ERROR: (gcloud.storage.buckets.describe) gs://$bkt not found: 404." >&2; exit 1; }
+    [[ -f "$DELETED" ]] && grep -qxF "$bkt" "$DELETED" && { echo "ERROR: (gcloud.storage.buckets.describe) gs://$bkt not found: 404." >&2; exit 1; }
     exit 0;;
   *"storage buckets delete"*)
     echo "delbucket:${gsurl}" >> "$DLOG"
@@ -192,5 +200,28 @@ fi
 grep -q "could not determine the status" "$SANDBOX/o14" || fail "S14 should report indeterminate status"
 grep -q "make:terraform-destroy" "$DLOG" && fail "S14 must abort at step 1, before terraform destroy"
 ok "indeterminate bucket describe aborts (not treated as absent)"
+
+# 15. Regression: the Functions sources bucket's name holds the project number.
+# When that number contains 404, a permission error naming the bucket used to
+# read as "absent" (the old match took any "404"), so the teardown skipped the
+# bucket and went on to delete the GitHub Environment and the state bucket. Only
+# gcloud's 404 naming the bucket means absent: it now aborts at step 4.
+if run CONFIRM=destroy MOCK_PROJECT_NUMBER=123404567890 MOCK_DESCRIBE_ERROR=1 \
+     MOCK_DESCRIBE_ERROR_FOR=gcf-v2-sources-123404567890-us-central1 >"$SANDBOX/o15" 2>&1; then
+  fail "S15 expected abort on a permission error for a bucket whose name contains 404"
+fi
+grep -qF "could not determine the status of gs://gcf-v2-sources-123404567890-us-central1" "$SANDBOX/o15" || fail "S15 should report indeterminate status: $(cat "$SANDBOX/o15")"
+grep -q "gh-delenv" "$DLOG" && fail "S15 must abort before deleting the GitHub Environment"
+grep -q "delbucket:" "$DLOG" && fail "S15 must not delete any bucket: $(cat "$DLOG")"
+ok "a permission error for a bucket whose name contains 404 aborts (not read as absent)"
+
+# 16. Only the 404 naming this bucket means absent: a 404 naming another bucket
+# aborts at step 1, before terraform destroy.
+if run CONFIRM=destroy MOCK_DESCRIBE_404_OTHER=1 >"$SANDBOX/o16" 2>&1; then
+  fail "S16 expected abort on a 404 for another bucket"
+fi
+grep -qF "could not determine the status of catvox-raw-videos-proj" "$SANDBOX/o16" || fail "S16 should report indeterminate status: $(cat "$SANDBOX/o16")"
+grep -q "make:terraform-destroy" "$DLOG" && fail "S16 must abort at step 1, before terraform destroy"
+ok "a 404 naming another bucket aborts (not read as absent)"
 
 echo "PASS ($pass cases)"

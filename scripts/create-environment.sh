@@ -16,6 +16,9 @@
 #     expired credentials or any other lookup error always stop the run;
 #   - BILLING_ACCOUNT_ID is required, and billing must read back as enabled
 #     after linking, before any bucket is created;
+#   - a bucket is created only when gcloud answers with a 404 for it; a bucket
+#     lookup that fails any other way (permission, expired credentials) stops
+#     the run before that bucket is created;
 #   - an App Check debug token (APP_CHECK_DEBUG_TOKEN, or one already in the
 #     tfvars file) is refused unless config/environments/<env>.xcconfig sets
 #     CATVOX_ENVIRONMENT_PROTECTED = false;
@@ -245,6 +248,34 @@ lookup_project() {
   rm -f "${err_file}"
 }
 
+# Look up a Cloud Storage bucket three ways: it exists (returns 0), gcloud
+# answers that it does not exist (returns 1), or the lookup failed (stops the
+# run). Only a 404 naming this bucket, "gs://<bucket> not found: 404." (gcloud
+# 592), means it does not exist. A bucket this account cannot read gets a 403
+# ending "(or it may not exist)"; that, like expired credentials, stops the run
+# here instead of going on to create the bucket.
+bucket_exists() {  # $1 = bucket name
+  local err_file rc=0
+  if ! err_file="$(mktemp "${TMPDIR:-/tmp}/catvox-bucket-describe.XXXXXX")"; then
+    echo "Could not create a temporary file to look up bucket gs://${1}." >&2
+    exit 1
+  fi
+  gcloud storage buckets describe "gs://${1}" --project="${PROJECT_ID}" >/dev/null 2>"${err_file}" || rc=$?
+  if [[ "${rc}" -eq 0 ]]; then
+    rm -f "${err_file}"
+    return 0
+  fi
+  if grep -qF -- "gs://${1} not found: 404" "${err_file}"; then
+    rm -f "${err_file}"
+    return 1
+  fi
+  echo "Could not look up bucket gs://${1} (gcloud exited ${rc}); stopping before creating it:" >&2
+  cat "${err_file}" >&2
+  rm -f "${err_file}"
+  echo "Fix the error above (for expired credentials, run gcloud auth login), then re-run." >&2
+  exit 1
+}
+
 require_value CATVOX_ENVIRONMENT "${ENVIRONMENT}"
 require_value CATVOX_PROJECT_ID "${PROJECT_ID}"
 require_value PROJECT_DISPLAY_NAME "${PROJECT_DISPLAY_NAME}"
@@ -435,7 +466,7 @@ else
   firebase projects:addfirebase "${PROJECT_ID}" --non-interactive
 fi
 
-if gcloud storage buckets describe "gs://${STATE_BUCKET}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
+if bucket_exists "${STATE_BUCKET}"; then
   echo "Terraform state bucket ${STATE_BUCKET} already exists."
 else
   gcloud storage buckets create "gs://${STATE_BUCKET}" \
@@ -448,7 +479,7 @@ fi
 PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 GCF_SOURCES_BUCKET="gcf-v2-sources-${PROJECT_NUMBER}-${REGION}"
 
-if gcloud storage buckets describe "gs://${GCF_SOURCES_BUCKET}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
+if bucket_exists "${GCF_SOURCES_BUCKET}"; then
   echo "Cloud Functions source bucket ${GCF_SOURCES_BUCKET} already exists."
 else
   gcloud storage buckets create "gs://${GCF_SOURCES_BUCKET}" \

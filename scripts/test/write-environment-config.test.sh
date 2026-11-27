@@ -12,7 +12,8 @@
 # the xcconfig byte-identical: a Terraform root initialised for another
 # environment, an xcconfig without CATVOX_TF_STATE_BUCKET, an unreadable state
 # output, a function that is not deployed (unless ALLOW_MISSING_HOSTS=1), and
-# any other failed host lookup.
+# any other failed host lookup, such as an unknown region. The gcloud mock gives
+# the answers gcloud 592 really prints.
 #
 # Ends by running scripts/test/create-environment.test.sh (see the note there).
 
@@ -73,22 +74,29 @@ cat > "$BIN/plutil" <<'SH'
 printf '%s\n' "${MOCK_API_KEY:-AIzaSyTESTKEY1234567890}"
 SH
 
-# gcloud: echo the Cloud Run URI for `functions describe <name>`. MOCK_NODEPLOY
-# lists functions that report NOT_FOUND ("all" = every function); MOCK_DENIED
-# fails every lookup with a permission error (worded "may not exist", as GCP
-# does, which must NOT read as not-found); MOCK_NO_URI succeeds with no URI.
+# gcloud: echo the Cloud Run URI for `functions describe <name>`, or fail with
+# the answer gcloud 592 really prints. MOCK_NODEPLOY lists functions that are
+# not deployed ("all" = every function): a 404 naming the function. MOCK_DENIED
+# fails every lookup with the 403 for a project this account cannot use, and
+# MOCK_BAD_REGION with the 403 for an unknown region, which also says "not
+# found". MOCK_OTHER_PROJECT_404 answers with a 404 naming another project.
+# MOCK_NO_URI succeeds with no URI. Only the 404 naming this function, in this
+# project and region, means "not deployed".
 cat > "$BIN/gcloud" <<'SH'
 #!/usr/bin/env bash
-name=""; want=0
-for a in "$@"; do [[ $want -eq 1 ]] && { name="$a"; want=0; }; [[ "$a" == "describe" ]] && want=1; done
-if [[ -n "${MOCK_DENIED:-}" ]]; then
-  echo "ERROR: (gcloud.functions.describe) PERMISSION_DENIED: Permission 'cloudfunctions.functions.get' denied on resource 'projects/proj/locations/us-central1/functions/${name}' (or it may not exist)." >&2
-  exit 1
-fi
+name=""; project=""; region=""; next=""
+for a in "$@"; do
+  case "$next" in name) name="$a" ;; project) project="$a" ;; region) region="$a" ;; esac
+  next=""
+  case "$a" in describe) next=name ;; --project) next=project ;; --region) next=region ;; esac
+done
+fail_with() { echo "ERROR: (gcloud.functions.describe) ResponseError: status=[$1], code=[], message=[$2]" >&2; exit 1; }
+[[ -n "${MOCK_DENIED:-}" ]] && fail_with 403 "Permission denied on resource project ${project}."
+[[ -n "${MOCK_BAD_REGION:-}" ]] && fail_with 403 "Location ${region} is not found or access is unauthorized."
+[[ -n "${MOCK_OTHER_PROJECT_404:-}" ]] && fail_with 404 "Resource 'projects/other-proj/locations/${region}/functions/${name}' was not found"
 case " ${MOCK_NODEPLOY:-} " in
   *" all "* | *" ${name} "*)
-    echo "ERROR: (gcloud.functions.describe) NOT_FOUND: Resource 'projects/proj/locations/us-central1/functions/${name}' was not found" >&2
-    exit 1 ;;
+    fail_with 404 "Resource 'projects/${project}/locations/${region}/functions/${name}' was not found" ;;
 esac
 [[ -n "${MOCK_NO_URI:-}" ]] && exit 0
 case "$name" in
@@ -181,13 +189,13 @@ grep -qF "skipped:   CATVOX_ANALYSE_VIDEO_HOST (analyseVideo not deployed yet" "
 [[ -z "$(ls -A "$SCRIPT_TMP")" ]] || fail "S5 temp files left behind"
 ok "ALLOW_MISSING_HOSTS=1 skips a not-deployed function and writes the rest"
 
-# 6. A lookup that fails for any other reason (permission denied, worded "may
-# not exist") is never treated as not-deployed, even with ALLOW_MISSING_HOSTS=1.
+# 6. A lookup that fails for any other reason (here a permission error) is never
+# treated as not-deployed, even with ALLOW_MISSING_HOSTS=1.
 fixture denied
 if run hosts MOCK_DENIED=1 ALLOW_MISSING_HOSTS=1 >/dev/null 2>"$SANDBOX/err"; then
   fail "S6 expected failure on a permission error"
 fi
-assert_refused_untouched S6 "PERMISSION_DENIED"
+assert_refused_untouched S6 "Permission denied on resource project proj."
 grep -qF "No backend host values were written" "$SANDBOX/err" || fail "S6 should report that nothing was written"
 ok "a permission error fails the hosts phase even with ALLOW_MISSING_HOSTS=1"
 
@@ -282,6 +290,29 @@ if run all MOCK_POSTHOG_ENV=other >/dev/null 2>"$SANDBOX/err"; then
 fi
 assert_refused_untouched S16 "terraform/posthog is initialised against the 'other' environment's state"
 ok "PHASE=all checks every backend before writing any value"
+
+# 17. Regression: an unknown region gets a 403 that also says "not found"
+# ("Location <region> is not found or access is unauthorized."). It used to read
+# as "not deployed": the run blamed the deploy, and with ALLOW_MISSING_HOSTS=1
+# it skipped both hosts and exited 0. It now fails, quoting gcloud.
+fixture badregion
+if run hosts CATVOX_FUNCTION_REGION=us-nowhere1 MOCK_BAD_REGION=1 ALLOW_MISSING_HOSTS=1 >/dev/null 2>"$SANDBOX/err"; then
+  fail "S17 expected failure on an unknown region"
+fi
+assert_refused_untouched S17 "Location us-nowhere1 is not found or access is unauthorized."
+grep -qF "could not read getSignedUploadURL (gcloud functions describe exited 1)" "$SANDBOX/err" || fail "S17 should report a failed lookup: $(cat "$SANDBOX/err")"
+grep -qF "skipped:" "$SANDBOX/err" && fail "S17 must not skip a host: $(cat "$SANDBOX/err")"
+ok "an unknown region's 403 fails the hosts phase even with ALLOW_MISSING_HOSTS=1"
+
+# 18. Only a 404 naming this function in this project and region means "not
+# deployed": a 404 naming another project fails the lookup.
+fixture otherproject
+if run hosts MOCK_OTHER_PROJECT_404=1 ALLOW_MISSING_HOSTS=1 >/dev/null 2>"$SANDBOX/err"; then
+  fail "S18 expected failure on a 404 for another project"
+fi
+assert_refused_untouched S18 "Resource 'projects/other-proj/locations/us-central1/functions/getSignedUploadURL' was not found"
+grep -qF "skipped:" "$SANDBOX/err" && fail "S18 must not skip a host: $(cat "$SANDBOX/err")"
+ok "a 404 naming another project fails the hosts phase even with ALLOW_MISSING_HOSTS=1"
 
 echo "PASS ($pass cases)"
 
